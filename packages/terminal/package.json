@@ -9,6 +9,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@termbridge/shared": "workspace:*"
+    "@termbridge/shared": "workspace:*",
+    "node-pty": "^1.1.0"
   }
 }

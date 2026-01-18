@@ -22,28 +22,28 @@
         "termbridge": "./dist/bin.js",
       },
       "dependencies": {
-        "@tanstack/react-router": "latest",
+        "@tanstack/react-router": "^1.151.6",
         "@termbridge/shared": "workspace:*",
         "@termbridge/terminal": "workspace:*",
         "@termbridge/tunnel": "workspace:*",
-        "@xterm/addon-fit": "latest",
-        "@xterm/addon-web-links": "latest",
-        "@xterm/addon-webgl": "latest",
-        "@xterm/xterm": "latest",
-        "ink": "latest",
-        "qrcode-terminal": "latest",
-        "react": "latest",
-        "react-dom": "latest",
-        "ws": "latest",
+        "@xterm/addon-fit": "^0.11.0",
+        "@xterm/addon-web-links": "^0.12.0",
+        "@xterm/addon-webgl": "^0.19.0",
+        "@xterm/xterm": "^6.0.0",
+        "ink": "^6.6.0",
+        "qrcode-terminal": "^0.12.0",
+        "react": "^19.2.3",
+        "react-dom": "^19.2.3",
+        "ws": "^8.19.0",
       },
       "devDependencies": {
-        "@types/qrcode-terminal": "latest",
-        "@types/react": "latest",
-        "@types/react-dom": "latest",
-        "@types/ws": "latest",
-        "@vitejs/plugin-react": "latest",
-        "tsup": "latest",
-        "vite": "latest",
+        "@types/qrcode-terminal": "^0.12.2",
+        "@types/react": "^19.2.8",
+        "@types/react-dom": "^19.2.3",
+        "@types/ws": "^8.18.1",
+        "@vitejs/plugin-react": "^5.1.2",
+        "tsup": "^8.5.1",
+        "vite": "^7.3.1",
       },
     },
     "packages/shared": {
@@ -55,6 +55,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@termbridge/shared": "workspace:*",
+        "node-pty": "^1.1.0",
       },
     },
     "packages/tsconfig": {
@@ -520,6 +521,10 @@
     "mz": ["mz@2.7.0", "", { "dependencies": { "any-promise": "^1.0.0", "object-assign": "^4.0.1", "thenify-all": "^1.0.0" } }, "sha512-z81GNO7nnYMEhrGh9LeymoE4+Yr0Wn5McHIZMK5cfQCl+NDX08sCZgUc9/6MHni9IWuFLm1Z3HTCXu2z9fN62Q=="],
 
     "nanoid": ["nanoid@3.3.11", "", { "bin": { "nanoid": "bin/nanoid.cjs" } }, "sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w=="],
+
+    "node-addon-api": ["node-addon-api@7.1.1", "", {}, "sha512-5m3bsyrjFWE1xf7nz7YXdN4udnVtXK6/Yfgn5qnahL6bCkf2yKt4k3nuTKAtT4r3IG8JNR2ncsIMdZuAzJjHQQ=="],
+
+    "node-pty": ["node-pty@1.1.0", "", { "dependencies": { "node-addon-api": "^7.1.0" } }, "sha512-20JqtutY6JPXTUnL0ij1uad7Qe1baT46lyolh2sSENDd4sTzKZ4nmAFkeAARDKwmlLjPx6XKRlwRUxwjOy+lUg=="],
 
     "node-releases": ["node-releases@2.0.27", "", {}, "sha512-nmh3lCkYZ3grZvqcCH+fjmQ7X+H0OeZgP40OierEaAptX4XofMh5kwNbWh7lBduUzCcV/8kZ+NDLCwm2iorIlA=="],
 

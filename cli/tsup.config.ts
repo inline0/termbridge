@@ -8,6 +8,7 @@ export default defineConfig({
   outDir: "dist",
   sourcemap: true,
   clean: true,
+  external: ["node-pty"],
   noExternal: ["@termbridge/shared", "@termbridge/terminal", "@termbridge/tunnel"],
   splitting: false,
   banner: {

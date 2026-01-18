@@ -361,13 +361,15 @@ describe("terminal-client", () => {
     Object.defineProperty(container, "clientWidth", { value: 120 });
     document.body.appendChild(container);
 
+    let resizeCallback: ((entries: unknown[], observer: unknown) => void) | null = null;
     const resizeObserverInstances: Array<{ disconnect: ReturnType<typeof vi.fn> }> = [];
 
     class FakeResizeObserver {
       disconnect = vi.fn();
       observe = vi.fn();
 
-      constructor(_callback: ResizeObserverCallback) {
+      constructor(callback: (entries: unknown[], observer: unknown) => void) {
+        resizeCallback = callback;
         resizeObserverInstances.push(this);
       }
     }
@@ -396,6 +398,11 @@ describe("terminal-client", () => {
     });
 
     socket.emit("open");
+    const callback = resizeCallback as unknown as ((entries: unknown[], observer: unknown) => void) | null;
+    callback?.(
+      [{ contentRect: container.getBoundingClientRect() } as ResizeObserverEntry],
+      resizeObserverInstances[0] as unknown as ResizeObserver
+    );
     if (!lastWebglAddon) {
       throw new Error("expected webgl addon");
     }

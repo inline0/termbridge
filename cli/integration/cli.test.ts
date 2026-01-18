@@ -17,12 +17,16 @@ const hasDeps = commandExists("tmux") && commandExists("cloudflared");
 const maybeDescribe = hasDeps ? describe : describe.skip;
 
 const resolveNodePath = () => {
+  const result = spawnSync("which", ["node"], { encoding: "utf8" });
+  if (result.status === 0 && result.stdout.trim()) {
+    return result.stdout.trim();
+  }
+
   if (existsSync(process.execPath)) {
     return process.execPath;
   }
 
-  const result = spawnSync("which", ["node"], { encoding: "utf8" });
-  return result.status === 0 ? result.stdout.trim() : "node";
+  return "node";
 };
 
 const buildCli = () => {
@@ -237,6 +241,7 @@ maybeDescribe("cli integration", () => {
     const outputPromise = new Promise<void>((resolvePromise) => {
       resolveOutput = resolvePromise;
     });
+    let outputBuffer = "";
 
     page.on("pageerror", (error) => {
       pageErrors.push(error.message);
@@ -261,8 +266,25 @@ maybeDescribe("cli integration", () => {
         if (payload.includes("\"status\"") && payload.includes("connected")) {
           resolveStatus?.();
         }
-        if (payload.includes("\"type\":\"output\"") && payload.includes("termbridge-ui")) {
-          resolveOutput?.();
+        if (payload.includes("\"type\":\"output\"")) {
+          try {
+            const message = JSON.parse(payload) as { type?: string; data?: string };
+            if (message.type === "output" && typeof message.data === "string") {
+              if (process.env.TERMBRIDGE_TEST_DEBUG) {
+                process.stdout.write(
+                  `[cli integration] output chunk ${message.data.length} bytes\n`
+                );
+              }
+              outputBuffer += message.data;
+            } else {
+              outputBuffer += payload;
+            }
+          } catch {
+            outputBuffer += payload;
+          }
+          if (outputBuffer.includes("termbridge-ui")) {
+            resolveOutput?.();
+          }
         }
       });
       websocket.on("close", () => {

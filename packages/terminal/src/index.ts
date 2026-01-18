@@ -1,9 +1,15 @@
 import { EventEmitter } from "node:events";
 import { execFile as execFileCallback } from "node:child_process";
 import { promisify } from "node:util";
+import { accessSync, chmodSync, constants as fsConstants } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { createRequire } from "node:module";
+import * as pty from "node-pty";
 import type { TerminalControlKey } from "@termbridge/shared";
 
 const execFile = promisify(execFileCallback);
+const requireFromHere = createRequire(import.meta.url);
+let spawnHelperChecked = false;
 
 export type TerminalSession = {
   name: string;
@@ -21,36 +27,151 @@ export type TerminalBackend = {
 
 export type TmuxBackendDeps = {
   execFile?: (file: string, args: string[]) => Promise<{ stdout: string }>;
-  setInterval?: (handler: () => void, timeout: number) => NodeJS.Timeout;
-  clearInterval?: (intervalId: NodeJS.Timeout) => void;
-  pollIntervalMs?: number;
+  spawnPty?: (file: string, args: string[], options: pty.IPtyForkOptions) => pty.IPty;
+  env?: NodeJS.ProcessEnv;
+  defaultCols?: number;
+  defaultRows?: number;
 };
 
 const controlKeyMap: Record<TerminalControlKey, string> = {
-  ctrl_c: "C-c",
-  esc: "Escape",
-  tab: "Tab",
-  up: "Up",
-  down: "Down",
-  left: "Left",
-  right: "Right"
+  ctrl_c: "\x03",
+  esc: "\x1b",
+  tab: "\t",
+  up: "\x1b[A",
+  down: "\x1b[B",
+  left: "\x1b[D",
+  right: "\x1b[C"
 };
 
 const defaultDeps: Required<TmuxBackendDeps> = {
   execFile: async (file, args) => execFile(file, args),
-  setInterval,
-  clearInterval,
-  pollIntervalMs: 120
+  spawnPty: pty.spawn,
+  env: process.env,
+  defaultCols: 80,
+  defaultRows: 24
+};
+
+const ensureSpawnHelperExecutable = () => {
+  if (spawnHelperChecked || process.platform === "win32") {
+    return;
+  }
+
+  spawnHelperChecked = true;
+
+  try {
+    const { loadNativeModule } = requireFromHere("node-pty/lib/utils") as {
+      loadNativeModule: (name: string) => { dir: string };
+    };
+    const native = loadNativeModule("pty");
+    const unixTerminalPath = requireFromHere.resolve("node-pty/lib/unixTerminal");
+    const helperPath = resolve(dirname(unixTerminalPath), `${native.dir}/spawn-helper`);
+
+    try {
+      accessSync(helperPath, fsConstants.X_OK);
+    } catch {
+      chmodSync(helperPath, 0o755);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`node-pty spawn-helper unavailable: ${message}`);
+  }
 };
 
 export const createTmuxBackend = (deps: TmuxBackendDeps = {}): TerminalBackend => {
   const runtime = { ...defaultDeps, ...deps };
+  const sessions = new Map<string, {
+    session: TerminalSession;
+    pty: pty.IPty | null;
+    subscribers: Set<(data: string) => void>;
+    cols: number;
+    rows: number;
+    disposables: Array<{ dispose: () => void }>;
+  }>();
 
   const runTmux = async (args: string[]) => runtime.execFile("tmux", args);
 
   const createSession = async (name: string) => {
-    await runTmux(["new-session", "-d", "-s", name]);
-    return { name, createdAt: new Date() };
+    const existing = sessions.get(name);
+    if (existing) {
+      return existing.session;
+    }
+
+    try {
+      await runTmux(["new-session", "-d", "-s", name]);
+    } catch (error) {
+      try {
+        await runTmux(["has-session", "-t", name]);
+      } catch {
+        throw error;
+      }
+    }
+
+    const session = { name, createdAt: new Date() };
+    sessions.set(name, {
+      session,
+      pty: null,
+      subscribers: new Set(),
+      cols: runtime.defaultCols,
+      rows: runtime.defaultRows,
+      disposables: []
+    });
+    return session;
+  };
+
+  const disposePty = (entry: {
+    pty: pty.IPty | null;
+    disposables: Array<{ dispose: () => void }>;
+  }, kill: boolean) => {
+    const current = entry.pty;
+    entry.pty = null;
+    for (const disposable of entry.disposables) {
+      disposable.dispose();
+    }
+    entry.disposables = [];
+    if (kill && current) {
+      try {
+        current.kill();
+      } catch {}
+    }
+  };
+
+  const ensurePty = (entry: {
+    session: TerminalSession;
+    pty: pty.IPty | null;
+    subscribers: Set<(data: string) => void>;
+    cols: number;
+    rows: number;
+    disposables: Array<{ dispose: () => void }>;
+  }) => {
+    if (entry.pty) {
+      return entry.pty;
+    }
+
+    ensureSpawnHelperExecutable();
+
+    const ptyInstance = runtime.spawnPty("tmux", ["attach-session", "-t", entry.session.name], {
+      name: "xterm-256color",
+      cols: entry.cols,
+      rows: entry.rows,
+      env: {
+        ...runtime.env,
+        TERM: "xterm-256color",
+        COLORTERM: "truecolor"
+      }
+    });
+
+    entry.pty = ptyInstance;
+    const dataDisposable = ptyInstance.onData((data) => {
+      for (const subscriber of entry.subscribers) {
+        subscriber(data);
+      }
+    });
+    const exitDisposable = ptyInstance.onExit(() => {
+      disposePty(entry, false);
+    });
+    entry.disposables = [dataDisposable, exitDisposable];
+
+    return ptyInstance;
   };
 
   const write = async (sessionName: string, data: string) => {
@@ -58,77 +179,60 @@ export const createTmuxBackend = (deps: TmuxBackendDeps = {}): TerminalBackend =
       return;
     }
 
-    await runTmux(["send-keys", "-t", sessionName, "-l", data]);
+    const entry = sessions.get(sessionName);
+    if (!entry) {
+      return;
+    }
+    ensurePty(entry).write(data);
   };
 
   const sendControl = async (sessionName: string, key: TerminalControlKey) => {
-    await runTmux(["send-keys", "-t", sessionName, controlKeyMap[key]]);
+    const entry = sessions.get(sessionName);
+    if (!entry) {
+      return;
+    }
+
+    const controlSequence = controlKeyMap[key];
+    ensurePty(entry).write(controlSequence);
   };
 
   const resize = async (sessionName: string, cols: number, rows: number) => {
-    await runTmux([
-      "resize-window",
-      "-t",
-      sessionName,
-      "-x",
-      String(cols),
-      "-y",
-      String(rows)
-    ]);
+    const entry = sessions.get(sessionName);
+    if (!entry) {
+      return;
+    }
+
+    entry.cols = cols;
+    entry.rows = rows;
+    if (entry.pty) {
+      entry.pty.resize(cols, rows);
+    }
   };
 
   const onOutput = (sessionName: string, callback: (data: string) => void) => {
-    let lastScreen = "";
-    let lastCursorX = 0;
-    let lastCursorY = 0;
+    const entry = sessions.get(sessionName);
+    if (!entry) {
+      return () => undefined;
+    }
 
-    const poll = async () => {
-      try {
-        const [pane, cursor] = await Promise.all([
-          runTmux(["capture-pane", "-ep", "-t", sessionName]),
-          runTmux(["display-message", "-p", "-t", sessionName, "#{cursor_x} #{cursor_y}"])
-        ]);
-        const nextScreen = pane.stdout ?? "";
-        const [cursorXRaw = "", cursorYRaw = ""] = (cursor.stdout ?? "").trim().split(/\s+/);
-        const cursorX = Number.parseInt(cursorXRaw, 10);
-        const cursorY = Number.parseInt(cursorYRaw, 10);
-        const nextCursorX = Number.isNaN(cursorX) ? 0 : cursorX;
-        const nextCursorY = Number.isNaN(cursorY) ? 0 : cursorY;
-
-        if (nextScreen !== lastScreen) {
-          const clear = "\x1b[2J\x1b[H";
-          const moveCursor = `\x1b[${nextCursorY + 1};${nextCursorX + 1}H`;
-          callback(`${clear}${nextScreen}${moveCursor}`);
-          lastScreen = nextScreen;
-          lastCursorX = nextCursorX;
-          lastCursorY = nextCursorY;
-          return;
-        }
-
-        if (nextCursorX !== lastCursorX || nextCursorY !== lastCursorY) {
-          const moveCursor = `\x1b[${nextCursorY + 1};${nextCursorX + 1}H`;
-          callback(moveCursor);
-          lastCursorX = nextCursorX;
-          lastCursorY = nextCursorY;
-        }
-      } catch {
-        lastScreen = "";
-        lastCursorX = 0;
-        lastCursorY = 0;
-      }
-    };
-
-    void poll();
-    const intervalId = runtime.setInterval(() => {
-      void poll();
-    }, runtime.pollIntervalMs);
+    entry.subscribers.add(callback);
+    ensurePty(entry);
 
     return () => {
-      runtime.clearInterval(intervalId);
+      entry.subscribers.delete(callback);
+      if (entry.subscribers.size === 0) {
+        disposePty(entry, true);
+      }
     };
   };
 
   const closeSession = async (sessionName: string) => {
+    const entry = sessions.get(sessionName);
+    if (entry) {
+      disposePty(entry, true);
+      sessions.delete(sessionName);
+    }
+
     try {
       await runTmux(["kill-session", "-t", sessionName]);
     } catch {

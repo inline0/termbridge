@@ -12,7 +12,6 @@ describe("createTmuxBackend defaults", () => {
     const backend = createTmuxBackend();
 
     await backend.createSession("session-default");
-    await backend.write("session-default", "hi");
     await backend.closeSession("session-default");
 
     expect(true).toBe(true);

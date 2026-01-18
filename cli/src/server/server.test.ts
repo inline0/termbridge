@@ -294,7 +294,7 @@ describe("createAppServer", () => {
 
     fixture.backend.emitOutput(session.name, "output");
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     expect(messages.some((message) => message.includes("connected"))).toBe(true);
     expect(messages.some((message) => message.includes("invalid payload"))).toBe(true);

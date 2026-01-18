@@ -87,7 +87,6 @@ export const createTerminalClient = (
       new Terminal({
         allowProposedApi: true,
         cursorBlink: true,
-        convertEol: true,
         fontFamily: "Menlo, Monaco, 'Courier New', monospace",
         fontSize: 12,
         lineHeight: 1.2,
