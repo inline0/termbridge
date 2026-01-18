@@ -1,0 +1,11 @@
+{
+  "name": "@termbridge/tunnel",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "biome lint .",
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}

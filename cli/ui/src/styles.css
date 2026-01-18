@@ -1,0 +1,42 @@
+@import "xterm/css/xterm.css";
+
+:root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  height: 100%;
+  width: 100%;
+  background: #0a0a0a;
+  color: #f2f2f2;
+  font-family: "SFMono-Regular", ui-monospace, "Cascadia Mono", "Segoe UI Mono", "Roboto Mono", "Ubuntu Mono", monospace;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+}
+
+.terminal-shell {
+  position: relative;
+  height: 100vh;
+  width: 100vw;
+}
+
+.terminal-host {
+  height: 100%;
+  width: 100%;
+}
+
+.terminal-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: rgba(10, 10, 10, 0.88);
+}

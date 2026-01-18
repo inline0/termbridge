@@ -1,0 +1,3 @@
+{
+  "extends": "@termbridge/tsconfig/base.json"
+}

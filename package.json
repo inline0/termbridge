@@ -1,0 +1,30 @@
+{
+  "name": "termbridge",
+  "private": true,
+  "workspaces": [
+    "cli",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run --cwd cli dev",
+    "build": "bun run --cwd cli build",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest",
+    "lint": "biome lint .",
+    "lint:all": "bun run --cwd cli lint && bun run --cwd packages/shared lint && bun run --cwd packages/terminal lint && bun run --cwd packages/tunnel lint",
+    "typecheck": "tsc -p tsconfig.json",
+    "typecheck:all": "bun run --cwd cli typecheck && bun run --cwd packages/shared typecheck && bun run --cwd packages/terminal typecheck && bun run --cwd packages/tunnel typecheck",
+    "format": "biome format --write .",
+    "check": "biome check ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.11",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^22.15.0",
+    "@vitest/coverage-v8": "^3.2.3",
+    "jsdom": "^26.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.3"
+  }
+}
