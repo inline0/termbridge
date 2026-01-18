@@ -106,6 +106,9 @@ export const createTerminalClient = (
   let webglAddon: WebglAddon | null = null;
   let resizeObserver: ResizeObserver | null = null;
   let resizeRaf: number | null = null;
+  let resizeRetryTimeout: number | null = null;
+  let resizeRetryCount = 0;
+  const resizeRetryLimit = 6;
   let resizeUsingTimeout = false;
   let socketReady = false;
   let lastSize: { cols: number; rows: number } | null = null;
@@ -129,15 +132,17 @@ export const createTerminalClient = (
 
   const applyResize = () => {
     const dims = fitAddon.proposeDimensions();
+    const containerWidth = container.clientWidth || terminal.element?.clientWidth || 0;
+    const containerHeight = container.clientHeight || terminal.element?.clientHeight || 0;
 
-    if (!dims) {
+    if (!dims || dims.cols < 1 || dims.rows < 1 || containerWidth < 1 || containerHeight < 1) {
+      scheduleResizeRetry();
       return;
     }
 
     const scrollbarWidth = getScrollbarWidth(terminal);
-    const containerWidth = container.clientWidth || terminal.element?.clientWidth || 0;
-    const charWidth = dims.cols > 0 ? containerWidth / dims.cols : 0;
-    const scrollbarCols = charWidth > 0 ? Math.ceil(scrollbarWidth / charWidth) : 0;
+    const charWidth = containerWidth / dims.cols;
+    const scrollbarCols = Math.ceil(scrollbarWidth / charWidth);
     const cols = Math.max(1, dims.cols - scrollbarCols);
     const rows = dims.rows;
 
@@ -146,13 +151,20 @@ export const createTerminalClient = (
     }
 
     lastSize = { cols, rows };
+    resizeRetryCount = 0;
     terminal.resize(cols, rows);
     terminal.scrollToBottom();
     sendMessage({ type: "resize", cols, rows });
   };
 
   const cancelScheduledResize = () => {
+    if (resizeRetryTimeout !== null) {
+      clearTimeout(resizeRetryTimeout);
+      resizeRetryTimeout = null;
+    }
+
     if (resizeRaf === null) {
+      resizeUsingTimeout = false;
       return;
     }
 
@@ -187,12 +199,25 @@ export const createTerminalClient = (
     }, 16) as unknown as number;
   };
 
+  const scheduleResizeRetry = () => {
+    if (resizeRetryCount >= resizeRetryLimit) {
+      return;
+    }
+
+    resizeRetryCount += 1;
+    resizeRetryTimeout = window.setTimeout(() => {
+      resizeRetryTimeout = null;
+      scheduleResize();
+    }, 50) as unknown as number;
+  };
+
   terminal.onData((data) => {
     sendMessage({ type: "input", data });
   });
 
   socket.addEventListener("open", () => {
     socketReady = true;
+    lastSize = null;
     scheduleResize();
   });
 
@@ -231,6 +256,10 @@ export const createTerminalClient = (
   }
 
   scheduleResize();
+  const fontReady = windowRef.document?.fonts?.ready;
+  if (fontReady) {
+    void fontReady.then(() => scheduleResize()).catch(() => undefined);
+  }
 
   const sendControl = (key: TerminalControlKey) => {
     sendMessage({ type: "control", key });

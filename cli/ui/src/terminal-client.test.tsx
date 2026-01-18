@@ -175,6 +175,155 @@ describe("terminal-client", () => {
     expect(terminal.dispose).toHaveBeenCalled();
   });
 
+  it("sizes to the container on open", () => {
+    const terminal = new FakeTerminal();
+    const fitAddon = new FakeFitAddon();
+    fitAddon.proposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
+
+    const viewport = document.createElement("div");
+    Object.defineProperty(viewport, "offsetWidth", { value: 100 });
+    Object.defineProperty(viewport, "clientWidth", { value: 90 });
+
+    const element = document.createElement("div");
+    Object.defineProperty(element, "clientWidth", { value: 120 });
+    Object.defineProperty(element, "clientHeight", { value: 60 });
+    element.querySelector = vi.fn(() => viewport);
+    terminal.element = element;
+
+    const container = document.createElement("div");
+    Object.defineProperty(container, "clientWidth", { value: 120 });
+    Object.defineProperty(container, "clientHeight", { value: 60 });
+    document.body.appendChild(container);
+
+    const windowRef = {
+      location: { protocol: "http:", host: "localhost" },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callback(0);
+        return 1;
+      },
+      cancelAnimationFrame: vi.fn()
+    } as unknown as Window;
+
+    const socket = new FakeWebSocket("ws://localhost");
+    const WebSocketImpl = createWebSocketCtor(socket);
+
+    const client = createTerminalClient(container, "terminal-size", {
+      createTerminal: () => terminal as unknown as Terminal,
+      createFitAddon: () => fitAddon as unknown as FitAddon,
+      WebSocketImpl,
+      windowRef
+    });
+
+    socket.emit("open");
+
+    expect(terminal.resize).toHaveBeenCalledWith(73, 24);
+    const sentMessages = vi.mocked(socket.send).mock.calls.map(([payload]) => payload);
+    const resizePayload = sentMessages
+      .map((payload) => {
+        if (typeof payload !== "string") {
+          return null;
+        }
+        try {
+          return JSON.parse(payload);
+        } catch {
+          return null;
+        }
+      })
+      .find((message) => message?.type === "resize");
+    expect(resizePayload).toEqual({ type: "resize", cols: 73, rows: 24 });
+
+    client.destroy();
+  });
+
+  it("resizes after fonts are ready", async () => {
+    const terminal = new FakeTerminal();
+    const fitAddon = new FakeFitAddon();
+    fitAddon.proposeDimensions.mockReturnValueOnce(null).mockReturnValue({ cols: 80, rows: 24 });
+
+    const container = document.createElement("div");
+    Object.defineProperty(container, "clientWidth", { value: 120 });
+    Object.defineProperty(container, "clientHeight", { value: 80 });
+    document.body.appendChild(container);
+
+    const windowRef = {
+      location: { protocol: "http:", host: "localhost" },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callback(0);
+        return 1;
+      },
+      cancelAnimationFrame: vi.fn(),
+      document: {
+        fonts: {
+          ready: Promise.resolve()
+        }
+      }
+    } as unknown as Window;
+
+    const socket = new FakeWebSocket("ws://localhost");
+    const WebSocketImpl = createWebSocketCtor(socket);
+
+    const client = createTerminalClient(container, "terminal-fonts", {
+      createTerminal: () => terminal as unknown as Terminal,
+      createFitAddon: () => fitAddon as unknown as FitAddon,
+      WebSocketImpl,
+      windowRef
+    });
+
+    await Promise.resolve();
+
+    expect(terminal.resize).toHaveBeenCalledWith(80, 24);
+
+    client.destroy();
+  });
+
+  it("ignores font readiness failures", async () => {
+    const terminal = new FakeTerminal();
+    const fitAddon = new FakeFitAddon();
+    fitAddon.proposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
+
+    const container = document.createElement("div");
+    Object.defineProperty(container, "clientWidth", { value: 120 });
+    Object.defineProperty(container, "clientHeight", { value: 80 });
+    document.body.appendChild(container);
+
+    const windowRef = {
+      location: { protocol: "http:", host: "localhost" },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callback(0);
+        return 1;
+      },
+      cancelAnimationFrame: vi.fn(),
+      document: {
+        fonts: {
+          ready: Promise.reject(new Error("font load failed"))
+        }
+      }
+    } as unknown as Window;
+
+    const socket = new FakeWebSocket("ws://localhost");
+    const WebSocketImpl = createWebSocketCtor(socket);
+
+    const client = createTerminalClient(container, "terminal-fonts-error", {
+      createTerminal: () => terminal as unknown as Terminal,
+      createFitAddon: () => fitAddon as unknown as FitAddon,
+      WebSocketImpl,
+      windowRef
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(terminal.resize).toHaveBeenCalledWith(80, 24);
+
+    client.destroy();
+  });
+
   it("does not send until the socket is ready", () => {
     const terminal = new FakeTerminal();
     const fitAddon = new FakeFitAddon();
@@ -214,7 +363,7 @@ describe("terminal-client", () => {
 
     const terminal = new FakeTerminal();
     const fitAddon = new FakeFitAddon();
-    fitAddon.proposeDimensions.mockReturnValue({ cols: 0, rows: 10 });
+    fitAddon.proposeDimensions.mockReturnValue({ cols: 80, rows: 10 });
 
     const viewport = document.createElement("div");
     Object.defineProperty(viewport, "offsetWidth", { value: 100 });
@@ -226,7 +375,8 @@ describe("terminal-client", () => {
     terminal.element = element;
 
     const container = document.createElement("div");
-    Object.defineProperty(container, "clientWidth", { value: 0 });
+    Object.defineProperty(container, "clientWidth", { value: 120 });
+    Object.defineProperty(container, "clientHeight", { value: 80 });
     document.body.appendChild(container);
 
     const windowListeners: Record<string, () => void> = {};
@@ -251,7 +401,7 @@ describe("terminal-client", () => {
     socket.emit("open");
     vi.runAllTimers();
 
-    expect(terminal.resize).toHaveBeenCalledWith(1, 10);
+    expect(terminal.resize).toHaveBeenCalledWith(80, 10);
 
     const resizeCalls = vi.mocked(terminal.resize).mock.calls.length;
     windowListeners.resize?.();
@@ -285,7 +435,7 @@ describe("terminal-client", () => {
     const socket = new FakeWebSocket("ws://localhost");
     const WebSocketImpl = createWebSocketCtor(socket);
 
-    createTerminalClient(document.body, "terminal-2", {
+    const client = createTerminalClient(document.body, "terminal-2", {
       createTerminal: () => terminal as unknown as Terminal,
       createFitAddon: () => fitAddon as unknown as FitAddon,
       WebSocketImpl,
@@ -295,6 +445,88 @@ describe("terminal-client", () => {
     socket.emit("open");
 
     expect(socket.send).not.toHaveBeenCalled();
+
+    client.destroy();
+  });
+
+  it("retries sizing until dimensions are available", () => {
+    vi.useFakeTimers();
+
+    const terminal = new FakeTerminal();
+    const fitAddon = new FakeFitAddon();
+    fitAddon.proposeDimensions
+      .mockReturnValueOnce(null)
+      .mockReturnValue({ cols: 80, rows: 24 });
+
+    const container = document.createElement("div");
+    Object.defineProperty(container, "clientWidth", { value: 120 });
+    Object.defineProperty(container, "clientHeight", { value: 80 });
+    document.body.appendChild(container);
+
+    const windowRef = {
+      location: { protocol: "http:", host: "localhost" },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn()
+    } as unknown as Window;
+
+    const socket = new FakeWebSocket("ws://localhost");
+    const WebSocketImpl = createWebSocketCtor(socket);
+
+    const client = createTerminalClient(container, "terminal-retry", {
+      createTerminal: () => terminal as unknown as Terminal,
+      createFitAddon: () => fitAddon as unknown as FitAddon,
+      WebSocketImpl,
+      windowRef
+    });
+
+    socket.emit("open");
+    vi.runAllTimers();
+
+    expect(terminal.resize).toHaveBeenCalledWith(80, 24);
+
+    client.destroy();
+    vi.useRealTimers();
+  });
+
+  it("stops retrying after the limit", () => {
+    vi.useFakeTimers();
+    const setTimeoutSpy = vi.spyOn(global, "setTimeout");
+
+    const terminal = new FakeTerminal();
+    const fitAddon = new FakeFitAddon();
+    fitAddon.proposeDimensions.mockReturnValue(null);
+
+    const container = document.createElement("div");
+    Object.defineProperty(container, "clientWidth", { value: 120 });
+    Object.defineProperty(container, "clientHeight", { value: 80 });
+    document.body.appendChild(container);
+
+    const windowRef = {
+      location: { protocol: "http:", host: "localhost" },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn()
+    } as unknown as Window;
+
+    const socket = new FakeWebSocket("ws://localhost");
+    const WebSocketImpl = createWebSocketCtor(socket);
+
+    const client = createTerminalClient(container, "terminal-retry-limit", {
+      createTerminal: () => terminal as unknown as Terminal,
+      createFitAddon: () => fitAddon as unknown as FitAddon,
+      WebSocketImpl,
+      windowRef
+    });
+
+    socket.emit("open");
+    vi.runAllTimers();
+
+    const retryCalls = setTimeoutSpy.mock.calls.filter(([, delay]) => delay === 50).length;
+    expect(retryCalls).toBe(6);
+    expect(terminal.resize).not.toHaveBeenCalled();
+
+    client.destroy();
+    setTimeoutSpy.mockRestore();
+    vi.useRealTimers();
   });
 
   it("uses default dependencies when none are provided", () => {
@@ -331,7 +563,7 @@ describe("terminal-client", () => {
     const socket = new FakeWebSocket("ws://localhost");
     const WebSocketImpl = createWebSocketCtor(socket);
 
-    createTerminalClient(document.body, "terminal-debug", {
+    const client = createTerminalClient(document.body, "terminal-debug", {
       createTerminal: () => terminal as unknown as Terminal,
       createFitAddon: () => fitAddon as unknown as FitAddon,
       WebSocketImpl,
@@ -339,6 +571,8 @@ describe("terminal-client", () => {
     });
 
     expect(windowRef.__TERMbridgeTerminal).toBe(terminal);
+
+    client.destroy();
   });
 
   it("uses resize observers and webgl when available", () => {
@@ -359,6 +593,7 @@ describe("terminal-client", () => {
 
     const container = document.createElement("div");
     Object.defineProperty(container, "clientWidth", { value: 120 });
+    Object.defineProperty(container, "clientHeight", { value: 80 });
     document.body.appendChild(container);
 
     let resizeCallback: ((entries: unknown[], observer: unknown) => void) | null = null;
