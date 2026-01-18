@@ -1,3 +1,46 @@
-.DS_Store
+# Dependencies
 node_modules/
+.bun/
+
+# Build output
 dist/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Data directories (runtime generated)
+apps/platform/data/agents/
+apps/platform/data/snapshots/
+apps/platform/data/wordpress-core/
+
+# Logs
+*.log
+logs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Test outputs
+test-results/
+playwright-report/
+screenshots/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# SQLite databases
+*.sqlite
+*.sqlite3
+*.db
+
+# Seed data files (~1GB) - only track db.json
+apps/platform/scripts/seed-data/*
+!apps/platform/scripts/seed-data/db.json

@@ -215,6 +215,7 @@ MVP acceptance: near-real-time output for typical commands. TUIs must render cor
 - Mobile viewport handling: respond to on-screen keyboard changes and call fit logic.
 
 ### Tech
+- TanStack Router app built with Vite.
 - TypeScript.
 - xterm + fit addon.
 - WebSocket to `/ws/terminal/:terminalId` with cookie authentication.
