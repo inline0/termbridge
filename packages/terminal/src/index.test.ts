@@ -67,6 +67,7 @@ describe("createTmuxBackend", () => {
     unsubscribe();
 
     expect(execFile).toHaveBeenCalledWith("tmux", ["new-session", "-d", "-s", "session"]);
+    expect(execFile).toHaveBeenCalledWith("tmux", ["set-option", "-t", "session", "status", "off"]);
     expect(spawnPty).toHaveBeenCalledWith(
       "tmux",
       ["attach-session", "-t", "session"],
@@ -99,7 +100,7 @@ describe("createTmuxBackend", () => {
     const second = await backend.createSession("session");
 
     expect(second).toBe(first);
-    expect(execFile).toHaveBeenCalledTimes(1);
+    expect(execFile).toHaveBeenCalledTimes(2);
   });
 
   it("stores resize requests before attach", async () => {
@@ -135,6 +136,7 @@ describe("createTmuxBackend", () => {
 
     expect(session.name).toBe("session");
     expect(execFile).toHaveBeenCalledWith("tmux", ["has-session", "-t", "session"]);
+    expect(execFile).toHaveBeenCalledWith("tmux", ["set-option", "-t", "session", "status", "off"]);
   });
 
   it("throws when tmux sessions cannot be created", async () => {
@@ -151,6 +153,20 @@ describe("createTmuxBackend", () => {
     const backend = createTmuxBackend({ execFile });
 
     await expect(backend.createSession("session")).rejects.toThrow("tmux failed");
+  });
+
+  it("continues when tmux status option fails", async () => {
+    const execFile = vi.fn(async (_file: string, args: string[]) => {
+      if (args[0] === "set-option") {
+        throw new Error("status failed");
+      }
+      return { stdout: "" };
+    });
+    const backend = createTmuxBackend({ execFile });
+
+    const session = await backend.createSession("session");
+
+    expect(session.name).toBe("session");
   });
 
   it("no-ops for unknown sessions", async () => {

@@ -106,6 +106,12 @@ export const createTmuxBackend = (deps: TmuxBackendDeps = {}): TerminalBackend =
       }
     }
 
+    try {
+      await runTmux(["set-option", "-t", name, "status", "off"]);
+    } catch {
+      // Best-effort: the session is usable even if tmux refuses the option.
+    }
+
     const session = { name, createdAt: new Date() };
     sessions.set(name, {
       session,
