@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { defineConfig } from "vite";
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 
 const devProxy = process.env.TERMBRIDGE_DEV_PROXY;
@@ -15,7 +16,7 @@ const proxy = devProxy
 export default defineConfig({
   root: resolve(__dirname, "ui"),
   base: "/app/",
-  plugins: [react()],
+  plugins: [tailwindcss(), react()],
   server: proxy ? { proxy } : undefined,
   build: {
     outDir: resolve(__dirname, "ui/dist"),

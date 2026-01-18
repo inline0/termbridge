@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
 import type { TerminalListResponse } from "@termbridge/shared";
+import { Button, Input } from "@termbridge/ui";
+import { useEffect, useRef, useState } from "react";
 import { createTerminalClient } from "./terminal-client";
 
 type LoadState = "loading" | "ready" | "empty" | "error";
@@ -70,13 +71,45 @@ export const TerminalPage = () => {
           : null;
 
   return (
-    <div className="terminal-shell">
+    <div className="relative grid h-full w-full grid-rows-[minmax(0,1fr)_auto] bg-background text-foreground">
       {statusLabel ? (
-        <div className="terminal-status" role="status">
+        <div
+          className="terminal-status absolute inset-0 z-20 flex items-center justify-center bg-background/85 text-xs font-medium uppercase tracking-[0.2em]"
+          role="status"
+        >
           {statusLabel}
         </div>
       ) : null}
-      <div ref={hostRef} className="terminal-host" data-testid="terminal-host" />
+      <div className="min-h-0">
+        <div
+          ref={hostRef}
+          className="terminal-host h-full w-full"
+          data-testid="terminal-host"
+        />
+      </div>
+      <div className="border-t border-border bg-background/90 px-3 py-3">
+        <div className="flex w-full items-center gap-3">
+          <Button type="button" variant="outline" size="icon" aria-label="Add">
+            +
+          </Button>
+          <div className="relative flex-1">
+            <Input
+              placeholder="Message"
+              aria-label="Message"
+              className="h-11 pr-16"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-label="Send"
+              className="absolute right-1 top-1/2 -translate-y-1/2"
+            >
+              Send
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

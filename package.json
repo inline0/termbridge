@@ -15,9 +15,9 @@
     "test:cli": "vitest run --config vitest.cli.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "lint": "biome lint .",
-    "lint:all": "bun run --cwd cli lint && bun run --cwd packages/shared lint && bun run --cwd packages/terminal lint && bun run --cwd packages/tunnel lint",
+    "lint:all": "bun run --cwd cli lint && bun run --cwd packages/shared lint && bun run --cwd packages/terminal lint && bun run --cwd packages/tunnel lint && bun run --cwd packages/ui lint",
     "typecheck": "tsc -p tsconfig.json",
-    "typecheck:all": "bun run --cwd cli typecheck && bun run --cwd packages/shared typecheck && bun run --cwd packages/terminal typecheck && bun run --cwd packages/tunnel typecheck",
+    "typecheck:all": "bun run --cwd cli typecheck && bun run --cwd packages/shared typecheck && bun run --cwd packages/terminal typecheck && bun run --cwd packages/tunnel typecheck && bun run --cwd packages/ui typecheck",
     "format": "biome format --write .",
     "check": "biome check ."
   },

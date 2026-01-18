@@ -21,3 +21,16 @@ vi.mock("@xterm/addon-fit", () => ({
     }
   }
 }));
+
+if (typeof window !== "undefined" && !window.matchMedia) {
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn()
+  })) as typeof window.matchMedia;
+}
