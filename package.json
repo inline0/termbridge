@@ -7,6 +7,7 @@
   ],
   "scripts": {
     "dev": "bun run --cwd cli dev",
+    "dev:beam": "node scripts/dev-beam.mjs",
     "build": "bun run --cwd cli build",
     "beam:codex": "bun run --cwd cli build && node cli/dist/bin.js --session codex",
     "test": "bun run test:mocked && bun run test:cli",

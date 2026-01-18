@@ -21,6 +21,7 @@ export type AuthOptions = {
   sessionIdleMs: number;
   sessionMaxMs: number;
   redeemLimiter?: RateLimiter;
+  cookieSecure?: boolean;
   now?: () => number;
 };
 
@@ -62,9 +63,11 @@ export const createAuth = ({
   sessionIdleMs,
   sessionMaxMs,
   redeemLimiter,
+  cookieSecure,
   now
 }: AuthOptions): Auth => {
   const clock = now ?? (() => Date.now());
+  const secureCookie = cookieSecure ?? true;
   const tokens = new Map<string, TokenRecord>();
   const sessions = new Map<string, SessionRecord>();
 
@@ -138,8 +141,20 @@ export const createAuth = ({
     return getSession(sessionId);
   };
 
-  const createSessionCookie = (sessionId: string) =>
-    `${SESSION_COOKIE_NAME}=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax`;
+  const createSessionCookie = (sessionId: string) => {
+    const parts = [
+      `${SESSION_COOKIE_NAME}=${sessionId}`,
+      "Path=/",
+      "HttpOnly",
+      "SameSite=Lax"
+    ];
+
+    if (secureCookie) {
+      parts.splice(3, 0, "Secure");
+    }
+
+    return parts.join("; ");
+  };
 
   return {
     issueToken,

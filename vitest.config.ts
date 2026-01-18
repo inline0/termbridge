@@ -19,7 +19,8 @@ export default defineConfig({
         "**/dist/**",
         "**/*.config.*",
         "**/cli/ui/vite-env.d.ts",
-        "**/cli/integration/**"
+        "**/cli/integration/**",
+        "**/scripts/**"
       ]
     }
   }

@@ -129,6 +129,8 @@ Generated folders: `coverage/` (from `vitest --coverage`), `cli/ui/dist/`, and `
 - Prefer root scripts that call `bun run --cwd cli` or `bun run --cwd packages/<name>`.
 - Use Biome from root: `bunx @biomejs/biome check --write`.
 - Test suites: `bun run test:mocked` (coverage enforced) and `bun run test:cli` (real CLI + UI); `bun run test` runs both.
+- Dev UI: `bun run dev:beam` builds the CLI, starts the server on a fixed port, and runs the Vite dev server with proxying for `/api`, `/ws`, and `/s`.
+- Local dev cookies: set `TERMBRIDGE_INSECURE_COOKIE=1` to allow HTTP during local debugging.
 
 ---
 

@@ -76,11 +76,15 @@ export const startCommand = async (
 ): Promise<StartResult> => {
   const logger = deps.logger ?? createDefaultLogger();
   const processRef = deps.process ?? process;
+  const env = processRef.env ?? {};
+  const insecureCookie =
+    env.TERMBRIDGE_INSECURE_COOKIE === "1" || env.TERMBRIDGE_INSECURE_COOKIE === "true";
   const auth = (deps.createAuth ?? (() =>
     createAuth({
       tokenTtlMs: 90_000,
       sessionIdleMs: 30 * 60_000,
-      sessionMaxMs: 8 * 60 * 60_000
+      sessionMaxMs: 8 * 60 * 60_000,
+      cookieSecure: !insecureCookie
     })))();
   const terminalBackend = (deps.createTerminalBackend ?? (() => createTmuxBackend()))();
   const terminalRegistry = (deps.createTerminalRegistry ?? (() => createTerminalRegistry()))();

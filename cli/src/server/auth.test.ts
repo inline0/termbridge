@@ -113,4 +113,19 @@ describe("createAuth", () => {
     expect(cookie).toContain("Secure");
     expect(cookie).toContain("SameSite=Lax");
   });
+
+  it("omits secure cookies when disabled", () => {
+    const auth = createAuth({
+      tokenTtlMs: 1000,
+      sessionIdleMs: 5000,
+      sessionMaxMs: 10_000,
+      cookieSecure: false
+    });
+
+    const cookie = auth.createSessionCookie("abc");
+    expect(cookie).toContain(`${SESSION_COOKIE_NAME}=abc`);
+    expect(cookie).toContain("HttpOnly");
+    expect(cookie).not.toContain("Secure");
+    expect(cookie).toContain("SameSite=Lax");
+  });
 });
