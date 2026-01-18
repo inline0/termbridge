@@ -222,7 +222,15 @@ MVP acceptance: near-real-time output for typical commands. TUIs must render cor
 
 ---
 
-## 11) Security requirements (local-only, public URL)
+## 11) Testing requirements (autonomous)
+- 100% test coverage target with no untested lines, branches, or functions.
+- Coverage is enforced in CI; builds fail on any uncovered code paths.
+- Tests must be fully automated (no manual steps), including unit, integration, and end-to-end paths for the CLI, server, and UI.
+- Coverage reports are generated for both server and UI.
+
+---
+
+## 12) Security requirements (local-only, public URL)
 The tunnel URL is public. Security must not depend on URL secrecy alone.
 
 ### One-time token
@@ -250,7 +258,7 @@ The tunnel URL is public. Security must not depend on URL secrecy alone.
 
 ---
 
-## 12) Tunnel provider requirements (Cloudflare Quick Tunnel)
+## 13) Tunnel provider requirements (Cloudflare Quick Tunnel)
 - Provider: `cloudflared` quick tunnel.
 - CLI must:
   - detect `cloudflared` in PATH or provide clear setup instructions
@@ -262,7 +270,7 @@ Provider interface should be pluggable for future support of ngrok, localtunnel,
 
 ---
 
-## 13) Logging and telemetry
+## 14) Logging and telemetry
 - No external telemetry.
 - Local logs only:
   - startup steps
@@ -273,7 +281,7 @@ Provider interface should be pluggable for future support of ngrok, localtunnel,
 
 ---
 
-## 14) Acceptance criteria
+## 15) Acceptance criteria
 - `npx termbridge` works on macOS and Linux (Windows optional for MVP).
 - CLI prints a public URL and ASCII QR.
 - Scanning QR opens the UI and authenticates via one-time token without manual login.
@@ -284,10 +292,11 @@ Provider interface should be pluggable for future support of ngrok, localtunnel,
 - Token cannot be redeemed twice; expired tokens are rejected.
 - Browser refresh reconnects while the CLI remains running.
 - If CLI exits, tunnel closes and the UI cannot interact.
+- CI enforces 100% coverage with no untested lines, branches, or functions.
 
 ---
 
-## 15) Implementation guidance
+## 16) Implementation guidance
 - Keep clear module boundaries:
   - orchestration (`cli/src/cli`)
   - HTTP/WS server and auth (`cli/src/server`)
@@ -305,7 +314,7 @@ Recommended interfaces:
 
 ---
 
-## 16) Open questions (do not block MVP)
+## 17) Open questions (do not block MVP)
 - True interactive keystrokes: implement PTY streaming or defer to line-send.
 - Default tmux lifecycle: leave running vs kill on exit.
 - Session exposure: list only termbridge-created sessions vs all local tmux sessions.
@@ -313,7 +322,7 @@ Recommended interfaces:
 
 ---
 
-## 17) Deliverables
+## 18) Deliverables
 - Bun monorepo with a single publishable `cli/` package and internal packages: `terminal`, `tunnel`, `shared`.
 - Working `termbridge start` command.
 - UI build embedded and served by local server.
