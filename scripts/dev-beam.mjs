@@ -6,7 +6,10 @@ const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const cliDir = resolve(rootDir, "cli");
 const port = process.env.TERMBRIDGE_DEV_PORT ?? "8787";
 const session = process.env.TERMBRIDGE_DEV_SESSION ?? "codex";
-const devUiBase = process.env.TERMBRIDGE_DEV_UI ?? "http://127.0.0.1:5173";
+const devUiOverride = process.env.TERMBRIDGE_DEV_UI;
+let devUiOrigin = devUiOverride ? new URL(devUiOverride).origin : "";
+let token = "";
+let printedDevUrls = false;
 
 const runOnce = (command, args, options = {}) =>
   new Promise((resolvePromise, reject) => {
@@ -35,30 +38,34 @@ const server = spawn(
   { cwd: cliDir, env: serverEnv, stdio: ["inherit", "pipe", "pipe"] }
 );
 
-let printedDevUrl = false;
+const maybePrintDevUrls = () => {
+  if (printedDevUrls || !devUiOrigin || !token) {
+    return;
+  }
+
+  printedDevUrls = true;
+  const redeemUrl = `${devUiOrigin}/s/${token}`;
+  const appUrl = `${devUiOrigin}/app`;
+  process.stdout.write(`Dev redeem URL: ${redeemUrl}\n`);
+  process.stdout.write(`Dev app URL: ${appUrl}\n`);
+};
+
 const maybePrintDevUrl = (chunk) => {
   const text = chunk.toString();
   process.stdout.write(text);
-
-  if (printedDevUrl) {
-    return;
-  }
 
   const match = text.match(/Tunnel URL:\s*(https?:\/\/[^\s]+)/);
   if (!match) {
     return;
   }
 
-  const token = match[1]?.split("/s/")[1];
-  if (!token) {
+  const nextToken = match[1]?.split("/s/")[1];
+  if (!nextToken) {
     return;
   }
 
-  printedDevUrl = true;
-  const redeemUrl = `${devUiBase}/s/${token}`;
-  const appUrl = `${devUiBase}/app`;
-  process.stdout.write(`Dev redeem URL: ${redeemUrl}\n`);
-  process.stdout.write(`Dev app URL: ${appUrl}\n`);
+  token = nextToken;
+  maybePrintDevUrls();
 };
 
 server.stdout.on("data", maybePrintDevUrl);
@@ -71,8 +78,32 @@ const viteEnv = {
 const vite = spawn("bun", ["run", "--cwd", cliDir, "ui:dev"], {
   cwd: rootDir,
   env: viteEnv,
-  stdio: "inherit"
+  stdio: ["inherit", "pipe", "pipe"]
 });
+
+vite.stdout.on("data", (chunk) => {
+  const text = chunk.toString();
+  process.stdout.write(text);
+
+  if (devUiOrigin) {
+    return;
+  }
+
+  const match = text.match(/Local:\s*(https?:\/\/[^\s]+)/);
+  if (!match) {
+    return;
+  }
+
+  try {
+    devUiOrigin = new URL(match[1]).origin;
+  } catch {
+    return;
+  }
+
+  maybePrintDevUrls();
+});
+
+vite.stderr.on("data", (chunk) => process.stderr.write(chunk.toString()));
 
 const shutdown = () => {
   if (server.exitCode === null) {

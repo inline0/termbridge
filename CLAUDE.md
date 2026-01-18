@@ -131,6 +131,7 @@ Generated folders: `coverage/` (from `vitest --coverage`), `cli/ui/dist/`, and `
 - Test suites: `bun run test:mocked` (coverage enforced) and `bun run test:cli` (real CLI + UI); `bun run test` runs both.
 - Dev UI: `bun run dev:beam` builds the CLI, starts the server on a fixed port, and runs the Vite dev server with proxying for `/api`, `/ws`, and `/s`.
 - Local dev cookies: set `TERMBRIDGE_INSECURE_COOKIE=1` to allow HTTP during local debugging.
+- If Vite picks a different port, set `TERMBRIDGE_DEV_UI=http://127.0.0.1:<port>` or use the `Local` URL printed by Vite.
 
 ---
 
