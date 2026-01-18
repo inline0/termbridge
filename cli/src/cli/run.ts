@@ -1,6 +1,7 @@
 import qrcode from "qrcode-terminal";
 import { parseArgs } from "./args";
 import { helpText } from "./help";
+import { runInkCli } from "./ink";
 import { startCommand } from "./start";
 import type { Logger } from "../server/server";
 
@@ -16,6 +17,9 @@ const createLogger = (stdout: NodeJS.WritableStream, stderr: NodeJS.WritableStre
   error: (message) => stderr.write(`${message}\n`)
 });
 
+const shouldUseInk = (stdout: NodeJS.WritableStream | undefined) =>
+  Boolean(stdout && "isTTY" in stdout && stdout.isTTY);
+
 export const runCli = async (argv: string[], deps: RunDeps = {}) => {
   const stdout = deps.stdout ?? process.stdout;
   const stderr = deps.stderr ?? process.stderr;
@@ -27,6 +31,12 @@ export const runCli = async (argv: string[], deps: RunDeps = {}) => {
     if (parsed.command === "help") {
       stdout.write(helpText);
       return 0;
+    }
+
+    if (shouldUseInk(stdout)) {
+      return await runInkCli(parsed.options, {
+        process: processRef
+      });
     }
 
     await startCommand(parsed.options, {

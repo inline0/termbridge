@@ -4,7 +4,12 @@ vi.mock("./start", () => ({
   startCommand: vi.fn()
 }));
 
+vi.mock("./ink", () => ({
+  runInkCli: vi.fn()
+}));
+
 import { runCli } from "./run";
+import { runInkCli } from "./ink";
 import { startCommand, type StartResult } from "./start";
 
 const createStream = () => {
@@ -21,6 +26,7 @@ const createStream = () => {
 
 describe("runCli", () => {
   const startCommandMock = vi.mocked(startCommand);
+  const runInkMock = vi.mocked(runInkCli);
   const baseResult = {
     localUrl: "http://127.0.0.1:1234",
     publicUrl: "https://tunnel",
@@ -30,6 +36,7 @@ describe("runCli", () => {
 
   beforeEach(() => {
     startCommandMock.mockReset();
+    runInkMock.mockReset();
   });
 
   it("prints help", async () => {
@@ -79,6 +86,18 @@ describe("runCli", () => {
     expect(stdout.output).toContain("info");
     expect(stderr.output).toContain("warn");
     expect(stderr.output).toContain("error");
+  });
+
+  it("uses the ink UI when stdout is a TTY", async () => {
+    const stdout = Object.assign(createStream(), { isTTY: true });
+    const stderr = createStream();
+    runInkMock.mockResolvedValue(0);
+
+    const code = await runCli([], { stdout, stderr, process });
+
+    expect(code).toBe(0);
+    expect(runInkMock).toHaveBeenCalled();
+    expect(startCommandMock).not.toHaveBeenCalled();
   });
 
   it("reports errors", async () => {

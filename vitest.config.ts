@@ -18,7 +18,8 @@ export default defineConfig({
         "**/node_modules/**",
         "**/dist/**",
         "**/*.config.*",
-        "**/cli/ui/vite-env.d.ts"
+        "**/cli/ui/vite-env.d.ts",
+        "**/cli/integration/**"
       ]
     }
   }

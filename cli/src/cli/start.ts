@@ -1,4 +1,5 @@
 import { resolve, dirname } from "node:path";
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { TerminalBackend } from "@termbridge/terminal";
 import { createTmuxBackend } from "@termbridge/terminal";
@@ -47,7 +48,20 @@ export type StartResult = {
 
 const resolveUiDistPath = () => {
   const currentDir = dirname(fileURLToPath(import.meta.url));
-  return resolve(currentDir, "../../ui/dist");
+  const candidates = [
+    resolve(currentDir, "../../ui/dist"),
+    resolve(currentDir, "../ui/dist"),
+    resolve(process.cwd(), "ui/dist"),
+    resolve(process.cwd(), "cli/ui/dist")
+  ];
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  return candidates[0];
 };
 
 const createDefaultLogger = (): Logger => ({

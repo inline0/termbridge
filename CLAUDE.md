@@ -45,6 +45,7 @@ A single developer who wants quick mobile access to their local terminal session
 - Bun for workspace installs, builds, and tests.
 - tmux and cloudflared for end-to-end testing.
 - Biome (via `bunx @biomejs/biome`) and TypeScript for linting and type checks.
+- Playwright for UI end-to-end tests (`bunx playwright install chromium`).
 
 ### Install hints
 - macOS (Homebrew): `brew install node tmux cloudflared` (and `brew install bun` for development).
@@ -59,7 +60,7 @@ A single developer who wants quick mobile access to their local terminal session
 4. CLI generates a one-time token and starts a tunnel to the local server.
 5. CLI prints a public URL of the form `https://<public-host>/s/<token>` and renders an ASCII QR code.
 6. User opens the URL on mobile. The local server redeems the token, sets a secure cookie, and redirects to the app.
-7. The app loads, shows a list of available terminals (and optional create), and connects via WebSocket to stream terminal I/O for the selected session.
+7. The app loads and connects via WebSocket to stream terminal I/O (current MVP auto-selects the first terminal).
 
 ---
 
@@ -91,6 +92,7 @@ termbridge/
 ├── cli/
 │   ├── src/cli/      # CLI entrypoint and orchestration
 │   ├── src/server/   # local HTTP + WS server and auth
+│   ├── integration/  # real CLI + UI e2e tests (tmux + cloudflared + Playwright)
 │   ├── ui/           # xterm.js app source
 │   └── ui/dist/      # built UI assets served by server
 ├── packages/
@@ -101,6 +103,7 @@ termbridge/
 ├── package.json
 ├── biome.json
 ├── tsconfig.json     # extends packages/tsconfig/base.json
+├── vitest.cli.config.ts
 └── bun.lock
 ```
 
@@ -114,6 +117,7 @@ termbridge/
 ### Scripts and workflow
 - Prefer root scripts that call `bun run --cwd cli` or `bun run --cwd packages/<name>`.
 - Use Biome from root: `bunx @biomejs/biome check --write`.
+- Test suites: `bun run test:mocked` (coverage enforced) and `bun run test:cli` (real CLI + UI).
 
 ---
 
@@ -125,15 +129,17 @@ termbridge/
 
 #### `termbridge start`
 - Starts local server, terminal registry, and tunnel.
-- Creates or attaches to an initial tmux session; additional sessions are selectable in the UI.
+- Creates or attaches to an initial tmux session; additional sessions are supported server-side, UI selection pending.
 - Prints:
   - public URL for token redemption
-  - ASCII QR code
-  - local port, tmux session name, and tunnel provider
+  - ASCII QR code (unless `--no-qr`)
+  - local URL; session/tunnel details in TTY UI
 - Remains running until Ctrl+C.
 - Shutdown behavior:
   - stop tunnel process
   - default: leave tmux session running
+  - TTY UX: Ink-based UI with status, URLs, session name, and optional QR.
+  - Non-TTY UX: plain text logs for automation and test parsing.
 
 #### Flags (MVP)
 - `--port <port>`: fixed local port (default: random free port).
@@ -208,6 +214,10 @@ MVP acceptance: near-real-time output for typical commands. TUIs must render cor
 - Bottom: optional input bar for sending a full line.
 - Mobile toolbar: minimum buttons for `Ctrl+C`, `Esc`, `Tab`, and arrow keys.
 
+Current implementation (MVP-in-progress):
+- Single terminal view only; always connects to the first terminal in the registry.
+- No in-app terminal list or session switching yet.
+
 ### Behavior
 - Stream output into xterm.
 - Fetch terminal list, allow switching, and optionally create new sessions.
@@ -227,6 +237,7 @@ MVP acceptance: near-real-time output for typical commands. TUIs must render cor
 - Coverage is enforced in CI; builds fail on any uncovered code paths.
 - Tests must be fully automated (no manual steps), including unit, integration, and end-to-end paths for the CLI, server, and UI.
 - Coverage reports are generated for both server and UI.
+- UI e2e uses Playwright and the public tunnel URL to validate tmux output in the browser.
 
 ---
 

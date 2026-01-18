@@ -3,6 +3,14 @@ import type { StartedServer } from "../server/server";
 import type { TerminalBackend } from "@termbridge/terminal";
 import type { TunnelProvider } from "@termbridge/tunnel";
 
+const { existsSync } = vi.hoisted(() => ({
+  existsSync: vi.fn(() => false)
+}));
+
+vi.mock("node:fs", () => ({
+  existsSync
+}));
+
 const terminalBackend: TerminalBackend = {
   createSession: vi.fn(async (name) => ({ name, createdAt: new Date() })),
   write: vi.fn(async () => undefined),

@@ -3,8 +3,7 @@ import { existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { WebSocket } from "ws";
-import type { TerminalServerMessage } from "@termbridge/shared";
+import { chromium, type Browser } from "playwright";
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const cliDir = resolve(rootDir, "cli");
@@ -93,54 +92,6 @@ const waitForMatch = (
     check();
   });
 
-const waitForWsMessage = (
-  socket: WebSocket,
-  predicate: (message: TerminalServerMessage) => boolean,
-  timeoutMs: number
-) =>
-  new Promise<TerminalServerMessage>((resolvePromise, reject) => {
-    const timeoutId = setTimeout(() => {
-      cleanup();
-      reject(new Error("timeout waiting for websocket message"));
-    }, timeoutMs);
-
-    const handleMessage = (payload: WebSocket.RawData) => {
-      const text = typeof payload === "string" ? payload : payload.toString();
-
-      try {
-        const message = JSON.parse(text) as TerminalServerMessage;
-
-        if (predicate(message)) {
-          cleanup();
-          resolvePromise(message);
-        }
-      } catch {
-        return;
-      }
-    };
-
-    const handleError = (error: Error) => {
-      cleanup();
-      reject(error);
-    };
-
-    const handleClose = () => {
-      cleanup();
-      reject(new Error("websocket closed"));
-    };
-
-    const cleanup = () => {
-      clearTimeout(timeoutId);
-      socket.off("message", handleMessage);
-      socket.off("error", handleError);
-      socket.off("close", handleClose);
-    };
-
-    socket.on("message", handleMessage);
-    socket.on("error", handleError);
-    socket.on("close", handleClose);
-  });
-
 const stopCli = async (child: ChildProcessWithoutNullStreams | null) => {
   if (!child) {
     return;
@@ -168,13 +119,16 @@ const stopCli = async (child: ChildProcessWithoutNullStreams | null) => {
 maybeDescribe("cli integration", () => {
   let child: ChildProcessWithoutNullStreams | null = null;
   let localUrl = "";
+  let redeemUrl = "";
   let token = "";
+  let sessionName = "";
+  let browser: Browser | null = null;
 
   beforeAll(async () => {
     buildCli();
 
     const output = { stdout: "", stderr: "" };
-    const sessionName = `termbridge-test-${Date.now()}`;
+    sessionName = `termbridge-test-${Date.now()}`;
     const env = { ...process.env, NODE_ENV: "production" };
     const nodePath = resolveNodePath();
 
@@ -212,55 +166,133 @@ maybeDescribe("cli integration", () => {
       /Tunnel URL:\s*(https:\/\/[^\s]+)/,
       45_000
     );
-    const tunnelUrl = tunnelMatch[1] ?? "";
-    token = tunnelUrl.split("/s/")[1] ?? "";
+    redeemUrl = tunnelMatch[1] ?? "";
+    token = redeemUrl.split("/s/")[1] ?? "";
 
-    if (!localUrl || !token) {
+    if (!localUrl || !redeemUrl || !token) {
       throw new Error("failed to parse cli output");
+    }
+
+    const health = await fetch(`${localUrl}/healthz`);
+    if (!health.ok) {
+      throw new Error(`health check failed: ${health.status}`);
     }
   }, 90_000);
 
   afterAll(async () => {
     await stopCli(child);
+    if (browser) {
+      await browser.close();
+    }
   });
 
-  it("serves terminals and streams output", async () => {
-    const redeem = await fetch(`${localUrl}/s/${token}`, { redirect: "manual" });
-    expect(redeem.status).toBe(302);
-
-    const cookieHeader = redeem.headers.get("set-cookie");
-    expect(cookieHeader).toBeTruthy();
-    const cookie = (cookieHeader ?? "").split(";")[0];
-
-    const listResponse = await fetch(`${localUrl}/api/terminals`, {
-      headers: { Cookie: cookie }
+  it("renders tmux output in the UI", async () => {
+    browser = await chromium.launch();
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    const pageErrors: string[] = [];
+    const consoleErrors: string[] = [];
+    const responseErrors: string[] = [];
+    let websocketUrl = "";
+    let resolveStatus: (() => void) | null = null;
+    let rejectStatus: ((reason: Error) => void) | null = null;
+    const statusPromise = new Promise<void>((resolvePromise, reject) => {
+      resolveStatus = resolvePromise;
+      rejectStatus = reject;
+    });
+    let resolveOutput: (() => void) | null = null;
+    const outputPromise = new Promise<void>((resolvePromise) => {
+      resolveOutput = resolvePromise;
     });
 
-    expect(listResponse.ok).toBe(true);
-    const listJson = (await listResponse.json()) as { terminals: { id: string }[] };
-    expect(listJson.terminals.length).toBeGreaterThan(0);
+    page.on("pageerror", (error) => {
+      pageErrors.push(error.message);
+    });
 
-    const terminalId = listJson.terminals[0]?.id;
-    expect(terminalId).toBeTruthy();
+    page.on("console", (message) => {
+      if (message.type() === "error") {
+        consoleErrors.push(message.text());
+      }
+    });
 
-    const wsUrl = `${localUrl.replace("http://", "ws://")}/ws/terminal/${terminalId}`;
-    const socket = new WebSocket(wsUrl, { headers: { Cookie: cookie } });
+    page.on("response", (response) => {
+      if (response.status() >= 400) {
+        responseErrors.push(`${response.status()} ${response.url()}`);
+      }
+    });
 
-    await waitForWsMessage(
-      socket,
-      (message) => message.type === "status" && message.state === "connected",
-      10_000
+    page.on("websocket", (websocket) => {
+      websocketUrl = websocket.url();
+      websocket.on("framereceived", (frame) => {
+        const payload = typeof frame.payload === "string" ? frame.payload : frame.payload.toString();
+        if (payload.includes("\"status\"") && payload.includes("connected")) {
+          resolveStatus?.();
+        }
+        if (payload.includes("\"type\":\"output\"") && payload.includes("termbridge-ui")) {
+          resolveOutput?.();
+        }
+      });
+      websocket.on("close", () => {
+        rejectStatus?.(new Error("websocket closed"));
+      });
+    });
+
+    const redeem = await fetch(`${localUrl}/s/${token}`, { redirect: "manual" });
+    expect(redeem.status).toBe(302);
+    const cookieHeader = redeem.headers.get("set-cookie");
+    expect(cookieHeader).toBeTruthy();
+    const cookiePair = (cookieHeader ?? "").split(";")[0] ?? "";
+    const [name, value] = cookiePair.split("=");
+    await context.addCookies([{ name, value, url: localUrl }]);
+    const storedCookies = await context.cookies(localUrl);
+    expect(storedCookies.some((cookie) => cookie.name === name && cookie.value === value)).toBe(
+      true
     );
 
-    socket.send(JSON.stringify({ type: "input", data: "echo termbridge-test\n" }));
+    try {
+      const [terminalsResponse] = await Promise.all([
+        page.waitForResponse((response) => response.url().endsWith("/api/terminals")),
+        page.goto(`${localUrl}/app`, { waitUntil: "domcontentloaded" })
+      ]);
+      expect(terminalsResponse.status()).toBe(200);
 
-    await waitForWsMessage(
-      socket,
-      (message) =>
-        message.type === "output" && typeof message.data === "string" && message.data.includes("termbridge-test"),
-      15_000
-    );
+      await page.waitForSelector(".terminal-host .xterm-rows", { timeout: 45_000 });
 
-    socket.close();
-  }, 30_000);
+      await Promise.race([
+        statusPromise,
+        new Promise<void>((_, reject) =>
+          setTimeout(() => reject(new Error("websocket status timeout")), 10_000)
+        )
+      ]);
+    } catch (error) {
+      const statusText = await page
+        .locator(".terminal-status")
+        .textContent()
+        .catch(() => null);
+      const details = [
+        pageErrors.length > 0 ? `page errors:\n${pageErrors.join("\n")}` : "",
+        consoleErrors.length > 0 ? `console errors:\n${consoleErrors.join("\n")}` : "",
+        responseErrors.length > 0 ? `response errors:\n${responseErrors.join("\n")}` : "",
+        websocketUrl ? `websocket url:\n${websocketUrl}` : "",
+        statusText ? `terminal status:\n${statusText}` : ""
+      ]
+        .filter(Boolean)
+        .join("\n");
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error([message, details].filter(Boolean).join("\n"));
+    }
+
+    const sendResult = spawnSync("tmux", ["send-keys", "-t", sessionName, "-l", "echo termbridge-ui"]);
+    if (sendResult.status !== 0) {
+      throw new Error("tmux send-keys failed");
+    }
+    spawnSync("tmux", ["send-keys", "-t", sessionName, "C-m"]);
+
+    await Promise.race([
+      outputPromise,
+      new Promise<void>((_, reject) =>
+        setTimeout(() => reject(new Error("output frame timeout")), 20_000)
+      )
+    ]);
+  }, 60_000);
 });
