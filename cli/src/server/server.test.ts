@@ -199,6 +199,23 @@ describe("createAppServer", () => {
     await fixture.close();
   });
 
+  it("returns 404 for unsupported terminal methods", async () => {
+    const fixture = await createServerFixture();
+
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+
+    const response = await fetch(`${fixture.baseUrl}/api/terminals`, {
+      method: "PUT",
+      headers: { cookie }
+    });
+
+    expect(response.status).toBe(404);
+
+    await fixture.close();
+  });
+
   it("rejects invalid terminal creation bodies", async () => {
     const fixture = await createServerFixture({ redemptionLimit: 5 });
     const { token } = fixture.auth.issueToken();

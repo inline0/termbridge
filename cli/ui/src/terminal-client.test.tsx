@@ -1,7 +1,63 @@
-import { describe, expect, it, vi } from "vitest";
-import type { Terminal } from "xterm";
-import type { FitAddon } from "xterm-addon-fit";
-import { createTerminalClient, getWebSocketUrl } from "./terminal-client";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+import type { Terminal } from "@xterm/xterm";
+import type { FitAddon } from "@xterm/addon-fit";
+
+type WebglAddonStub = {
+  dispose: ReturnType<typeof vi.fn>;
+  onContextLoss: ReturnType<typeof vi.fn>;
+};
+
+let lastWebglAddon: WebglAddonStub | null = null;
+
+vi.mock("@xterm/xterm", () => {
+  class Terminal {
+    element: HTMLElement | null = null;
+    loadAddon = vi.fn();
+    open = vi.fn();
+    resize = vi.fn();
+    scrollToBottom = vi.fn();
+    write = vi.fn();
+    dispose = vi.fn();
+    onData = vi.fn();
+  }
+
+  return { Terminal };
+});
+
+vi.mock("@xterm/addon-fit", () => {
+  class FitAddon {
+    fit = vi.fn();
+    proposeDimensions = vi.fn(() => ({ cols: 80, rows: 24 }));
+  }
+
+  return { FitAddon };
+});
+
+vi.mock("@xterm/addon-webgl", () => {
+  class WebglAddon {
+    dispose = vi.fn();
+    onContextLoss = vi.fn();
+
+    constructor() {
+      lastWebglAddon = this;
+    }
+  }
+
+  return { WebglAddon };
+});
+
+vi.mock("@xterm/addon-web-links", () => {
+  class WebLinksAddon {}
+
+  return { WebLinksAddon };
+});
+
+let createTerminalClient: typeof import("./terminal-client").createTerminalClient;
+let getWebSocketUrl: typeof import("./terminal-client").getWebSocketUrl;
+
+beforeAll(async () => {
+  ({ createTerminalClient, getWebSocketUrl } = await import("./terminal-client"));
+});
 
 class FakeWebSocket {
   url: string;
@@ -29,10 +85,32 @@ class FakeWebSocket {
   }
 }
 
+const createWebSocketCtor = (socket: FakeWebSocket) =>
+  class WebSocketImpl {
+    url: string;
+
+    constructor(url: string) {
+      this.url = url;
+    }
+
+    addEventListener(
+      type: string,
+      handler: (event: { data?: unknown }) => void
+    ) {
+      socket.addEventListener(type, handler);
+    }
+
+    send = socket.send;
+    close = socket.close;
+  } as unknown as typeof WebSocket;
+
 class FakeTerminal {
   dataHandler: ((data: string) => void) | null = null;
+  element?: HTMLElement | null;
   loadAddon = vi.fn();
   open = vi.fn();
+  resize = vi.fn();
+  scrollToBottom = vi.fn();
   write = vi.fn();
   dispose = vi.fn();
 
@@ -70,7 +148,7 @@ describe("terminal-client", () => {
     } as unknown as Window;
 
     const socket = new FakeWebSocket("ws://localhost");
-    const WebSocketImpl = vi.fn(() => socket) as unknown as typeof WebSocket;
+    const WebSocketImpl = createWebSocketCtor(socket);
 
     const client = createTerminalClient(document.body, "terminal-1", {
       createTerminal: () => terminal as unknown as Terminal,
@@ -82,6 +160,7 @@ describe("terminal-client", () => {
     socket.emit("open");
     terminal.dataHandler?.("ls");
     socket.emit("message", JSON.stringify({ type: "output", data: "ok" }));
+    socket.emit("message", JSON.stringify({ type: "status", state: "connected" }));
     socket.emit("message", "invalid-json");
     socket.emit("message", 10);
     client.sendControl("ctrl_c");
@@ -96,6 +175,97 @@ describe("terminal-client", () => {
     expect(terminal.dispose).toHaveBeenCalled();
   });
 
+  it("does not send until the socket is ready", () => {
+    const terminal = new FakeTerminal();
+    const fitAddon = new FakeFitAddon();
+    fitAddon.proposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
+
+    const windowRef = {
+      location: { protocol: "http:", host: "localhost" },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callback(0);
+        return 1;
+      },
+      cancelAnimationFrame: vi.fn()
+    } as unknown as Window;
+
+    const socket = new FakeWebSocket("ws://localhost");
+    const WebSocketImpl = createWebSocketCtor(socket);
+
+    const client = createTerminalClient(document.body, "terminal-wait", {
+      createTerminal: () => terminal as unknown as Terminal,
+      createFitAddon: () => fitAddon as unknown as FitAddon,
+      WebSocketImpl,
+      windowRef
+    });
+
+    client.sendControl("ctrl_c");
+
+    expect(socket.send).not.toHaveBeenCalled();
+
+    client.destroy();
+  });
+
+  it("uses timeout scheduling when RAF is unavailable", () => {
+    vi.useFakeTimers();
+    const clearTimeoutSpy = vi.spyOn(global, "clearTimeout");
+
+    const terminal = new FakeTerminal();
+    const fitAddon = new FakeFitAddon();
+    fitAddon.proposeDimensions.mockReturnValue({ cols: 0, rows: 10 });
+
+    const viewport = document.createElement("div");
+    Object.defineProperty(viewport, "offsetWidth", { value: 100 });
+    Object.defineProperty(viewport, "clientWidth", { value: 100 });
+
+    const element = document.createElement("div");
+    Object.defineProperty(element, "clientWidth", { value: 100 });
+    element.querySelector = vi.fn(() => viewport);
+    terminal.element = element;
+
+    const container = document.createElement("div");
+    Object.defineProperty(container, "clientWidth", { value: 0 });
+    document.body.appendChild(container);
+
+    const windowListeners: Record<string, () => void> = {};
+    const windowRef = {
+      location: { protocol: "http:", host: "localhost" },
+      addEventListener: (event: string, handler: () => void) => {
+        windowListeners[event] = handler;
+      },
+      removeEventListener: vi.fn()
+    } as unknown as Window;
+
+    const socket = new FakeWebSocket("ws://localhost");
+    const WebSocketImpl = createWebSocketCtor(socket);
+
+    const client = createTerminalClient(container, "terminal-timeout", {
+      createTerminal: () => terminal as unknown as Terminal,
+      createFitAddon: () => fitAddon as unknown as FitAddon,
+      WebSocketImpl,
+      windowRef
+    });
+
+    socket.emit("open");
+    vi.runAllTimers();
+
+    expect(terminal.resize).toHaveBeenCalledWith(1, 10);
+
+    const resizeCalls = vi.mocked(terminal.resize).mock.calls.length;
+    windowListeners.resize?.();
+    vi.runAllTimers();
+    expect(terminal.resize).toHaveBeenCalledTimes(resizeCalls);
+
+    windowListeners.resize?.();
+    client.destroy();
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+
+    clearTimeoutSpy.mockRestore();
+    vi.useRealTimers();
+  });
+
   it("skips resize when dimensions are unavailable", () => {
     const terminal = new FakeTerminal();
     const fitAddon = new FakeFitAddon();
@@ -104,11 +274,16 @@ describe("terminal-client", () => {
     const windowRef = {
       location: { protocol: "http:", host: "localhost" },
       addEventListener: vi.fn(),
-      removeEventListener: vi.fn()
+      removeEventListener: vi.fn(),
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callback(0);
+        return 1;
+      },
+      cancelAnimationFrame: vi.fn()
     } as unknown as Window;
 
     const socket = new FakeWebSocket("ws://localhost");
-    const WebSocketImpl = vi.fn(() => socket) as unknown as typeof WebSocket;
+    const WebSocketImpl = createWebSocketCtor(socket);
 
     createTerminalClient(document.body, "terminal-2", {
       createTerminal: () => terminal as unknown as Terminal,
@@ -126,10 +301,11 @@ describe("terminal-client", () => {
     const originalWebSocket = global.WebSocket;
     const socket = new FakeWebSocket("ws://localhost");
 
-    global.WebSocket = (vi.fn(() => socket) as unknown) as typeof WebSocket;
+    global.WebSocket = createWebSocketCtor(socket);
 
     const client = createTerminalClient(document.body, "terminal-default");
     socket.emit("open");
+    client.sendControl("ctrl_c");
 
     client.destroy();
     global.WebSocket = originalWebSocket;
@@ -147,13 +323,13 @@ describe("terminal-client", () => {
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
       __TERMbridgeExposeTerminal: true
-    } as Window & {
+    } as unknown as Window & {
       __TERMbridgeExposeTerminal?: boolean;
       __TERMbridgeTerminal?: Terminal;
     };
 
     const socket = new FakeWebSocket("ws://localhost");
-    const WebSocketImpl = vi.fn(() => socket) as unknown as typeof WebSocket;
+    const WebSocketImpl = createWebSocketCtor(socket);
 
     createTerminalClient(document.body, "terminal-debug", {
       createTerminal: () => terminal as unknown as Terminal,
@@ -163,5 +339,116 @@ describe("terminal-client", () => {
     });
 
     expect(windowRef.__TERMbridgeTerminal).toBe(terminal);
+  });
+
+  it("uses resize observers and webgl when available", () => {
+    lastWebglAddon = null;
+    const terminal = new FakeTerminal();
+    const fitAddon = new FakeFitAddon();
+    fitAddon.proposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
+
+    const viewport = document.createElement("div");
+    Object.defineProperty(viewport, "offsetWidth", { value: 100 });
+    Object.defineProperty(viewport, "clientWidth", { value: 90 });
+
+    const element = document.createElement("div");
+    Object.defineProperty(element, "clientWidth", { value: 120 });
+    element.appendChild(viewport);
+    element.querySelector = vi.fn(() => viewport);
+    terminal.element = element;
+
+    const container = document.createElement("div");
+    Object.defineProperty(container, "clientWidth", { value: 120 });
+    document.body.appendChild(container);
+
+    const resizeObserverInstances: Array<{ disconnect: ReturnType<typeof vi.fn> }> = [];
+
+    class FakeResizeObserver {
+      disconnect = vi.fn();
+      observe = vi.fn();
+
+      constructor(_callback: ResizeObserverCallback) {
+        resizeObserverInstances.push(this);
+      }
+    }
+
+    const windowRef = {
+      location: { protocol: "http:", host: "localhost" },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callback(0);
+        return 1;
+      },
+      cancelAnimationFrame: vi.fn(),
+      ResizeObserver: FakeResizeObserver,
+      WebGLRenderingContext: function WebGLRenderingContext() {}
+    } as unknown as Window;
+
+    const socket = new FakeWebSocket("ws://localhost");
+    const WebSocketImpl = createWebSocketCtor(socket);
+
+    const client = createTerminalClient(container, "terminal-webgl", {
+      createTerminal: () => terminal as unknown as Terminal,
+      createFitAddon: () => fitAddon as unknown as FitAddon,
+      WebSocketImpl,
+      windowRef
+    });
+
+    socket.emit("open");
+    if (!lastWebglAddon) {
+      throw new Error("expected webgl addon");
+    }
+    const webglAddon = lastWebglAddon as unknown as WebglAddonStub;
+    const onContextLoss = webglAddon.onContextLoss.mock.calls[0]?.[0] as
+      | (() => void)
+      | undefined;
+    onContextLoss?.();
+    client.destroy();
+
+    expect(resizeObserverInstances[0]?.disconnect).toHaveBeenCalled();
+    expect(webglAddon.onContextLoss).toHaveBeenCalled();
+    expect(webglAddon.dispose).toHaveBeenCalled();
+  });
+
+  it("disposes the webgl addon on destroy", () => {
+    lastWebglAddon = null;
+    const terminal = new FakeTerminal();
+    const fitAddon = new FakeFitAddon();
+    fitAddon.proposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const windowRef = {
+      location: { protocol: "http:", host: "localhost" },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callback(0);
+        return 1;
+      },
+      cancelAnimationFrame: vi.fn(),
+      WebGLRenderingContext: function WebGLRenderingContext() {}
+    } as unknown as Window;
+
+    const socket = new FakeWebSocket("ws://localhost");
+    const WebSocketImpl = createWebSocketCtor(socket);
+
+    const client = createTerminalClient(container, "terminal-webgl-destroy", {
+      createTerminal: () => terminal as unknown as Terminal,
+      createFitAddon: () => fitAddon as unknown as FitAddon,
+      WebSocketImpl,
+      windowRef
+    });
+
+    socket.emit("open");
+    client.destroy();
+
+    if (!lastWebglAddon) {
+      throw new Error("expected webgl addon");
+    }
+    const webglAddon = lastWebglAddon as unknown as WebglAddonStub;
+    expect(webglAddon.dispose).toHaveBeenCalled();
   });
 });

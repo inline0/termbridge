@@ -2,11 +2,30 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    include: ["**/*.test.ts", "**/*.test.tsx"],
-    exclude: ["**/node_modules/**", "**/dist/**", "**/cli/integration/**"],
-    environment: "node",
-    environmentMatchGlobs: [["cli/ui/src/**/*.test.tsx", "jsdom"]],
-    setupFiles: ["./vitest.setup.ts"],
+    projects: [
+      {
+        test: {
+          name: "ui",
+          include: ["cli/ui/src/**/*.test.tsx"],
+          environment: "jsdom",
+          setupFiles: ["./vitest.setup.ts"]
+        }
+      },
+      {
+        test: {
+          name: "node",
+          include: ["**/*.test.ts", "**/*.test.tsx"],
+          exclude: [
+            "**/node_modules/**",
+            "**/dist/**",
+            "**/cli/integration/**",
+            "cli/ui/src/**/*.test.tsx"
+          ],
+          environment: "node",
+          setupFiles: ["./vitest.setup.ts"]
+        }
+      }
+    ],
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
@@ -17,6 +36,7 @@ export default defineConfig({
       exclude: [
         "**/node_modules/**",
         "**/dist/**",
+        "**/*.css",
         "**/*.config.*",
         "**/cli/ui/vite-env.d.ts",
         "**/cli/integration/**",

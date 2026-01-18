@@ -51,6 +51,17 @@ describe("createCloudflaredProvider", () => {
     await expect(startPromise).rejects.toThrow("cloudflared exited");
   });
 
+  it("rejects when cloudflared errors", async () => {
+    const child = new FakeChild();
+    const spawn = createSpawn(child);
+    const provider = createCloudflaredProvider({ spawn });
+
+    const startPromise = provider.start("http://127.0.0.1:3000");
+    child.emit("error", new Error("spawn failed"));
+
+    await expect(startPromise).rejects.toThrow("spawn failed");
+  });
+
   it("reports unknown exit codes", async () => {
     const child = new FakeChild();
     const spawn = createSpawn(child);

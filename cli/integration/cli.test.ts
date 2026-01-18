@@ -93,6 +93,30 @@ const waitForMatch = (
     check();
   });
 
+const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, label: string) =>
+  new Promise<T>((resolvePromise, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    promise.then(
+      (value) => {
+        clearTimeout(timeoutId);
+        resolvePromise(value);
+      },
+      (error) => {
+        clearTimeout(timeoutId);
+        reject(error);
+      }
+    );
+  });
+
+const logStep = (label: string) => {
+  if (process.env.TERMBRIDGE_TEST_DEBUG) {
+    process.stdout.write(`[cli integration] ${label}\n`);
+  }
+};
+
 const stopCli = async (child: ChildProcessWithoutNullStreams | null) => {
   if (!child) {
     return;
@@ -188,13 +212,17 @@ maybeDescribe("cli integration", () => {
   });
 
   it("renders tmux output in the UI", async () => {
-    browser = await chromium.launch();
+    browser = await withTimeout(chromium.launch(), 20_000, "chromium.launch");
+    logStep("browser launched");
     const context = await browser.newContext();
+    logStep("context created");
     const page = await context.newPage();
+    logStep("page created");
     await page.addInitScript(() => {
       (window as Window & { __TERMbridgeExposeTerminal?: boolean }).__TERMbridgeExposeTerminal =
         true;
     });
+    logStep("init script added");
     const pageErrors: string[] = [];
     const consoleErrors: string[] = [];
     const responseErrors: string[] = [];
@@ -242,14 +270,21 @@ maybeDescribe("cli integration", () => {
       });
     });
 
-    const redeem = await fetch(`${localUrl}/s/${token}`, { redirect: "manual" });
+    const redeem = await withTimeout(
+      fetch(`${localUrl}/s/${token}`, { redirect: "manual" }),
+      10_000,
+      "redeem fetch"
+    );
+    logStep("token redeemed");
     expect(redeem.status).toBe(302);
     const cookieHeader = redeem.headers.get("set-cookie");
     expect(cookieHeader).toBeTruthy();
     const cookiePair = (cookieHeader ?? "").split(";")[0] ?? "";
     const [name, value] = cookiePair.split("=");
     await context.addCookies([{ name, value, url: localUrl }]);
+    logStep("cookies added");
     const storedCookies = await context.cookies(localUrl);
+    logStep("cookies verified");
     expect(storedCookies.some((cookie) => cookie.name === name && cookie.value === value)).toBe(
       true
     );
@@ -259,9 +294,11 @@ maybeDescribe("cli integration", () => {
         page.waitForResponse((response) => response.url().endsWith("/api/terminals")),
         page.goto(`${localUrl}/app`, { waitUntil: "domcontentloaded" })
       ]);
+      logStep("page loaded");
       expect(terminalsResponse.status()).toBe(200);
 
-      await page.waitForSelector(".terminal-host .xterm-rows", { timeout: 45_000 });
+      await page.waitForSelector(".terminal-host .xterm-screen canvas", { timeout: 45_000 });
+      logStep("terminal rows ready");
 
       await Promise.race([
         statusPromise,
@@ -269,6 +306,7 @@ maybeDescribe("cli integration", () => {
           setTimeout(() => reject(new Error("websocket status timeout")), 10_000)
         )
       ]);
+      logStep("websocket status received");
     } catch (error) {
       const statusText = await page
         .locator(".terminal-status")
@@ -292,6 +330,7 @@ maybeDescribe("cli integration", () => {
       throw new Error("tmux send-keys failed");
     }
     spawnSync("tmux", ["send-keys", "-t", sessionName, "C-m"]);
+    logStep("tmux output sent");
 
     await Promise.race([
       outputPromise,
@@ -299,7 +338,9 @@ maybeDescribe("cli integration", () => {
         setTimeout(() => reject(new Error("output frame timeout")), 20_000)
       )
     ]);
+    logStep("output frame received");
 
     await waitForTerminalText(page, /termbridge-ui/, 10_000);
+    logStep("terminal text confirmed");
   }, 60_000);
 });

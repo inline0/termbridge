@@ -95,4 +95,23 @@ describe("TerminalPage", () => {
 
     expect(createTerminalClientMock).not.toHaveBeenCalled();
   });
+
+  it("ignores errors after unmount", async () => {
+    let rejectFetch: (error: Error) => void = () => undefined;
+
+    global.fetch = vi.fn(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectFetch = reject;
+        })
+    ) as typeof fetch;
+
+    const { unmount } = render(<TerminalPage />);
+    unmount();
+
+    rejectFetch(new Error("boom"));
+    await Promise.resolve();
+
+    expect(createTerminalClientMock).not.toHaveBeenCalled();
+  });
 });

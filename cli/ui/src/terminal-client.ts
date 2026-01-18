@@ -1,5 +1,7 @@
-import { Terminal } from "xterm";
-import { FitAddon } from "xterm-addon-fit";
+import { Terminal } from "@xterm/xterm";
+import { FitAddon } from "@xterm/addon-fit";
+import { WebLinksAddon } from "@xterm/addon-web-links";
+import { WebglAddon } from "@xterm/addon-webgl";
 import type {
   TerminalClientMessage,
   TerminalControlKey,
@@ -15,12 +17,51 @@ export type TerminalClientDeps = {
   createTerminal?: () => Terminal;
   createFitAddon?: () => FitAddon;
   WebSocketImpl?: typeof WebSocket;
-  windowRef?: Window;
+  windowRef?: WindowLike;
+};
+
+type WindowLike = Window & {
+  ResizeObserver?: typeof ResizeObserver;
+  WebGLRenderingContext?: typeof WebGLRenderingContext;
 };
 
 export const getWebSocketUrl = (terminalId: string, windowRef: Window) => {
   const protocol = windowRef.location.protocol === "https:" ? "wss" : "ws";
   return `${protocol}://${windowRef.location.host}/ws/terminal/${terminalId}`;
+};
+
+const terminalTheme = {
+  background: "#09090b",
+  foreground: "#e4e4e7",
+  cursor: "#e4e4e7",
+  cursorAccent: "#09090b",
+  selectionBackground: "#3f3f46",
+  black: "#18181b",
+  red: "#ef4444",
+  green: "#22c55e",
+  yellow: "#eab308",
+  blue: "#3b82f6",
+  magenta: "#a855f7",
+  cyan: "#06b6d4",
+  white: "#e4e4e7",
+  brightBlack: "#52525b",
+  brightRed: "#f87171",
+  brightGreen: "#4ade80",
+  brightYellow: "#facc15",
+  brightBlue: "#60a5fa",
+  brightMagenta: "#c084fc",
+  brightCyan: "#22d3ee",
+  brightWhite: "#fafafa"
+};
+
+const getScrollbarWidth = (terminal: Terminal) => {
+  const viewport = terminal.element?.querySelector(".xterm-viewport") as HTMLElement | null;
+  if (!viewport) {
+    return 0;
+  }
+
+  const width = viewport.offsetWidth - viewport.clientWidth;
+  return width > 0 ? width : 0;
 };
 
 const parseServerMessage = (payload: unknown): TerminalServerMessage | null => {
@@ -40,7 +81,18 @@ export const createTerminalClient = (
   terminalId: string,
   deps: TerminalClientDeps = {}
 ): TerminalClient => {
-  const createTerminal = deps.createTerminal ?? (() => new Terminal({ rendererType: "canvas" }));
+  const createTerminal =
+    deps.createTerminal ??
+    (() =>
+      new Terminal({
+        allowProposedApi: true,
+        cursorBlink: true,
+        convertEol: true,
+        fontFamily: "Menlo, Monaco, 'Courier New', monospace",
+        fontSize: 12,
+        lineHeight: 1.2,
+        theme: terminalTheme
+      }));
   const createFitAddon = deps.createFitAddon ?? (() => new FitAddon());
   const WebSocketImpl = deps.WebSocketImpl ?? WebSocket;
   const windowRef = deps.windowRef ?? window;
@@ -51,7 +103,15 @@ export const createTerminalClient = (
 
   const terminal = createTerminal();
   const fitAddon = createFitAddon();
+  const webLinksAddon = new WebLinksAddon();
+  let webglAddon: WebglAddon | null = null;
+  let resizeObserver: ResizeObserver | null = null;
+  let resizeRaf: number | null = null;
+  let resizeUsingTimeout = false;
+  let socketReady = false;
+  let lastSize: { cols: number; rows: number } | null = null;
   terminal.loadAddon(fitAddon);
+  terminal.loadAddon(webLinksAddon);
   terminal.open(container);
 
   if (debugWindow.__TERMbridgeExposeTerminal) {
@@ -61,18 +121,71 @@ export const createTerminalClient = (
   const socket = new WebSocketImpl(getWebSocketUrl(terminalId, windowRef));
 
   const sendMessage = (message: TerminalClientMessage) => {
+    if (!socketReady) {
+      return;
+    }
+
     socket.send(JSON.stringify(message));
   };
 
-  const handleResize = () => {
-    fitAddon.fit();
+  const applyResize = () => {
     const dims = fitAddon.proposeDimensions();
 
     if (!dims) {
       return;
     }
 
-    sendMessage({ type: "resize", cols: dims.cols, rows: dims.rows });
+    const scrollbarWidth = getScrollbarWidth(terminal);
+    const containerWidth = container.clientWidth || terminal.element?.clientWidth || 0;
+    const charWidth = dims.cols > 0 ? containerWidth / dims.cols : 0;
+    const scrollbarCols = charWidth > 0 ? Math.ceil(scrollbarWidth / charWidth) : 0;
+    const cols = Math.max(1, dims.cols - scrollbarCols);
+    const rows = dims.rows;
+
+    if (lastSize && lastSize.cols === cols && lastSize.rows === rows) {
+      return;
+    }
+
+    lastSize = { cols, rows };
+    terminal.resize(cols, rows);
+    terminal.scrollToBottom();
+    sendMessage({ type: "resize", cols, rows });
+  };
+
+  const cancelScheduledResize = () => {
+    if (resizeRaf === null) {
+      return;
+    }
+
+    if (resizeUsingTimeout) {
+      clearTimeout(resizeRaf);
+    } else {
+      windowRef.cancelAnimationFrame?.(resizeRaf);
+    }
+
+    resizeRaf = null;
+    resizeUsingTimeout = false;
+  };
+
+  const scheduleResize = () => {
+    cancelScheduledResize();
+
+    const next = windowRef.requestAnimationFrame;
+    if (typeof next === "function") {
+      resizeUsingTimeout = false;
+      resizeRaf = next(() => {
+        resizeRaf = null;
+        applyResize();
+      });
+      return;
+    }
+
+    resizeUsingTimeout = true;
+    resizeRaf = window.setTimeout(() => {
+      resizeRaf = null;
+      resizeUsingTimeout = false;
+      applyResize();
+    }, 16) as unknown as number;
   };
 
   terminal.onData((data) => {
@@ -80,7 +193,8 @@ export const createTerminalClient = (
   });
 
   socket.addEventListener("open", () => {
-    handleResize();
+    socketReady = true;
+    scheduleResize();
   });
 
   socket.addEventListener("message", (event) => {
@@ -95,15 +209,46 @@ export const createTerminalClient = (
     }
   });
 
-  windowRef.addEventListener("resize", handleResize);
+  windowRef.addEventListener("resize", scheduleResize);
+
+  const ResizeObserverImpl = windowRef.ResizeObserver;
+  if (typeof ResizeObserverImpl === "function") {
+    const observer = new ResizeObserverImpl(() => {
+      scheduleResize();
+    });
+    resizeObserver = observer;
+    observer.observe(container);
+  }
+
+  if (typeof windowRef.WebGLRenderingContext !== "undefined") {
+    try {
+      webglAddon = new WebglAddon();
+      webglAddon.onContextLoss(() => {
+        webglAddon?.dispose();
+        webglAddon = null;
+      });
+      terminal.loadAddon(webglAddon);
+    } catch {}
+  }
+
+  scheduleResize();
 
   const sendControl = (key: TerminalControlKey) => {
     sendMessage({ type: "control", key });
   };
 
   const destroy = () => {
-    windowRef.removeEventListener("resize", handleResize);
+    windowRef.removeEventListener("resize", scheduleResize);
+    resizeObserver?.disconnect();
+    resizeObserver = null;
+    cancelScheduledResize();
     socket.close();
+    if (webglAddon) {
+      try {
+        webglAddon.dispose();
+      } catch {}
+      webglAddon = null;
+    }
     terminal.dispose();
   };
 

@@ -78,21 +78,43 @@ export const createTmuxBackend = (deps: TmuxBackendDeps = {}): TerminalBackend =
   };
 
   const onOutput = (sessionName: string, callback: (data: string) => void) => {
-    let lastOutput = "";
+    let lastScreen = "";
+    let lastCursorX = 0;
+    let lastCursorY = 0;
 
     const poll = async () => {
       try {
-        const { stdout } = await runTmux(["capture-pane", "-p", "-t", sessionName]);
-        const next = stdout ?? "";
-        const delta = next.startsWith(lastOutput) ? next.slice(lastOutput.length) : next;
+        const [pane, cursor] = await Promise.all([
+          runTmux(["capture-pane", "-ep", "-t", sessionName]),
+          runTmux(["display-message", "-p", "-t", sessionName, "#{cursor_x} #{cursor_y}"])
+        ]);
+        const nextScreen = pane.stdout ?? "";
+        const [cursorXRaw = "", cursorYRaw = ""] = (cursor.stdout ?? "").trim().split(/\s+/);
+        const cursorX = Number.parseInt(cursorXRaw, 10);
+        const cursorY = Number.parseInt(cursorYRaw, 10);
+        const nextCursorX = Number.isNaN(cursorX) ? 0 : cursorX;
+        const nextCursorY = Number.isNaN(cursorY) ? 0 : cursorY;
 
-        if (delta.length > 0) {
-          callback(delta);
+        if (nextScreen !== lastScreen) {
+          const clear = "\x1b[2J\x1b[H";
+          const moveCursor = `\x1b[${nextCursorY + 1};${nextCursorX + 1}H`;
+          callback(`${clear}${nextScreen}${moveCursor}`);
+          lastScreen = nextScreen;
+          lastCursorX = nextCursorX;
+          lastCursorY = nextCursorY;
+          return;
         }
 
-        lastOutput = next;
+        if (nextCursorX !== lastCursorX || nextCursorY !== lastCursorY) {
+          const moveCursor = `\x1b[${nextCursorY + 1};${nextCursorX + 1}H`;
+          callback(moveCursor);
+          lastCursorX = nextCursorX;
+          lastCursorY = nextCursorY;
+        }
       } catch {
-        lastOutput = "";
+        lastScreen = "";
+        lastCursorX = 0;
+        lastCursorY = 0;
       }
     };
 
