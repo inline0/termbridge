@@ -2,6 +2,7 @@ import type { TerminalListResponse } from "@termbridge/shared";
 import { Button, Input } from "@termbridge/ui";
 import { useEffect, useRef, useState } from "react";
 import { createTerminalClient } from "./terminal-client";
+import { PlusIcon, SendIcon } from "lucide-react";
 
 type LoadState = "loading" | "ready" | "empty" | "error";
 
@@ -87,25 +88,25 @@ export const TerminalPage = () => {
           data-testid="terminal-host"
         />
       </div>
-      <div className="border-t border-border bg-background/90 px-3 py-3">
+      <div className="bg-sidebar px-3 py-3">
         <div className="flex w-full items-center gap-3">
-          <Button type="button" variant="outline" size="icon" aria-label="Add">
-            +
+          <Button type="button" variant="secondary" size="icon" aria-label="Add" className="bg-input/50 h-10 w-10 rounded-full">
+            <PlusIcon className="size-4" />
           </Button>
           <div className="relative flex-1">
             <Input
               placeholder="Message"
               aria-label="Message"
-              className="h-11 pr-16"
+              className="bg-input/50 h-11 pl-4 pr-8 rounded-full border-none"
             />
             <Button
               type="button"
-              variant="ghost"
+              variant="default"
               size="sm"
               aria-label="Send"
-              className="absolute right-1 top-1/2 -translate-y-1/2"
+              className="absolute right-1 w-9 h-9 top-1/2 -translate-y-1/2 rounded-full"
             >
-              Send
+              <SendIcon className="size-4" />
             </Button>
           </div>
         </div>
