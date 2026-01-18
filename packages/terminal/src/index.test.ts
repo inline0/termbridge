@@ -56,7 +56,7 @@ describe("createTmuxBackend", () => {
 
     expect(calls).toContainEqual(["new-session", "-d", "-s", "session"]);
     expect(calls).toContainEqual(["send-keys", "-t", "session", "-l", "ls"]);
-    expect(calls).toContainEqual(["resize-pane", "-t", "session", "-x", "80", "-y", "24"]);
+    expect(calls).toContainEqual(["resize-window", "-t", "session", "-x", "80", "-y", "24"]);
     expect(calls).toContainEqual(["send-keys", "-t", "session", "C-c"]);
     expect(outputsReceived).toEqual(["hello", " world", "reset"]);
   });

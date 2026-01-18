@@ -67,7 +67,7 @@ export const createTmuxBackend = (deps: TmuxBackendDeps = {}): TerminalBackend =
 
   const resize = async (sessionName: string, cols: number, rows: number) => {
     await runTmux([
-      "resize-pane",
+      "resize-window",
       "-t",
       sessionName,
       "-x",
