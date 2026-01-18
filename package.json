@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "bun run --cwd cli dev",
     "build": "bun run --cwd cli build",
+    "beam:codex": "bun run --cwd cli build && node cli/dist/bin.js --session codex",
     "test": "bun run test:mocked && bun run test:cli",
     "test:mocked": "vitest run --coverage --config vitest.config.ts",
     "test:cli": "vitest run --config vitest.cli.config.ts",
