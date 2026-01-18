@@ -8,8 +8,10 @@
   "scripts": {
     "dev": "bun run --cwd cli dev",
     "build": "bun run --cwd cli build",
-    "test": "vitest run --coverage",
-    "test:watch": "vitest",
+    "test": "bun run test:mocked && bun run test:cli",
+    "test:mocked": "vitest run --coverage --config vitest.config.ts",
+    "test:cli": "vitest run --config vitest.cli.config.ts",
+    "test:watch": "vitest --config vitest.config.ts",
     "lint": "biome lint .",
     "lint:all": "bun run --cwd cli lint && bun run --cwd packages/shared lint && bun run --cwd packages/terminal lint && bun run --cwd packages/tunnel lint",
     "typecheck": "tsc -p tsconfig.json",

@@ -3,6 +3,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     include: ["**/*.test.ts", "**/*.test.tsx"],
+    exclude: ["**/node_modules/**", "**/dist/**", "**/cli/integration/**"],
     environment: "node",
     environmentMatchGlobs: [["cli/ui/src/**/*.test.tsx", "jsdom"]],
     setupFiles: ["./vitest.setup.ts"],

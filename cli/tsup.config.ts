@@ -8,6 +8,7 @@ export default defineConfig({
   outDir: "dist",
   sourcemap: true,
   clean: true,
+  noExternal: ["@termbridge/shared", "@termbridge/terminal", "@termbridge/tunnel"],
   splitting: false,
   banner: {
     js: "#!/usr/bin/env node"

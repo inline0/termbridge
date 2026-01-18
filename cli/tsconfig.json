@@ -9,6 +9,7 @@
   },
   "include": [
     "src/**/*",
-    "ui/src/**/*"
+    "ui/src/**/*",
+    "integration/**/*"
   ]
 }

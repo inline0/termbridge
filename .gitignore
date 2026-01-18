@@ -30,6 +30,7 @@ logs/
 test-results/
 playwright-report/
 screenshots/
+coverage/
 
 # Temporary files
 *.tmp
