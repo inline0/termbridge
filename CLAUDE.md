@@ -6,7 +6,7 @@ Implementation should take inspiration from **`fabrikat/inline0/monorepo`** for 
 ---
 
 ## 1) Product summary
-Termbridge is an open-source CLI that runs entirely on the user’s machine. It starts a local web server that serves a browser UI and a WebSocket endpoint. The browser UI provides an interactive terminal using xterm.js and lets the user pick from multiple local terminal sessions. A tunnel provider (initially Cloudflare Quick Tunnel via `cloudflared`) exposes the local server on a public HTTPS URL. Termbridge prints that URL and an ASCII QR code so the user can open the terminal on a mobile device.
+Termbridge is an open-source CLI that runs entirely on the user’s machine. It starts a local web server that serves a browser UI and a WebSocket endpoint. The browser UI provides an interactive terminal using xterm.js backed by tmux PTY streaming (current UI connects to the first session only). A tunnel provider (initially Cloudflare Quick Tunnel via `cloudflared`) exposes the local server on a public HTTPS URL. Termbridge prints that URL and an ASCII QR code so the user can open the terminal on a mobile device.
 
 There is no Termbridge-operated backend server. Authentication and session management are handled locally.
 
@@ -16,7 +16,7 @@ There is no Termbridge-operated backend server. Authentication and session manag
 - One command to start: local server, tmux session, tunnel.
 - Mobile-first: QR scan opens a working terminal UI.
 - Correct terminal behavior: ANSI and TUIs work (xterm.js rendering).
-- One server, multiple terminals with in-app selection and switching.
+- One server, multiple terminals with in-app selection and switching (UI selection pending).
 - No managed backend: local-only server plus third-party tunnel transport.
 - Secure defaults given a public URL: one-time token exchange and cookie sessions.
 
@@ -46,6 +46,7 @@ A single developer who wants quick mobile access to their local terminal session
 - tmux and cloudflared for end-to-end testing.
 - Biome (via `bunx @biomejs/biome`) and TypeScript for linting and type checks.
 - Playwright for UI end-to-end tests (`bunx playwright install chromium`).
+- Note: `node-pty` ships a `spawn-helper` binary; termbridge ensures it is executable at runtime.
 
 ### Install hints
 - macOS (Homebrew): `brew install node tmux cloudflared` (and `brew install bun` for development).
@@ -132,6 +133,7 @@ Generated folders: `coverage/` (from `vitest --coverage`), `cli/ui/dist/`, and `
 - Dev UI: `bun run dev:beam` builds the CLI, starts the server on a fixed port, and runs the Vite dev server with proxying for `/api`, `/ws`, and `/s`.
 - Local dev cookies: set `TERMBRIDGE_INSECURE_COOKIE=1` to allow HTTP during local debugging.
 - If Vite picks a different port, set `TERMBRIDGE_DEV_UI=http://127.0.0.1:<port>` or use the `Local` URL printed by Vite.
+- If vitest fails with esbuild EPIPE on macOS, set `ESBUILD_BINARY_PATH=node_modules/@esbuild/darwin-arm64/bin/esbuild`.
 
 ---
 
@@ -209,23 +211,21 @@ Server → Client:
 - Behavior:
   - list and track termbridge-managed sessions for selection
   - map `terminalId` to tmux session name and keep raw names server-side
-  - create session if missing: `tmux new-session -d -s <sessionName>`
-  - send input: either
-    - preferred: PTY streaming (true keystrokes) with tmux for persistence, or
-    - acceptable MVP: line-based input via `tmux send-keys` and a bottom input bar
-  - stream output:
-    - preferred: `tmux pipe-pane` to a file/FIFO and tail
-    - acceptable MVP: poll `tmux capture-pane -p` and diff to emit new output
+  - create session if missing: `tmux new-session -d -s <sessionName>`; reuse existing sessions when present
+  - disable tmux status bar for clean beamed UI
+  - attach to tmux via `node-pty` for true keystrokes and raw output streaming
+  - send input and control sequences directly to the PTY
+  - resize PTY on client resize events
+  - PTY attaches with `TERM=xterm-256color` and `COLORTERM=truecolor` for full color
 
-MVP acceptance: near-real-time output for typical commands. TUIs must render correctly if keystroke streaming is implemented.
+MVP acceptance: near-real-time output for typical commands, including TUIs.
 
 ---
 
 ## 10) UI requirements (xterm.js)
 ### Layout
 - Main area: xterm viewport.
-- Terminal list or picker for selecting a session.
-- Bottom: optional input bar for sending a full line.
+- Terminal list or picker for selecting a session (pending).
 - Mobile toolbar: minimum buttons for `Ctrl+C`, `Esc`, `Tab`, and arrow keys.
 
 Current implementation (MVP-in-progress):
@@ -241,8 +241,10 @@ Current implementation (MVP-in-progress):
 ### Tech
 - TanStack Router app built with Vite.
 - TypeScript.
-- xterm + fit addon.
+- xterm + fit addon + WebGL (canvas renderer).
 - WebSocket to `/ws/terminal/:terminalId` with cookie authentication.
+  - Initial sizing retries until container dimensions exist and re-runs when fonts are ready.
+  - Terminal resizes subtract scrollbar width for accurate columns.
 
 ---
 
@@ -251,7 +253,9 @@ Current implementation (MVP-in-progress):
 - Coverage is enforced in CI; builds fail on any uncovered code paths.
 - Tests must be fully automated (no manual steps), including unit, integration, and end-to-end paths for the CLI, server, and UI.
 - Coverage reports are generated for both server and UI.
-- UI e2e uses Playwright against the local server, redeems a token, then validates tmux output over WebSocket.
+- Two suites:
+  - `test:mocked` runs unit/integration with coverage.
+  - `test:cli` runs real CLI + UI e2e (tmux + cloudflared + Playwright) and validates tmux output in xterm.
 
 ---
 
@@ -313,7 +317,7 @@ Provider interface should be pluggable for future support of ngrok, localtunnel,
 - Terminal output streams to xterm.
 - User can execute at least line-based commands reliably.
 - Ctrl+C from UI interrupts a running command.
-- UI lists multiple terminals and the user can switch between them.
+- UI lists multiple terminals and the user can switch between them (pending).
 - Token cannot be redeemed twice; expired tokens are rejected.
 - Browser refresh reconnects while the CLI remains running.
 - If CLI exits, tunnel closes and the UI cannot interact.
@@ -333,16 +337,15 @@ Provider interface should be pluggable for future support of ngrok, localtunnel,
 Recommended interfaces:
 - `TunnelProvider.start(localUrl): Promise<{ publicUrl: string }>`
 - `TunnelProvider.stop(): Promise<void>`
-- `TerminalBackend.createOrAttach(sessionName): Promise<{ sessionId: string }>`
-- `TerminalBackend.write(data): void`
-- `TerminalBackend.onOutput(cb): unsubscribe`
+- `TerminalBackend.createSession(name): Promise<TerminalSession>`
+- `TerminalBackend.write(sessionName, data): Promise<void>`
+- `TerminalBackend.onOutput(sessionName, cb): unsubscribe`
 
 ---
 
 ## 17) Open questions (do not block MVP)
-- True interactive keystrokes: implement PTY streaming or defer to line-send.
+- Terminal discovery: expose only termbridge-created sessions vs all local tmux sessions.
 - Default tmux lifecycle: leave running vs kill on exit.
-- Session exposure: list only termbridge-created sessions vs all local tmux sessions.
 - Bundling `cloudflared` vs requiring preinstall.
 
 ---
