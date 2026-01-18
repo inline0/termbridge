@@ -86,29 +86,40 @@ Browser (mobile) ↔ Public URL (tunnel) ↔ Local HTTP/WS server ↔ selected t
 - Root files: `package.json`, `bun.lock`, `biome.json`, `tsconfig.json`.
 - Single publishable package lives in `cli/` to keep everything in one place.
 
-### Structure
+### Structure (current)
 ```
 termbridge/
 ├── cli/
-│   ├── src/cli/      # CLI entrypoint and orchestration
-│   ├── src/server/   # local HTTP + WS server and auth
-│   ├── integration/  # real CLI + UI e2e tests (tmux + cloudflared + Playwright)
-│   ├── ui/           # xterm.js app source
-│   └── ui/dist/      # built UI assets served by server
+│   ├── dist/         # built CLI output (tsup)
+│   ├── integration/  # real CLI + UI e2e tests (tmux + Playwright)
+│   ├── src/
+│   │   ├── cli/      # CLI entrypoint, Ink TTY UI, orchestration
+│   │   └── server/   # local HTTP + WS server and auth
+│   ├── ui/
+│   │   ├── dist/     # built UI assets served by server
+│   │   └── src/      # TanStack Router app + xterm client
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── tsup.config.ts
+│   └── vite.config.ts
 ├── packages/
 │   ├── shared/       # protocol types and shared helpers
 │   ├── terminal/     # tmux backend + PTY/pipe adapters
-│   ├── tunnel/       # tunnel providers (cloudflared)
-│   └── tsconfig/     # shared TS config (base.json)
-├── package.json
+│   ├── tsconfig/     # shared TS config (base.json)
+│   └── tunnel/       # tunnel providers (cloudflared)
 ├── biome.json
+├── package.json
 ├── tsconfig.json     # extends packages/tsconfig/base.json
+├── vitest.config.ts
 ├── vitest.cli.config.ts
+├── vitest.setup.ts
 └── bun.lock
 ```
+Generated folders: `coverage/` (from `vitest --coverage`), `cli/ui/dist/`, and `cli/dist/`.
 
 ### Build and packaging
-- UI build outputs to `cli/ui/dist`.
+- UI build outputs to `cli/ui/dist` via Vite.
+- CLI build outputs to `cli/dist` via tsup.
 - Server serves `cli/ui/dist` as static assets.
 - `cli` is publishable to npm with a `bin` entry for `termbridge`; `npx termbridge` runs `start` by default.
 - CLI runtime must be Node-compatible (avoid Bun-only APIs; bundle if needed).
@@ -117,7 +128,7 @@ termbridge/
 ### Scripts and workflow
 - Prefer root scripts that call `bun run --cwd cli` or `bun run --cwd packages/<name>`.
 - Use Biome from root: `bunx @biomejs/biome check --write`.
-- Test suites: `bun run test:mocked` (coverage enforced) and `bun run test:cli` (real CLI + UI).
+- Test suites: `bun run test:mocked` (coverage enforced) and `bun run test:cli` (real CLI + UI); `bun run test` runs both.
 
 ---
 
@@ -237,7 +248,7 @@ Current implementation (MVP-in-progress):
 - Coverage is enforced in CI; builds fail on any uncovered code paths.
 - Tests must be fully automated (no manual steps), including unit, integration, and end-to-end paths for the CLI, server, and UI.
 - Coverage reports are generated for both server and UI.
-- UI e2e uses Playwright and the public tunnel URL to validate tmux output in the browser.
+- UI e2e uses Playwright against the local server, redeems a token, then validates tmux output over WebSocket.
 
 ---
 
