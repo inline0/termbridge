@@ -40,15 +40,23 @@ export const createTerminalClient = (
   terminalId: string,
   deps: TerminalClientDeps = {}
 ): TerminalClient => {
-  const createTerminal = deps.createTerminal ?? (() => new Terminal());
+  const createTerminal = deps.createTerminal ?? (() => new Terminal({ rendererType: "canvas" }));
   const createFitAddon = deps.createFitAddon ?? (() => new FitAddon());
   const WebSocketImpl = deps.WebSocketImpl ?? WebSocket;
   const windowRef = deps.windowRef ?? window;
+  const debugWindow = windowRef as Window & {
+    __TERMbridgeExposeTerminal?: boolean;
+    __TERMbridgeTerminal?: Terminal;
+  };
 
   const terminal = createTerminal();
   const fitAddon = createFitAddon();
   terminal.loadAddon(fitAddon);
   terminal.open(container);
+
+  if (debugWindow.__TERMbridgeExposeTerminal) {
+    debugWindow.__TERMbridgeTerminal = terminal;
+  }
 
   const socket = new WebSocketImpl(getWebSocketUrl(terminalId, windowRef));
 

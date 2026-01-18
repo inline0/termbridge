@@ -2,20 +2,42 @@ import type { Page } from "playwright";
 
 export const getTerminalText = async (page: Page) =>
   page.evaluate(() => {
-    const host = document.querySelector(".terminal-host");
-    const rows = host?.querySelectorAll(".xterm-rows .xterm-row") ?? [];
-    const lines = Array.from(rows).map((row) => row.textContent ?? "");
-    return lines.join("\n").replace(/\u00a0/g, " ");
+    const terminal = (window as typeof window & { __TERMbridgeTerminal?: any })
+      .__TERMbridgeTerminal;
+    const buffer = terminal?.buffer?.active;
+    if (!buffer) {
+      return "";
+    }
+
+    const bufferLines: string[] = [];
+    for (let i = 0; i < buffer.length; i += 1) {
+      const line = buffer.getLine(i);
+      if (line) {
+        bufferLines.push(line.translateToString(true));
+      }
+    }
+    return bufferLines.join("\n");
   });
 
 export const waitForTerminalText = async (page: Page, pattern: RegExp, timeoutMs = 10_000) => {
   await page.waitForFunction(
     ({ source, flags }) => {
-      const host = document.querySelector(".terminal-host");
-      const rows = host?.querySelectorAll(".xterm-rows .xterm-row") ?? [];
-      const lines = Array.from(rows).map((row) => row.textContent ?? "");
-      const content = lines.join("\n").replace(/\u00a0/g, " ");
-      return new RegExp(source, flags).test(content);
+      const regex = new RegExp(source, flags);
+      const terminal = (window as typeof window & { __TERMbridgeTerminal?: any })
+        .__TERMbridgeTerminal;
+      const buffer = terminal?.buffer?.active;
+      if (!buffer) {
+        return false;
+      }
+
+      const bufferLines: string[] = [];
+      for (let i = 0; i < buffer.length; i += 1) {
+        const line = buffer.getLine(i);
+        if (line) {
+          bufferLines.push(line.translateToString(true));
+        }
+      }
+      return regex.test(bufferLines.join("\n"));
     },
     { source: pattern.source, flags: pattern.flags },
     { timeout: timeoutMs }

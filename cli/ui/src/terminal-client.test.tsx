@@ -136,4 +136,32 @@ describe("terminal-client", () => {
 
     expect(socket.send).toHaveBeenCalled();
   });
+
+  it("exposes the terminal when the debug flag is set", () => {
+    const terminal = new FakeTerminal();
+    const fitAddon = new FakeFitAddon();
+    fitAddon.proposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
+
+    const windowRef = {
+      location: { protocol: "http:", host: "localhost" },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      __TERMbridgeExposeTerminal: true
+    } as Window & {
+      __TERMbridgeExposeTerminal?: boolean;
+      __TERMbridgeTerminal?: Terminal;
+    };
+
+    const socket = new FakeWebSocket("ws://localhost");
+    const WebSocketImpl = vi.fn(() => socket) as unknown as typeof WebSocket;
+
+    createTerminalClient(document.body, "terminal-debug", {
+      createTerminal: () => terminal as unknown as Terminal,
+      createFitAddon: () => fitAddon as unknown as FitAddon,
+      WebSocketImpl,
+      windowRef
+    });
+
+    expect(windowRef.__TERMbridgeTerminal).toBe(terminal);
+  });
 });

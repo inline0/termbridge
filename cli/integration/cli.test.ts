@@ -4,6 +4,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser } from "playwright";
+import { waitForTerminalText } from "./terminal-utils";
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const cliDir = resolve(rootDir, "cli");
@@ -190,6 +191,10 @@ maybeDescribe("cli integration", () => {
     browser = await chromium.launch();
     const context = await browser.newContext();
     const page = await context.newPage();
+    await page.addInitScript(() => {
+      (window as Window & { __TERMbridgeExposeTerminal?: boolean }).__TERMbridgeExposeTerminal =
+        true;
+    });
     const pageErrors: string[] = [];
     const consoleErrors: string[] = [];
     const responseErrors: string[] = [];
@@ -294,5 +299,7 @@ maybeDescribe("cli integration", () => {
         setTimeout(() => reject(new Error("output frame timeout")), 20_000)
       )
     ]);
+
+    await waitForTerminalText(page, /termbridge-ui/, 10_000);
   }, 60_000);
 });
