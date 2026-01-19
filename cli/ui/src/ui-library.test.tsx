@@ -76,7 +76,9 @@ describe("ui library", () => {
     expect(changeHandlers.length).toBeGreaterThan(0);
 
     prefersDark = true;
-    changeHandlers.forEach((handler) => handler(new Event("change") as MediaQueryListEvent));
+    for (const handler of changeHandlers) {
+      handler(new Event("change") as MediaQueryListEvent);
+    }
 
     await waitFor(() => {
       expect(document.documentElement.classList.contains("dark")).toBe(true);
@@ -86,7 +88,9 @@ describe("ui library", () => {
       await snapshot?.setTheme("dark");
     });
 
-    changeHandlers.forEach((handler) => handler(new Event("change") as MediaQueryListEvent));
+    for (const handler of changeHandlers) {
+      handler(new Event("change") as MediaQueryListEvent);
+    }
 
     unmount();
     expect(removeEventListener).toHaveBeenCalledWith("change", changeHandlers[0]);
