@@ -41,7 +41,7 @@ Scan the QR code and open the URL on your phone. The CLI stays running while the
 ## CLI usage
 
 ```bash
-termbridge --port 7000 --session dev --kill-on-exit --no-qr --tunnel cloudflare
+termbridge --port 8080 --session dev --kill-on-exit --no-qr --tunnel cloudflare
 ```
 
 Flags:

@@ -24,7 +24,7 @@ Visit `https://termbridge.dev` for the full docs, architecture notes, and troubl
 ## CLI usage
 
 ```bash
-termbridge --port 7000 --session dev --kill-on-exit --no-qr --tunnel cloudflare
+termbridge --port 8080 --session dev --kill-on-exit --no-qr --tunnel cloudflare
 ```
 
 Flags:
