@@ -14,8 +14,15 @@ vi.mock("./terminal-client", () => ({
 import { createTerminalClient } from "./terminal-client";
 
 describe("router", () => {
+  const originalFetch = global.fetch;
+
   afterEach(() => {
+    global.fetch = originalFetch;
+    if (typeof window !== "undefined") {
+      window.fetch = originalFetch;
+    }
     cleanup();
+    vi.mocked(createTerminalClient).mockClear();
   });
 
   const makeTerminal = (id: string) => ({
@@ -28,11 +35,14 @@ describe("router", () => {
 
   it("renders the index route", async () => {
     window.history.pushState({}, "", "/app/");
-    const response = new Response(JSON.stringify({ terminals: [] }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
-    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ terminals: [] })
+    })) as unknown as typeof fetch;
+    global.fetch = fetchMock;
+    if (typeof window !== "undefined") {
+      window.fetch = fetchMock;
+    }
 
     render(<RouterProvider router={router} />);
 
@@ -43,11 +53,14 @@ describe("router", () => {
 
   it("renders the terminal route", async () => {
     window.history.pushState({}, "", "/app/terminal/term-1");
-    const response = new Response(JSON.stringify({ terminals: [makeTerminal("term-1")] }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
-    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ terminals: [makeTerminal("term-1")] })
+    })) as unknown as typeof fetch;
+    global.fetch = fetchMock;
+    if (typeof window !== "undefined") {
+      window.fetch = fetchMock;
+    }
 
     render(<RouterProvider router={router} />);
 

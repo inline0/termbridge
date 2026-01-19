@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { TerminalListItem } from "@termbridge/shared";
 import { TerminalSwitcher } from "./terminal-switcher";
 
@@ -12,8 +12,12 @@ const makeTerminal = (id: string): TerminalListItem => ({
 });
 
 describe("TerminalSwitcher", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   const openSheet = () => {
-    fireEvent.click(screen.getByLabelText("Terminals"));
+    fireEvent.click(screen.getAllByLabelText("Terminals")[0]);
   };
 
   it("shows loading copy", async () => {
@@ -84,5 +88,29 @@ describe("TerminalSwitcher", () => {
       "aria-current",
       "page"
     );
+  });
+
+  it("falls back to the id label and shows closed mock status", async () => {
+    render(
+      <TerminalSwitcher
+        terminals={[
+          {
+            id: "term-closed",
+            label: "",
+            status: "closed",
+            createdAt: "2024-01-01T00:00:00.000Z",
+            source: "mock"
+          }
+        ]}
+        activeTerminalId={null}
+        listState="ready"
+        onSelectTerminal={vi.fn()}
+      />
+    );
+
+    openSheet();
+
+    expect(await screen.findByText("Closed - Mock")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Open term-closed")).toBeInTheDocument();
   });
 });

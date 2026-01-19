@@ -119,6 +119,28 @@ describe("TerminalPage", () => {
     });
   });
 
+  it("uses a fallback selection handler when none is provided", async () => {
+    const destroy = vi.fn();
+    createTerminalClientMock.mockReturnValue({
+      destroy,
+      sendControl: vi.fn(),
+      sendInput: vi.fn()
+    });
+
+    const response = new Response(JSON.stringify({ terminals: [makeTerminal("term-1")] }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+
+    render(<TerminalPage terminalId="term-1" />);
+
+    const button = await screen.findByLabelText("Open Terminal term-1");
+    fireEvent.click(button);
+
+    expect(screen.getByTestId("terminal-host")).toBeInTheDocument();
+  });
+
   it("ignores send clicks before the terminal client is ready", () => {
     global.fetch = vi.fn(() => new Promise(() => undefined)) as typeof fetch;
 

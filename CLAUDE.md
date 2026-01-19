@@ -6,7 +6,7 @@ Implementation should take inspiration from **`fabrikat/inline0/monorepo`** for 
 ---
 
 ## 1) Product summary
-Termbridge is an open-source CLI that runs entirely on the user’s machine. It starts a local web server that serves a browser UI and a WebSocket endpoint. The browser UI provides an interactive terminal using xterm.js backed by tmux PTY streaming (current UI connects to the first session only). A tunnel provider (initially Cloudflare Quick Tunnel via `cloudflared`) exposes the local server on a public HTTPS URL. Termbridge prints that URL and an ASCII QR code so the user can open the terminal on a mobile device.
+Termbridge is an open-source CLI that runs entirely on the user’s machine. It starts a local web server that serves a browser UI and a WebSocket endpoint. The browser UI provides an interactive terminal using xterm.js backed by tmux PTY streaming, with a terminal list and in-app switching. A tunnel provider (initially Cloudflare Quick Tunnel via `cloudflared`) exposes the local server on a public HTTPS URL. Termbridge prints that URL and an ASCII QR code so the user can open the terminal on a mobile device.
 
 There is no Termbridge-operated backend server. Authentication and session management are handled locally.
 
@@ -16,7 +16,7 @@ There is no Termbridge-operated backend server. Authentication and session manag
 - One command to start: local server, tmux session, tunnel.
 - Mobile-first: QR scan opens a working terminal UI.
 - Correct terminal behavior: ANSI and TUIs work (xterm.js rendering).
-- One server, multiple terminals with in-app selection and switching (UI selection pending).
+- One server, multiple terminals with in-app selection and switching.
 - No managed backend: local-only server plus third-party tunnel transport.
 - Secure defaults given a public URL: one-time token exchange and cookie sessions.
 
@@ -57,11 +57,11 @@ A single developer who wants quick mobile access to their local terminal session
 ## 6) User flow
 1. User runs `npx termbridge`.
 2. CLI starts a local HTTP server on `127.0.0.1:<port>`.
-3. CLI creates or attaches to one or more tmux sessions.
+3. CLI creates or attaches to one or more tmux sessions (supports multiple via `TERMBRIDGE_SESSIONS`).
 4. CLI generates a one-time token and starts a tunnel to the local server.
 5. CLI prints a public URL of the form `https://<public-host>/s/<token>` and renders an ASCII QR code.
 6. User opens the URL on mobile. The local server redeems the token, sets a secure cookie, and redirects to the app.
-7. The app loads and connects via WebSocket to stream terminal I/O (current MVP auto-selects the first terminal).
+7. The app loads, lists terminals, and connects via WebSocket to stream terminal I/O (defaults to the first terminal).
 
 ---
 
@@ -131,6 +131,7 @@ Generated folders: `coverage/` (from `vitest --coverage`), `cli/ui/dist/`, and `
 - Use Biome from root: `bunx @biomejs/biome check --write`.
 - Test suites: `bun run test:mocked` (coverage enforced) and `bun run test:cli` (real CLI + UI); `bun run test` runs both.
 - Dev UI: `bun run dev:beam` builds the CLI, starts the server on a fixed port, and runs the Vite dev server with proxying for `/api`, `/ws`, and `/s`.
+- Multi-session dev: `TERMBRIDGE_SESSIONS=2 bun run dev:beam` or `bun run dev:beam:multi`.
 - Local dev cookies: set `TERMBRIDGE_INSECURE_COOKIE=1` to allow HTTP during local debugging.
 - If Vite picks a different port, set `TERMBRIDGE_DEV_UI=http://127.0.0.1:<port>` or use the `Local` URL printed by Vite.
 - If vitest fails with esbuild EPIPE on macOS, set `ESBUILD_BINARY_PATH=node_modules/@esbuild/darwin-arm64/bin/esbuild`.
@@ -145,7 +146,7 @@ Generated folders: `coverage/` (from `vitest --coverage`), `cli/ui/dist/`, and `
 
 #### `termbridge start`
 - Starts local server, terminal registry, and tunnel.
-- Creates or attaches to an initial tmux session; additional sessions are supported server-side, UI selection pending.
+- Creates or attaches to an initial tmux session; additional sessions can be created (use `TERMBRIDGE_SESSIONS` for dev).
 - Prints:
   - public URL for token redemption
   - ASCII QR code (unless `--no-qr`)
@@ -188,6 +189,7 @@ Generated folders: `coverage/` (from `vitest --coverage`), `cli/ui/dist/`, and `
   - optional body: `{ name?: string }`
 - The server maintains an in-memory registry of terminals created or attached by this Termbridge instance.
 - The UI can only select terminals from this list; unknown IDs are rejected.
+- UI selection is route-driven: `/app/terminal/:terminalId` renders the selected session and defaults to the first terminal when the route is missing or invalid.
 
 ### 9.4 WebSocket terminal endpoint
 - Endpoint: `WS /ws/terminal/:terminalId`
@@ -225,12 +227,12 @@ MVP acceptance: near-real-time output for typical commands, including TUIs.
 ## 10) UI requirements (xterm.js)
 ### Layout
 - Main area: xterm viewport.
-- Terminal list or picker for selecting a session (pending).
+- Terminal list and picker for selecting a session (bottom sheet).
 - Mobile toolbar: minimum buttons for `Ctrl+C`, `Esc`, `Tab`, and arrow keys.
 
 Current implementation (MVP-in-progress):
-- Single terminal view only; always connects to the first terminal in the registry.
-- No in-app terminal list or session switching yet.
+- Single terminal view per page; defaults to the first terminal and switches via the terminal list sheet.
+- In-app terminal list and session switching are implemented.
 
 ### Behavior
 - Stream output into xterm.
@@ -317,7 +319,7 @@ Provider interface should be pluggable for future support of ngrok, localtunnel,
 - Terminal output streams to xterm.
 - User can execute at least line-based commands reliably.
 - Ctrl+C from UI interrupts a running command.
-- UI lists multiple terminals and the user can switch between them (pending).
+- UI lists multiple terminals and the user can switch between them.
 - Token cannot be redeemed twice; expired tokens are rejected.
 - Browser refresh reconnects while the CLI remains running.
 - If CLI exits, tunnel closes and the UI cannot interact.

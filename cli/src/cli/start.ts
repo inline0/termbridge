@@ -70,6 +70,20 @@ const createDefaultLogger = (): Logger => ({
   error: (message) => console.error(message)
 });
 
+const parseSessionCount = (value: string | undefined) => {
+  if (!value) {
+    return 1;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return 1;
+  }
+
+  return parsed;
+};
+
 export const startCommand = async (
   options: StartOptions,
   deps: StartDeps = {}
@@ -109,8 +123,16 @@ export const startCommand = async (
   const started = await server.listen(options.port ?? 0);
   const localUrl = `http://127.0.0.1:${started.port}`;
   const sessionName = options.session ?? `termbridge-${started.port}`;
-  const session = await terminalBackend.createSession(sessionName);
-  terminalRegistry.add(session.name, session.name, "tmux");
+  const sessionCount = parseSessionCount(env.TERMBRIDGE_SESSIONS);
+  const createdSessions: string[] = [];
+
+  for (let index = 0; index < sessionCount; index += 1) {
+    const suffix = index === 0 ? "" : `-${index + 1}`;
+    const nextName = `${sessionName}${suffix}`;
+    const session = await terminalBackend.createSession(nextName);
+    terminalRegistry.add(session.name, session.name, "tmux");
+    createdSessions.push(session.name);
+  }
 
   const { token } = auth.issueToken();
 
@@ -141,7 +163,9 @@ export const startCommand = async (
     await started.close();
 
     if (options.killOnExit) {
-      await terminalBackend.closeSession(session.name);
+      for (const name of createdSessions) {
+        await terminalBackend.closeSession(name);
+      }
     }
   };
 

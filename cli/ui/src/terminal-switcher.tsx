@@ -86,16 +86,17 @@ export const TerminalSwitcher = ({
                         onClick={() => onSelectTerminal(terminal.id)}
                       >
                         <div className="flex items-center justify-between gap-3">
-                          <span className="text-sm font-medium">{label}</span>
+                          <div className="min-w-0">
+                            <span className="text-sm font-medium">{label}</span>
+                            <div className="pt-1 text-xs text-muted-foreground">
+                              {getStatusLabel(terminal)}
+                            </div>
+                          </div>
                           {isActive ? (
-                            <span className="flex items-center gap-1 text-xs font-semibold text-primary">
-                              <Check className="size-3" aria-hidden="true" />
-                              Active
+                            <span className="flex h-8 w-8 items-center justify-center text-primary">
+                              <Check className="size-6" aria-hidden="true" />
                             </span>
                           ) : null}
-                        </div>
-                        <div className="pt-1 text-xs text-muted-foreground">
-                          {getStatusLabel(terminal)}
                         </div>
                       </button>
                     </BottomSheet.Trigger>

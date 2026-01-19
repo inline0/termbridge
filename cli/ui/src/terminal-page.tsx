@@ -104,8 +104,10 @@ export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps
         : state === "error"
           ? "Unable to load terminals"
           : activeTerminalId
-            ? null
-            : "Loading terminal";
+          ? null
+          : "Loading terminal";
+
+  const handleSelectTerminal = onSelectTerminal ?? (() => undefined);
 
   return (
     <div className="relative grid h-full w-full grid-cols-1 grid-rows-[minmax(0,1fr)_auto] bg-background text-foreground">
@@ -129,7 +131,7 @@ export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps
         terminals={terminals}
         activeTerminalId={activeTerminalId}
         listState={state}
-        onSelectTerminal={onSelectTerminal ?? (() => undefined)}
+        onSelectTerminal={handleSelectTerminal}
       />
     </div>
   );

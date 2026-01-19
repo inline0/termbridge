@@ -190,6 +190,115 @@ describe("startCommand", () => {
     await result.stop();
   });
 
+  it("creates multiple sessions when configured", async () => {
+    const listen = vi.fn(async (): Promise<StartedServer> => ({
+      port: 6060,
+      close: vi.fn(async () => undefined)
+    }));
+    const createServer = vi.fn(() => ({ listen }));
+
+    const auth: Auth = {
+      issueToken: () => ({ token: "token" }),
+      redeemToken: () => null,
+      getSession: () => null,
+      getSessionFromRequest: () => null,
+      createSessionCookie: () => ""
+    };
+
+    const terminalBackend: TerminalBackend = {
+      createSession: vi.fn(async (name) => ({ name, createdAt: new Date() })),
+      write: vi.fn(async () => undefined),
+      resize: vi.fn(async () => undefined),
+      sendControl: vi.fn(async () => undefined),
+      onOutput: () => () => undefined,
+      closeSession: vi.fn(async () => undefined)
+    };
+
+    const terminalRegistry = createTerminalRegistryStub();
+
+    const tunnelProvider: TunnelProvider = {
+      start: vi.fn(async () => ({ publicUrl: "https://tunnel" })),
+      stop: vi.fn(async () => undefined)
+    };
+
+    const processRef = {
+      env: { TERMBRIDGE_SESSIONS: "3" },
+      on: vi.fn()
+    } as unknown as NodeJS.Process;
+
+    await startCommand(
+      { killOnExit: false, noQr: true, tunnel: "cloudflare", session: "dev" },
+      {
+        createServer,
+        createAuth: () => auth,
+        createTerminalBackend: () => terminalBackend,
+        createTerminalRegistry: () => terminalRegistry,
+        createTunnelProvider: () => tunnelProvider,
+        process: processRef,
+        logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+      }
+    );
+
+    expect(terminalBackend.createSession).toHaveBeenNthCalledWith(1, "dev");
+    expect(terminalBackend.createSession).toHaveBeenNthCalledWith(2, "dev-2");
+    expect(terminalBackend.createSession).toHaveBeenNthCalledWith(3, "dev-3");
+    expect(terminalBackend.createSession).toHaveBeenCalledTimes(3);
+    expect(terminalRegistry.add).toHaveBeenCalledTimes(3);
+  });
+
+  it("ignores invalid session counts", async () => {
+    const listen = vi.fn(async (): Promise<StartedServer> => ({
+      port: 6061,
+      close: vi.fn(async () => undefined)
+    }));
+    const createServer = vi.fn(() => ({ listen }));
+
+    const auth: Auth = {
+      issueToken: () => ({ token: "token" }),
+      redeemToken: () => null,
+      getSession: () => null,
+      getSessionFromRequest: () => null,
+      createSessionCookie: () => ""
+    };
+
+    const terminalBackend: TerminalBackend = {
+      createSession: vi.fn(async (name) => ({ name, createdAt: new Date() })),
+      write: vi.fn(async () => undefined),
+      resize: vi.fn(async () => undefined),
+      sendControl: vi.fn(async () => undefined),
+      onOutput: () => () => undefined,
+      closeSession: vi.fn(async () => undefined)
+    };
+
+    const terminalRegistry = createTerminalRegistryStub();
+
+    const tunnelProvider: TunnelProvider = {
+      start: vi.fn(async () => ({ publicUrl: "https://tunnel" })),
+      stop: vi.fn(async () => undefined)
+    };
+
+    const processRef = {
+      env: { TERMBRIDGE_SESSIONS: "nope" },
+      on: vi.fn()
+    } as unknown as NodeJS.Process;
+
+    await startCommand(
+      { killOnExit: false, noQr: true, tunnel: "cloudflare", session: "single" },
+      {
+        createServer,
+        createAuth: () => auth,
+        createTerminalBackend: () => terminalBackend,
+        createTerminalRegistry: () => terminalRegistry,
+        createTunnelProvider: () => tunnelProvider,
+        process: processRef,
+        logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+      }
+    );
+
+    expect(terminalBackend.createSession).toHaveBeenCalledTimes(1);
+    expect(terminalBackend.createSession).toHaveBeenCalledWith("single");
+  });
+
   it("cleans up when the tunnel fails", async () => {
     const close = vi.fn(async () => undefined);
     const createServer = vi.fn(() => ({

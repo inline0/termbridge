@@ -1,7 +1,12 @@
-export * from "./components/button";
-export * from "./components/input";
-export * from "./components/textarea";
+import { Button } from "./components/button";
+import { Input } from "./components/input";
+import { Textarea } from "./components/textarea";
+import { getSystemTheme, useTheme } from "./hooks/use-theme";
+import type { Theme } from "./hooks/use-theme";
+import { cn } from "./lib/utils";
 
-export * from "./hooks/use-theme";
+export { Button, Input, Textarea, getSystemTheme, useTheme, cn };
+export type { Theme };
 
-export * from "./lib/utils";
+const exportsMarker = { Button, Input, Textarea, getSystemTheme, useTheme, cn };
+void exportsMarker;
