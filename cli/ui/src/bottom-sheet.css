@@ -1,0 +1,31 @@
+.BottomSheet-view {
+  z-index: 50;
+  height: calc(var(--silk-100-lvh-dvh-pct) + 60px);
+}
+
+.BottomSheet-content {
+  box-sizing: border-box;
+  height: auto;
+  min-height: 160px;
+}
+
+.BottomSheet-bleedingBackground {
+  border-radius: 24px;
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 18px 40px -18px rgb(0 0 0 / 0.55);
+}
+
+.BottomSheet-backdrop {
+  background-color: rgb(0 0 0 / 0.5);
+  backdrop-filter: blur(6px);
+}
+
+.BottomSheet-handle {
+  width: 48px;
+  height: 5px;
+  border: 0;
+  border-radius: 9999px;
+  background-color: var(--muted-foreground);
+  cursor: pointer;
+}

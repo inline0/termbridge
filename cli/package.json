@@ -15,6 +15,7 @@
     "ui:build": "vite build --config vite.config.ts"
   },
   "dependencies": {
+    "@silk-hq/components": "^0.10.0",
     "@tanstack/react-router": "^1.151.6",
     "@termbridge/shared": "workspace:*",
     "@termbridge/terminal": "workspace:*",

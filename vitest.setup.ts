@@ -34,3 +34,32 @@ if (typeof window !== "undefined" && !window.matchMedia) {
     dispatchEvent: vi.fn()
   })) as typeof window.matchMedia;
 }
+
+if (typeof window !== "undefined" && !window.ResizeObserver) {
+  window.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as typeof ResizeObserver;
+}
+
+if (typeof window !== "undefined" && !window.visualViewport) {
+  Object.defineProperty(window, "visualViewport", {
+    value: {
+      height: 0,
+      width: 0,
+      offsetTop: 0,
+      offsetLeft: 0,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn()
+    },
+    writable: true
+  });
+}
+
+if (typeof document !== "undefined" && !document.timeline) {
+  Object.defineProperty(document, "timeline", {
+    value: { currentTime: 0 },
+    writable: true
+  });
+}

@@ -1,4 +1,4 @@
-import type { TerminalControlKey } from "@termbridge/shared";
+import type { TerminalControlKey, TerminalListItem } from "@termbridge/shared";
 import { Button, Input } from "@termbridge/ui";
 import {
   ArrowDown,
@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { type MutableRefObject, useEffect, useMemo, useRef, useState } from "react";
 import type { TerminalClient } from "./terminal-client";
+import type { TerminalListState } from "./terminal-list-state";
+import { TerminalSwitcher } from "./terminal-switcher";
 
 type ActionIcon = typeof ArrowUp;
 type Action =
@@ -34,9 +36,19 @@ type Action =
 
 type TerminalControlsProps = {
   clientRef: MutableRefObject<TerminalClient | null>;
+  terminals: TerminalListItem[];
+  activeTerminalId: string | null;
+  listState: TerminalListState;
+  onSelectTerminal: (terminalId: string) => void;
 };
 
-export const TerminalControls = ({ clientRef }: TerminalControlsProps) => {
+export const TerminalControls = ({
+  clientRef,
+  terminals,
+  activeTerminalId,
+  listState,
+  onSelectTerminal
+}: TerminalControlsProps) => {
   const actionScrollRef = useRef<HTMLDivElement | null>(null);
   const [message, setMessage] = useState("");
   const [showActions, setShowActions] = useState(false);
@@ -168,7 +180,7 @@ export const TerminalControls = ({ clientRef }: TerminalControlsProps) => {
         </div>
       ) : null}
       <div className="px-3 py-3">
-        <div className="flex w-full items-center gap-3">
+        <div className="flex w-full min-w-0 items-center gap-3">
           <Button
             type="button"
             variant="secondary"
@@ -183,7 +195,7 @@ export const TerminalControls = ({ clientRef }: TerminalControlsProps) => {
               className={`size-4 transition-transform duration-200 ${showActions ? "rotate-45" : ""}`}
             />
           </Button>
-          <div className="relative flex-1">
+          <div className="relative flex-1 min-w-0">
             <Input
               placeholder="Message"
               aria-label="Message"
@@ -208,6 +220,12 @@ export const TerminalControls = ({ clientRef }: TerminalControlsProps) => {
               <SendIcon className="size-4" />
             </Button>
           </div>
+          <TerminalSwitcher
+            terminals={terminals}
+            activeTerminalId={activeTerminalId}
+            listState={listState}
+            onSelectTerminal={onSelectTerminal}
+          />
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { TerminalListItem } from "@termbridge/shared";
 import { TerminalPage } from "./terminal-page";
 
 vi.mock("./terminal-client", () => ({
@@ -11,6 +12,13 @@ import { createTerminalClient } from "./terminal-client";
 describe("TerminalPage", () => {
   const originalFetch = global.fetch;
   const createTerminalClientMock = vi.mocked(createTerminalClient);
+  const makeTerminal = (id: string): TerminalListItem => ({
+    id,
+    label: `Terminal ${id}`,
+    status: "running",
+    createdAt: "2024-01-01T00:00:00.000Z",
+    source: "tmux"
+  });
 
   beforeEach(() => {
     createTerminalClientMock.mockReset();
@@ -24,7 +32,7 @@ describe("TerminalPage", () => {
   it("shows loading state", async () => {
     global.fetch = vi.fn(() => new Promise(() => undefined)) as typeof fetch;
 
-    render(<TerminalPage />);
+    render(<TerminalPage terminalId={null} />);
 
     expect(screen.getByRole("status")).toHaveTextContent("Loading terminal");
   });
@@ -36,7 +44,7 @@ describe("TerminalPage", () => {
     });
     global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
 
-    render(<TerminalPage />);
+    render(<TerminalPage terminalId={null} />);
 
     await waitFor(() => {
       expect(screen.getByRole("status")).toHaveTextContent("No terminals available");
@@ -47,7 +55,7 @@ describe("TerminalPage", () => {
     const response = new Response("", { status: 500 });
     global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
 
-    render(<TerminalPage />);
+    render(<TerminalPage terminalId={null} />);
 
     await waitFor(() => {
       expect(screen.getByRole("status")).toHaveTextContent("Unable to load terminals");
@@ -62,13 +70,13 @@ describe("TerminalPage", () => {
       sendInput: vi.fn()
     });
 
-    const response = new Response(JSON.stringify({ terminals: [{ id: "term-1" }] }), {
+    const response = new Response(JSON.stringify({ terminals: [makeTerminal("term-1")] }), {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
     global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
 
-    const { unmount } = render(<TerminalPage />);
+    const { unmount } = render(<TerminalPage terminalId="term-1" />);
 
     await waitFor(() => {
       expect(createTerminalClientMock).toHaveBeenCalled();
@@ -78,10 +86,43 @@ describe("TerminalPage", () => {
     expect(destroy).toHaveBeenCalled();
   });
 
+  it("navigates to the first terminal when none is selected", async () => {
+    const response = new Response(JSON.stringify({ terminals: [makeTerminal("term-1")] }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+    const onSelectTerminal = vi.fn();
+
+    render(<TerminalPage terminalId={null} onSelectTerminal={onSelectTerminal} />);
+
+    await waitFor(() => {
+      expect(onSelectTerminal).toHaveBeenCalledWith("term-1");
+    });
+  });
+
+  it("navigates to the first terminal when the id is unknown", async () => {
+    const response = new Response(
+      JSON.stringify({ terminals: [makeTerminal("term-1"), makeTerminal("term-2")] }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      }
+    );
+    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+    const onSelectTerminal = vi.fn();
+
+    render(<TerminalPage terminalId="term-99" onSelectTerminal={onSelectTerminal} />);
+
+    await waitFor(() => {
+      expect(onSelectTerminal).toHaveBeenCalledWith("term-1");
+    });
+  });
+
   it("ignores send clicks before the terminal client is ready", () => {
     global.fetch = vi.fn(() => new Promise(() => undefined)) as typeof fetch;
 
-    render(<TerminalPage />);
+    render(<TerminalPage terminalId="term-1" />);
 
     fireEvent.click(screen.getByLabelText("Send"));
 
@@ -97,12 +138,12 @@ describe("TerminalPage", () => {
       })
     ) as typeof fetch;
 
-    const { unmount } = render(<TerminalPage />);
+    const { unmount } = render(<TerminalPage terminalId="term-1" />);
     unmount();
 
     resolveFetch({
       ok: true,
-      json: async () => ({ terminals: [{ id: "term-1" }] })
+      json: async () => ({ terminals: [makeTerminal("term-1")] })
     } as Response);
 
     await Promise.resolve();
@@ -120,7 +161,7 @@ describe("TerminalPage", () => {
         })
     ) as typeof fetch;
 
-    const { unmount } = render(<TerminalPage />);
+    const { unmount } = render(<TerminalPage terminalId="term-1" />);
     unmount();
 
     rejectFetch(new Error("boom"));
@@ -134,13 +175,13 @@ describe("TerminalPage", () => {
     const sendInput = vi.fn();
     createTerminalClientMock.mockReturnValue({ destroy, sendControl: vi.fn(), sendInput });
 
-    const response = new Response(JSON.stringify({ terminals: [{ id: "term-1" }] }), {
+    const response = new Response(JSON.stringify({ terminals: [makeTerminal("term-1")] }), {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
     global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
 
-    render(<TerminalPage />);
+    render(<TerminalPage terminalId="term-1" />);
 
     await waitFor(() => {
       expect(createTerminalClientMock).toHaveBeenCalled();
@@ -160,13 +201,13 @@ describe("TerminalPage", () => {
     const sendInput = vi.fn();
     createTerminalClientMock.mockReturnValue({ destroy, sendControl: vi.fn(), sendInput });
 
-    const response = new Response(JSON.stringify({ terminals: [{ id: "term-1" }] }), {
+    const response = new Response(JSON.stringify({ terminals: [makeTerminal("term-1")] }), {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
     global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
 
-    render(<TerminalPage />);
+    render(<TerminalPage terminalId="term-1" />);
 
     await waitFor(() => {
       expect(createTerminalClientMock).toHaveBeenCalled();
@@ -183,13 +224,13 @@ describe("TerminalPage", () => {
     const sendInput = vi.fn();
     createTerminalClientMock.mockReturnValue({ destroy, sendControl: vi.fn(), sendInput });
 
-    const response = new Response(JSON.stringify({ terminals: [{ id: "term-1" }] }), {
+    const response = new Response(JSON.stringify({ terminals: [makeTerminal("term-1")] }), {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
     global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
 
-    render(<TerminalPage />);
+    render(<TerminalPage terminalId="term-1" />);
 
     await waitFor(() => {
       expect(createTerminalClientMock).toHaveBeenCalled();
@@ -208,13 +249,13 @@ describe("TerminalPage", () => {
     const sendInput = vi.fn();
     createTerminalClientMock.mockReturnValue({ destroy, sendControl: vi.fn(), sendInput });
 
-    const response = new Response(JSON.stringify({ terminals: [{ id: "term-1" }] }), {
+    const response = new Response(JSON.stringify({ terminals: [makeTerminal("term-1")] }), {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
     global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
 
-    render(<TerminalPage />);
+    render(<TerminalPage terminalId="term-1" />);
 
     await waitFor(() => {
       expect(createTerminalClientMock).toHaveBeenCalled();
@@ -232,13 +273,13 @@ describe("TerminalPage", () => {
     const sendControl = vi.fn();
     createTerminalClientMock.mockReturnValue({ destroy, sendControl, sendInput: vi.fn() });
 
-    const response = new Response(JSON.stringify({ terminals: [{ id: "term-1" }] }), {
+    const response = new Response(JSON.stringify({ terminals: [makeTerminal("term-1")] }), {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
     global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
 
-    render(<TerminalPage />);
+    render(<TerminalPage terminalId="term-1" />);
 
     await waitFor(() => {
       expect(createTerminalClientMock).toHaveBeenCalled();
@@ -257,13 +298,13 @@ describe("TerminalPage", () => {
     const sendControl = vi.fn();
     createTerminalClientMock.mockReturnValue({ destroy, sendControl, sendInput });
 
-    const response = new Response(JSON.stringify({ terminals: [{ id: "term-1" }] }), {
+    const response = new Response(JSON.stringify({ terminals: [makeTerminal("term-1")] }), {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
     global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
 
-    render(<TerminalPage />);
+    render(<TerminalPage terminalId="term-1" />);
 
     await waitFor(() => {
       expect(createTerminalClientMock).toHaveBeenCalled();
@@ -279,7 +320,7 @@ describe("TerminalPage", () => {
   it("ignores action presses before the terminal client is ready", () => {
     global.fetch = vi.fn(() => new Promise(() => undefined)) as typeof fetch;
 
-    render(<TerminalPage />);
+    render(<TerminalPage terminalId="term-1" />);
 
     fireEvent.click(screen.getByLabelText("Add"));
     fireEvent.click(screen.getByLabelText("Up"));
@@ -295,7 +336,7 @@ describe("TerminalPage", () => {
       sendInput: vi.fn()
     });
 
-    const response = new Response(JSON.stringify({ terminals: [{ id: "term-1" }] }), {
+    const response = new Response(JSON.stringify({ terminals: [makeTerminal("term-1")] }), {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
@@ -312,7 +353,7 @@ describe("TerminalPage", () => {
 
     window.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 
-    const { unmount } = render(<TerminalPage />);
+    const { unmount } = render(<TerminalPage terminalId="term-1" />);
 
     await waitFor(() => {
       expect(createTerminalClientMock).toHaveBeenCalled();
@@ -336,13 +377,13 @@ describe("TerminalPage", () => {
       sendInput: vi.fn()
     });
 
-    const response = new Response(JSON.stringify({ terminals: [{ id: "term-1" }] }), {
+    const response = new Response(JSON.stringify({ terminals: [makeTerminal("term-1")] }), {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
     global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
 
-    render(<TerminalPage />);
+    render(<TerminalPage terminalId="term-1" />);
 
     await waitFor(() => {
       expect(createTerminalClientMock).toHaveBeenCalled();

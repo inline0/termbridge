@@ -1,5 +1,7 @@
 @import "../../../packages/ui/src/styles.css";
+@import "@silk-hq/components/layered-styles.css";
 @import "@xterm/xterm/css/xterm.css";
+@import "./bottom-sheet.css";
 
 @source "../../../packages/ui/src";
 

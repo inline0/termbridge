@@ -1,15 +1,19 @@
-import type { TerminalListResponse } from "@termbridge/shared";
-import { useEffect, useRef, useState } from "react";
+import type { TerminalListItem, TerminalListResponse } from "@termbridge/shared";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { type TerminalClient, createTerminalClient } from "./terminal-client";
 import { TerminalControls } from "./terminal-controls";
+import type { TerminalListState } from "./terminal-list-state";
 
-type LoadState = "loading" | "ready" | "empty" | "error";
+type TerminalPageProps = {
+  terminalId?: string | null;
+  onSelectTerminal?: (terminalId: string) => void;
+};
 
-export const TerminalPage = () => {
+export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps) => {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const clientRef = useRef<TerminalClient | null>(null);
-  const [state, setState] = useState<LoadState>("loading");
-  const [terminalId, setTerminalId] = useState<string | null>(null);
+  const [state, setState] = useState<TerminalListState>("loading");
+  const [terminals, setTerminals] = useState<TerminalListItem[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -23,18 +27,19 @@ export const TerminalPage = () => {
         }
 
         const payload = (await response.json()) as TerminalListResponse;
-        const first = payload.terminals[0];
+        const nextTerminals = payload.terminals;
 
         if (!active) {
           return;
         }
 
-        if (!first) {
+        setTerminals(nextTerminals);
+
+        if (nextTerminals.length === 0) {
           setState("empty");
           return;
         }
 
-        setTerminalId(first.id);
         setState("ready");
       } catch {
         if (active) {
@@ -50,19 +55,46 @@ export const TerminalPage = () => {
     };
   }, []);
 
+  const activeTerminalId = useMemo(() => {
+    if (state !== "ready" || !terminalId) {
+      return null;
+    }
+
+    return terminals.some((terminal) => terminal.id === terminalId) ? terminalId : null;
+  }, [state, terminalId, terminals]);
+
   useEffect(() => {
-    if (state !== "ready" || !terminalId || !hostRef.current) {
+    if (state !== "ready" || terminals.length === 0) {
       return;
     }
 
-    const client = createTerminalClient(hostRef.current, terminalId);
+    const hasMatch = terminalId
+      ? terminals.some((terminal) => terminal.id === terminalId)
+      : false;
+
+    if (hasMatch) {
+      return;
+    }
+
+    const fallback = terminals[0]?.id;
+    if (fallback && onSelectTerminal) {
+      onSelectTerminal(fallback);
+    }
+  }, [state, terminals, terminalId, onSelectTerminal]);
+
+  useEffect(() => {
+    if (state !== "ready" || !activeTerminalId || !hostRef.current) {
+      return;
+    }
+
+    const client = createTerminalClient(hostRef.current, activeTerminalId);
     clientRef.current = client;
 
     return () => {
       clientRef.current = null;
       client.destroy();
     };
-  }, [state, terminalId]);
+  }, [state, activeTerminalId]);
 
   const statusLabel =
     state === "loading"
@@ -71,13 +103,15 @@ export const TerminalPage = () => {
         ? "No terminals available"
         : state === "error"
           ? "Unable to load terminals"
-          : null;
+          : activeTerminalId
+            ? null
+            : "Loading terminal";
 
   return (
     <div className="relative grid h-full w-full grid-cols-1 grid-rows-[minmax(0,1fr)_auto] bg-background text-foreground">
       {statusLabel ? (
         <div
-          className="terminal-status absolute inset-0 z-20 flex items-center justify-center bg-background/85 text-xs font-medium uppercase tracking-[0.2em]"
+          className="terminal-status absolute inset-0 z-20 flex items-center justify-center bg-background/85 text-xs font-medium text-muted-foreground"
           role="status"
         >
           {statusLabel}
@@ -90,7 +124,13 @@ export const TerminalPage = () => {
           data-testid="terminal-host"
         />
       </div>
-      <TerminalControls clientRef={clientRef} />
+      <TerminalControls
+        clientRef={clientRef}
+        terminals={terminals}
+        activeTerminalId={activeTerminalId}
+        listState={state}
+        onSelectTerminal={onSelectTerminal ?? (() => undefined)}
+      />
     </div>
   );
 };
