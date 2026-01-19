@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { TerminalPage } from "./terminal-page";
 
 vi.mock("./terminal-client", () => ({
@@ -56,7 +56,11 @@ describe("TerminalPage", () => {
 
   it("creates the terminal client for the first session", async () => {
     const destroy = vi.fn();
-    createTerminalClientMock.mockReturnValue({ destroy, sendControl: vi.fn() });
+    createTerminalClientMock.mockReturnValue({
+      destroy,
+      sendControl: vi.fn(),
+      sendInput: vi.fn()
+    });
 
     const response = new Response(JSON.stringify({ terminals: [{ id: "term-1" }] }), {
       status: 200,
@@ -72,6 +76,16 @@ describe("TerminalPage", () => {
 
     unmount();
     expect(destroy).toHaveBeenCalled();
+  });
+
+  it("ignores send clicks before the terminal client is ready", () => {
+    global.fetch = vi.fn(() => new Promise(() => undefined)) as typeof fetch;
+
+    render(<TerminalPage />);
+
+    fireEvent.click(screen.getByLabelText("Send"));
+
+    expect(createTerminalClientMock).not.toHaveBeenCalled();
   });
 
   it("avoids state updates after unmount", async () => {
@@ -113,5 +127,247 @@ describe("TerminalPage", () => {
     await Promise.resolve();
 
     expect(createTerminalClientMock).not.toHaveBeenCalled();
+  });
+
+  it("sends input when the send button is clicked", async () => {
+    const destroy = vi.fn();
+    const sendInput = vi.fn();
+    createTerminalClientMock.mockReturnValue({ destroy, sendControl: vi.fn(), sendInput });
+
+    const response = new Response(JSON.stringify({ terminals: [{ id: "term-1" }] }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+
+    render(<TerminalPage />);
+
+    await waitFor(() => {
+      expect(createTerminalClientMock).toHaveBeenCalled();
+    });
+
+    const input = screen.getByLabelText("Message");
+    fireEvent.change(input, { target: { value: "ls -la" } });
+    fireEvent.click(screen.getByLabelText("Send"));
+
+    expect(sendInput).toHaveBeenCalledWith("ls -la");
+    expect(sendInput).toHaveBeenCalledWith("\r");
+    expect(input).toHaveValue("");
+  });
+
+  it("sends only a newline when the message is empty", async () => {
+    const destroy = vi.fn();
+    const sendInput = vi.fn();
+    createTerminalClientMock.mockReturnValue({ destroy, sendControl: vi.fn(), sendInput });
+
+    const response = new Response(JSON.stringify({ terminals: [{ id: "term-1" }] }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+
+    render(<TerminalPage />);
+
+    await waitFor(() => {
+      expect(createTerminalClientMock).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByLabelText("Send"));
+
+    expect(sendInput).toHaveBeenCalledTimes(1);
+    expect(sendInput).toHaveBeenCalledWith("\r");
+  });
+
+  it("sends input on enter keypress", async () => {
+    const destroy = vi.fn();
+    const sendInput = vi.fn();
+    createTerminalClientMock.mockReturnValue({ destroy, sendControl: vi.fn(), sendInput });
+
+    const response = new Response(JSON.stringify({ terminals: [{ id: "term-1" }] }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+
+    render(<TerminalPage />);
+
+    await waitFor(() => {
+      expect(createTerminalClientMock).toHaveBeenCalled();
+    });
+
+    const input = screen.getByLabelText("Message");
+    fireEvent.change(input, { target: { value: "pwd" } });
+    fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+
+    expect(sendInput).toHaveBeenCalledWith("pwd");
+    expect(sendInput).toHaveBeenCalledWith("\r");
+  });
+
+  it("ignores non-enter keypresses in the message input", async () => {
+    const destroy = vi.fn();
+    const sendInput = vi.fn();
+    createTerminalClientMock.mockReturnValue({ destroy, sendControl: vi.fn(), sendInput });
+
+    const response = new Response(JSON.stringify({ terminals: [{ id: "term-1" }] }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+
+    render(<TerminalPage />);
+
+    await waitFor(() => {
+      expect(createTerminalClientMock).toHaveBeenCalled();
+    });
+
+    const input = screen.getByLabelText("Message");
+    fireEvent.change(input, { target: { value: "pwd" } });
+    fireEvent.keyDown(input, { key: "a", code: "KeyA" });
+
+    expect(sendInput).not.toHaveBeenCalled();
+  });
+
+  it("shows action bar and sends control keys", async () => {
+    const destroy = vi.fn();
+    const sendControl = vi.fn();
+    createTerminalClientMock.mockReturnValue({ destroy, sendControl, sendInput: vi.fn() });
+
+    const response = new Response(JSON.stringify({ terminals: [{ id: "term-1" }] }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+
+    render(<TerminalPage />);
+
+    await waitFor(() => {
+      expect(createTerminalClientMock).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByLabelText("Add"));
+    const actionButton = screen.getByLabelText("Up");
+    fireEvent.click(actionButton);
+
+    expect(sendControl).toHaveBeenCalledWith("up");
+  });
+
+  it("sends input for enter action", async () => {
+    const destroy = vi.fn();
+    const sendInput = vi.fn();
+    const sendControl = vi.fn();
+    createTerminalClientMock.mockReturnValue({ destroy, sendControl, sendInput });
+
+    const response = new Response(JSON.stringify({ terminals: [{ id: "term-1" }] }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+
+    render(<TerminalPage />);
+
+    await waitFor(() => {
+      expect(createTerminalClientMock).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByLabelText("Add"));
+    fireEvent.click(screen.getByLabelText("Enter"));
+
+    expect(sendInput).toHaveBeenCalledWith("\r");
+    expect(sendControl).not.toHaveBeenCalled();
+  });
+
+  it("ignores action presses before the terminal client is ready", () => {
+    global.fetch = vi.fn(() => new Promise(() => undefined)) as typeof fetch;
+
+    render(<TerminalPage />);
+
+    fireEvent.click(screen.getByLabelText("Add"));
+    fireEvent.click(screen.getByLabelText("Up"));
+
+    expect(createTerminalClientMock).not.toHaveBeenCalled();
+  });
+
+  it("wires a resize observer for the actions strip when available", async () => {
+    const destroy = vi.fn();
+    createTerminalClientMock.mockReturnValue({
+      destroy,
+      sendControl: vi.fn(),
+      sendInput: vi.fn()
+    });
+
+    const response = new Response(JSON.stringify({ terminals: [{ id: "term-1" }] }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+
+    const observe = vi.fn();
+    const disconnect = vi.fn();
+    const originalResizeObserver = window.ResizeObserver;
+
+    class ResizeObserverMock {
+      observe = observe;
+      disconnect = disconnect;
+    }
+
+    window.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
+
+    const { unmount } = render(<TerminalPage />);
+
+    await waitFor(() => {
+      expect(createTerminalClientMock).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByLabelText("Add"));
+
+    expect(observe).toHaveBeenCalled();
+
+    unmount();
+    expect(disconnect).toHaveBeenCalled();
+
+    window.ResizeObserver = originalResizeObserver;
+  });
+
+  it("shows scroll gradients when actions overflow", async () => {
+    const destroy = vi.fn();
+    createTerminalClientMock.mockReturnValue({
+      destroy,
+      sendControl: vi.fn(),
+      sendInput: vi.fn()
+    });
+
+    const response = new Response(JSON.stringify({ terminals: [{ id: "term-1" }] }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+
+    render(<TerminalPage />);
+
+    await waitFor(() => {
+      expect(createTerminalClientMock).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByLabelText("Add"));
+    const scrollArea = screen.getByTestId("terminal-actions-scroll");
+
+    Object.defineProperty(scrollArea, "scrollWidth", { value: 300, configurable: true });
+    Object.defineProperty(scrollArea, "clientWidth", { value: 100, configurable: true });
+
+    scrollArea.scrollLeft = 0;
+    fireEvent.scroll(scrollArea);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("terminal-actions-gradient-left")).toBeNull();
+      expect(screen.getByTestId("terminal-actions-gradient-right")).toBeTruthy();
+    });
+
+    scrollArea.scrollLeft = 120;
+    fireEvent.scroll(scrollArea);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("terminal-actions-gradient-left")).toBeTruthy();
+      expect(screen.getByTestId("terminal-actions-gradient-right")).toBeTruthy();
+    });
   });
 });

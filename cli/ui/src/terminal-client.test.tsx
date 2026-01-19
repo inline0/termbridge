@@ -164,6 +164,7 @@ describe("terminal-client", () => {
     socket.emit("message", "invalid-json");
     socket.emit("message", 10);
     client.sendControl("ctrl_c");
+    client.sendInput("echo hi");
 
     windowListeners.resize?.();
 
@@ -173,6 +174,42 @@ describe("terminal-client", () => {
     client.destroy();
     expect(socket.close).toHaveBeenCalled();
     expect(terminal.dispose).toHaveBeenCalled();
+  });
+
+  it("does not send empty input payloads", () => {
+    const terminal = new FakeTerminal();
+    const fitAddon = new FakeFitAddon();
+    fitAddon.proposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
+
+    const windowRef = {
+      location: { protocol: "http:", host: "localhost" },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callback(0);
+        return 1;
+      },
+      cancelAnimationFrame: vi.fn()
+    } as unknown as Window;
+
+    const socket = new FakeWebSocket("ws://localhost");
+    const WebSocketImpl = createWebSocketCtor(socket);
+
+    const client = createTerminalClient(document.body, "terminal-input-empty", {
+      createTerminal: () => terminal as unknown as Terminal,
+      createFitAddon: () => fitAddon as unknown as FitAddon,
+      WebSocketImpl,
+      windowRef
+    });
+
+    socket.emit("open");
+    client.sendInput("ls");
+    const sendCount = socket.send.mock.calls.length;
+    client.sendInput("");
+
+    expect(socket.send.mock.calls.length).toBe(sendCount);
+
+    client.destroy();
   });
 
   it("sizes to the container on open", () => {

@@ -10,6 +10,7 @@ import type {
 
 export type TerminalClient = {
   sendControl: (key: TerminalControlKey) => void;
+  sendInput: (data: string) => void;
   destroy: () => void;
 };
 
@@ -265,6 +266,14 @@ export const createTerminalClient = (
     sendMessage({ type: "control", key });
   };
 
+  const sendInput = (data: string) => {
+    if (!data) {
+      return;
+    }
+
+    sendMessage({ type: "input", data });
+  };
+
   const destroy = () => {
     windowRef.removeEventListener("resize", scheduleResize);
     resizeObserver?.disconnect();
@@ -280,5 +289,5 @@ export const createTerminalClient = (
     terminal.dispose();
   };
 
-  return { sendControl, destroy };
+  return { sendControl, sendInput, destroy };
 };

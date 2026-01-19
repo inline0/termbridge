@@ -4,7 +4,7 @@ import { router } from "./router";
 
 const THEME_STORAGE_KEY = "termbridge.theme";
 
-const getStoredTheme = (): Theme | null => {
+export const getStoredTheme = (): Theme | null => {
   if (typeof window === "undefined") {
     return null;
   }
@@ -15,7 +15,7 @@ const getStoredTheme = (): Theme | null => {
     : null;
 };
 
-const setStoredTheme = (theme: Theme) => {
+export const setStoredTheme = (theme: Theme) => {
   if (typeof window === "undefined") {
     return;
   }

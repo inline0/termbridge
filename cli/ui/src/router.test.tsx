@@ -4,7 +4,11 @@ import { RouterProvider } from "@tanstack/react-router";
 import { router } from "./router";
 
 vi.mock("./terminal-client", () => ({
-  createTerminalClient: vi.fn(() => ({ destroy: vi.fn(), sendControl: vi.fn() }))
+  createTerminalClient: vi.fn(() => ({
+    destroy: vi.fn(),
+    sendControl: vi.fn(),
+    sendInput: vi.fn()
+  }))
 }));
 
 describe("router", () => {
