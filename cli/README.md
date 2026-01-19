@@ -17,6 +17,10 @@ npx termbridge
 
 Scan the QR code and open the URL on your phone. The CLI stays running while the tunnel is active.
 
+## Documentation
+
+Visit `https://termbridge.dev` for the full docs, architecture notes, and troubleshooting.
+
 ## CLI usage
 
 ```bash

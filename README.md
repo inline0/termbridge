@@ -1,15 +1,36 @@
-# Termbridge
+<p align="center">
+  <a href="https://termbridge.dev">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="./.github/logo-dark.svg">
+      <source media="(prefers-color-scheme: light)" srcset="./.github/logo-light.svg">
+      <img alt="Termbridge" src="./.github/logo-light.svg" width="280">
+    </picture>
+  </a>
+</p>
 
-Local-first terminal beaming with tmux + Cloudflare tunnel and a mobile-friendly UI.
+<p align="center">
+  Local-first terminal beaming with tmux + Cloudflare tunnel and a mobile-friendly UI
+</p>
 
-## Quick start
+---
+
+Beam your local terminal to your phone in seconds.
+
+## Features
+
+- **One Command** - `npx termbridge` spins up the server and tunnel
+- **Multi-Terminal** - one server, multiple tmux sessions
+- **Mobile-First UI** - single terminal viewport with quick actions
+- **Cloudflare Tunnels** - secure public URL without router config
+- **Local by Default** - no remote server required
+- **Open Source** - MIT licensed
+
+## Quick Start
 
 Prereqs:
 - Node.js 18+
 - tmux in PATH
 - cloudflared in PATH
-
-Run:
 
 ```bash
 npx termbridge
@@ -35,6 +56,10 @@ Flags:
 - `TERMBRIDGE_SESSIONS=2`: create multiple tmux sessions on start
 - `TERMBRIDGE_INSECURE_COOKIE=1`: allow HTTP cookies for local dev
 - `TERMBRIDGE_DEV_UI=http://127.0.0.1:5173`: override Vite dev UI URL
+
+## Documentation
+
+Visit `https://termbridge.dev` for full docs, architecture notes, and troubleshooting.
 
 ## Development
 

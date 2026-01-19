@@ -1,0 +1,72 @@
+---
+title: CLI Reference
+description: Commands, flags, and environment variables.
+---
+
+# CLI Reference
+
+## `termbridge`
+
+Running without a subcommand is equivalent to `termbridge start`.
+
+```bash
+termbridge
+```
+
+## `termbridge start`
+
+Starts the local server, creates a tmux session, and launches the Cloudflare tunnel.
+
+```bash
+termbridge start --port 7000 --session dev --kill-on-exit --no-qr --tunnel cloudflare
+```
+
+### Flags
+
+| Flag | Description | Default |
+| --- | --- | --- |
+| `--port <port>` | Bind the local server to a fixed port | random free port |
+| `--session <name>` | tmux session name override | auto-generated |
+| `--kill-on-exit` | kill tmux sessions on exit | `false` |
+| `--no-qr` | disable QR code output | `false` |
+| `--tunnel cloudflare` | tunnel provider | `cloudflare` |
+
+### Examples
+
+Default:
+
+```bash
+npx termbridge
+```
+
+Fixed port and custom session:
+
+```bash
+termbridge start --port 7000 --session codex
+```
+
+Exit cleanup:
+
+```bash
+termbridge start --kill-on-exit
+```
+
+No QR (for scripts):
+
+```bash
+termbridge start --no-qr
+```
+
+## Environment variables
+
+| Variable | Description |
+| --- | --- |
+| `TERMBRIDGE_SESSIONS=2` | Create multiple tmux sessions at startup (dev/testing). |
+| `TERMBRIDGE_INSECURE_COOKIE=1` | Allow HTTP cookies for local development. |
+| `TERMBRIDGE_DEV_UI=http://127.0.0.1:5173` | Override Vite dev UI URL when running `dev:beam`. |
+
+## Exit behavior
+
+- The CLI must keep running for the tunnel to stay active.
+- `Ctrl+C` shuts down the tunnel and the local server.
+- With `--kill-on-exit`, Termbridge closes the tmux sessions it created.

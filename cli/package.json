@@ -1,6 +1,6 @@
 {
   "name": "termbridge",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Local-first terminal beaming with tmux + Cloudflare tunnel and a mobile-friendly UI.",
   "license": "MIT",
@@ -22,7 +22,7 @@
     "xterm"
   ],
   "bin": {
-    "termbridge": "./dist/bin.js"
+    "termbridge": "dist/bin.js"
   },
   "scripts": {
     "build": "bun run ui:build && bunx tsup",

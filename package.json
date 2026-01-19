@@ -3,7 +3,8 @@
   "private": true,
   "workspaces": [
     "cli",
-    "packages/*"
+    "packages/*",
+    "apps/*"
   ],
   "scripts": {
     "dev": "bun run --cwd cli dev",

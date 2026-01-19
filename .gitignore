@@ -4,6 +4,9 @@ node_modules/
 
 # Build output
 dist/
+.output/
+.source/
+.tanstack/
 
 # Environment
 .env
