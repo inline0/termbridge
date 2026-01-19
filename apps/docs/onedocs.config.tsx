@@ -22,11 +22,6 @@ export default defineConfig({
   icon: "/icon.png",
   nav: {
     github: "inline0/termbridge",
-    links: [
-      { label: "Docs", href: "/docs" },
-      { label: "CLI", href: "/docs/cli" },
-      { label: "Development", href: "/docs/development" },
-    ],
   },
   homepage: {
     hero: {
