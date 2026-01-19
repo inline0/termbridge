@@ -220,12 +220,14 @@ export const TerminalControls = ({
               <SendIcon className="size-4" />
             </Button>
           </div>
-          <TerminalSwitcher
-            terminals={terminals}
-            activeTerminalId={activeTerminalId}
-            listState={listState}
-            onSelectTerminal={onSelectTerminal}
-          />
+          <div className="-ml-1 flex-shrink-0">
+            <TerminalSwitcher
+              terminals={terminals}
+              activeTerminalId={activeTerminalId}
+              listState={listState}
+              onSelectTerminal={onSelectTerminal}
+            />
+          </div>
         </div>
       </div>
     </div>
