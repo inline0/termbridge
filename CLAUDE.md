@@ -35,10 +35,12 @@ termbridge/
 │   ├── ui/                    # React UI (Vite)
 │   │   └── src/
 │   │       ├── main.tsx, app.tsx, router.tsx
-│   │       ├── terminal-page.tsx
-│   │       ├── terminal-client.ts  # xterm.js WebSocket
-│   │       ├── terminal-controls.tsx
-│   │       └── terminal-switcher.tsx
+│   │       ├── terminal-page.tsx     # Main terminal view with connection indicator
+│   │       ├── terminal-client.ts    # xterm.js WebSocket + reconnection logic
+│   │       ├── terminal-controls.tsx # Input bar and action buttons
+│   │       ├── terminal-switcher.tsx # Session picker bottom sheet
+│   │       ├── bottom-sheet.tsx      # Silk-based bottom sheet component
+│   │       └── styles.css            # Global styles + xterm overrides
 │   ├── integration/           # E2E tests (tmux + Playwright)
 │   ├── dist/                  # Built CLI (tsup)
 │   └── package.json
@@ -136,9 +138,10 @@ termbridge help               # Show help
 | `GET /s/:token` | Token redemption → cookie → redirect |
 | `GET /api/terminals` | List terminals (auth required) |
 | `POST /api/terminals` | Create terminal (auth required) |
+| `GET /api/csrf` | Get CSRF token for WebSocket connections |
 | `GET /healthz` | Health check |
 | `GET /app/*` | SPA fallback |
-| `WS /ws/terminal/:terminalId` | Terminal WebSocket |
+| `WS /ws/terminal/:terminalId?csrf=<token>` | Terminal WebSocket (requires CSRF token) |
 
 ---
 
@@ -152,7 +155,18 @@ termbridge help               # Show help
 ### Session
 - 144-bit session ID in HttpOnly cookie
 - 30-minute idle timeout, 8-hour max
+- CSRF token stored in session for WebSocket protection
 - `TERMBRIDGE_INSECURE_COOKIE=1` for local dev
+
+### CSRF Protection
+- WebSocket upgrades require CSRF token in query param
+- Token fetched via `GET /api/csrf` (requires valid session)
+- Prevents cross-site WebSocket hijacking
+
+### Input Limits
+- HTTP request body: 64KB max
+- WebSocket message: 1MB max
+- Terminal input per message: 64KB max
 
 ### Rate Limiting
 - Per-IP limits on token redemption
@@ -225,9 +239,27 @@ Browser → Public URL (tunnel) → Local HTTP/WS → tmux session
 1. Browser connects to Cloudflare tunnel URL
 2. `GET /s/:token` redeems token, sets session cookie
 3. Redirect to `/app`, load React SPA
-4. WebSocket to `/ws/terminal/:terminalId`
-5. Server validates terminal ID, streams tmux PTY
-6. Client sends input/resize/control back
+4. Fetch CSRF token via `GET /api/csrf`
+5. WebSocket to `/ws/terminal/:terminalId?csrf=<token>`
+6. Server validates session, CSRF, and terminal ID
+7. Streams tmux PTY output to client
+8. Client sends input/resize/control back
+
+---
+
+## Terminal Client
+
+### Connection States
+- `connecting` - Initial connection attempt
+- `connected` - WebSocket open and ready
+- `reconnecting` - Connection lost, attempting reconnect
+- `disconnected` - Connection failed after max retries
+
+### Reconnection Logic
+- Exponential backoff: 1s base, 30s max delay
+- Max 10 reconnect attempts before giving up
+- Automatic reconnect on unexpected disconnect
+- UI shows connection status indicator (colored dot)
 
 ---
 
