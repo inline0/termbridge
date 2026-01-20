@@ -14,9 +14,9 @@ vi.mock("@silk-hq/components", () => {
   };
 
   const createComponent =
-    (tag: keyof JSX.IntrinsicElements) =>
+    (tag: keyof React.JSX.IntrinsicElements) =>
     ({ children, ...rest }: { children?: React.ReactNode } & Record<string, unknown>) =>
-      React.createElement(tag, sanitizeProps(rest), children);
+      React.createElement(tag as string, sanitizeProps(rest), children);
 
   const SheetRoot = createComponent("div");
   const SheetView = createComponent("div");
@@ -122,9 +122,9 @@ if (typeof document !== "undefined" && !document.timeline) {
 }
 
 if (typeof window !== "undefined") {
-  const css = window.CSS ?? ({} as CSS);
+  const css = window.CSS ?? ({} as typeof window.CSS);
   if (!("supports" in css)) {
-    css.supports = () => false;
+    (css as { supports: (property: string, value?: string) => boolean }).supports = () => false;
   }
   window.CSS = css;
 }
