@@ -24,6 +24,10 @@ body {
   height: 100%;
 }
 
+.xterm .xterm-viewport {
+  background-color: var(--background);
+}
+
 .xterm-viewport::-webkit-scrollbar {
   width: 6px;
   background: transparent;

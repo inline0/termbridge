@@ -36,7 +36,7 @@ export const getWebSocketUrl = (terminalId: string, csrfToken: string, windowRef
 };
 
 const terminalTheme = {
-  background: "#09090b",
+  background: "#0a0a0a",
   foreground: "#e4e4e7",
   cursor: "#e4e4e7",
   cursorAccent: "#09090b",

@@ -81,7 +81,7 @@ export const TerminalSwitcher = ({
                         className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
                           isActive
                             ? "border-primary/60 bg-primary/10 text-foreground"
-                            : "border-border/60 bg-background/70 text-foreground hover:bg-background/90"
+                            : "border-transparent bg-background/70 text-foreground hover:bg-background/90"
                         }`}
                         onClick={() => onSelectTerminal(terminal.id)}
                       >
