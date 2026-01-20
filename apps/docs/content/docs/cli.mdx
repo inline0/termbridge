@@ -15,6 +15,14 @@ npx termbridge
 
 This starts everything: local server, tmux session, and Cloudflare tunnel.
 
+Running `termbridge` without a subcommand is equivalent to `termbridge start`.
+
+You can also run `termbridge start` explicitly with all flags:
+
+```bash
+termbridge start --port 8080 --session dev --kill-on-exit --no-qr --tunnel cloudflare
+```
+
 ## Flags
 
 | Flag | What it does | Default |
@@ -35,10 +43,10 @@ If you already have a tmux session running:
 termbridge --session my-session
 ```
 
-### Fixed port for bookmarking
+### Fixed port and custom session
 
 ```bash
-termbridge --port 8080
+termbridge --port 8080 --session codex
 ```
 
 ### Clean exit (no leftover sessions)

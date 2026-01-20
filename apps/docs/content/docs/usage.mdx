@@ -25,7 +25,19 @@ The bar scrolls horizontally - swipe to see more options.
 
 ## Multiple terminals
 
-Need more than one terminal? Termbridge can run several at once.
+Need more than one terminal? Termbridge can run several at once. One server can host multiple tmux sessions, and the UI includes a terminal switcher for selecting between them.
+
+Termbridge only lists sessions it created or attached to in the current run.
+
+### Development shortcut
+
+For development, you can start multiple sessions at once:
+
+```bash
+TERMBRIDGE_SESSIONS=3 npx termbridge
+```
+
+This creates three sessions: `<base>`, `<base>-2`, and `<base>-3`.
 
 ### Switch between terminals
 
@@ -67,6 +79,16 @@ tmux send-keys -t claude "claude" Enter
 
 Now scan the QR and watch Claude work from anywhere.
 
+### Codex workflow
+
+```bash
+tmux new-session -d -s codex
+tmux send-keys -t codex "codex" Enter
+termbridge start --session codex
+```
+
+If you run tools like Codex, OpenCode, or Claude Code inside tmux, Termbridge will stream them like any other terminal.
+
 ### Attach to an existing session
 
 If you already have a tmux session running:
@@ -103,11 +125,18 @@ termbridge --session server
 
 Share the public URL with someone - they can watch (and type) in real-time. Just remember the URL is only secured by the one-time token, so only share with people you trust.
 
+## Sending input
+
+- Type in the input field and press **Enter** to send
+- Use the send button to submit the input immediately
+- The action bar provides quick access to common terminal keys
+
 ## Tips
 
 - **Fonts matter**: The terminal looks best when your system has a monospace font loaded
-- **Resize works**: Rotate your device or resize the browser to adjust the terminal size
+- **Resize works**: Rotate your device or resize the browser to adjust the terminal size. For TUIs that rely on size (like `htop`), this will trigger a terminal fit.
 - **tmux commands work**: `Ctrl+B` shortcuts work as normal (though you might need to type them in the input field)
+- **tmux panes/windows**: Use tmux panes and windows as you normally would - Termbridge streams the active tmux session
 - **Reconnect automatically**: If you lose connection, just refresh the page
 
 ## Limitations

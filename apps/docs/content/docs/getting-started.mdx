@@ -112,6 +112,16 @@ Termbridge needs to stay running for the connection to work. When you're done:
 - The tunnel closes and the connection ends
 - Your tmux session stays alive (unless you used `--kill-on-exit`)
 
+## First session behavior
+
+- Termbridge creates a tmux session (default name is derived from the port)
+- The first terminal in the list is loaded automatically
+- You can create multiple sessions in dev by setting `TERMBRIDGE_SESSIONS=2`
+
+## Using an existing tmux session
+
+If you pass `--session <name>` and that session already exists, Termbridge will attach to it instead of creating a new one. This is useful for monitoring long-running processes you've already started.
+
 ## Next steps
 
 <Cards>

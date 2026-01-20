@@ -32,6 +32,14 @@ That's it. Your terminal is now accessible from your phone.
 
 Everything runs locally on your machine. The tunnel just makes it accessible - no data is stored anywhere else.
 
+## Core design
+
+**Local-first.** The server, WebSocket, and terminal registry live on your machine. There is no Termbridge-operated backend, and no data is stored externally.
+
+**Secure handoff.** Termbridge issues a one-time token and redeems it into a cookie session. The token URL is what you scan on mobile.
+
+**Mobile-friendly.** The UI is intentionally minimal: a full-height terminal with a compact control bar and a terminal switcher sheet.
+
 ## What you can do
 
 - **Full terminal access** - Colors, TUIs like htop, vim, and proper key handling all work
