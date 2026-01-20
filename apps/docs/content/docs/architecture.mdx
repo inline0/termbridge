@@ -48,14 +48,22 @@ Tmux session
 
 - One-time token is printed as a URL and encoded in a QR code.
 - `GET /s/:token` redeems the token and sets a cookie session.
-- WebSocket connections require a valid session cookie.
+- WebSocket connections require a valid session cookie and CSRF token.
+- CSRF token fetched via `GET /api/csrf` and passed in WebSocket query param.
+
+### Security
+
+- **CSRF protection**: WebSocket upgrades require a CSRF token to prevent cross-site hijacking.
+- **Input limits**: 64KB HTTP body, 1MB WebSocket message, 64KB terminal input per message.
+- **Rate limiting**: Per-IP limits on token redemption and WebSocket connections.
 
 ## API endpoints
 
 - `GET /healthz` - health check
 - `GET /api/terminals` - list terminals
+- `GET /api/csrf` - get CSRF token for WebSocket
 - `POST /api/terminals` - create a new tmux session
-- `WS /ws/terminal/:terminalId` - stream terminal I/O
+- `WS /ws/terminal/:terminalId?csrf=<token>` - stream terminal I/O
 
 ## WebSocket protocol
 
@@ -79,3 +87,5 @@ Server -> client:
 - Vite + TanStack Router
 - xterm.js + Fit addon + WebGL renderer
 - Mobile-first layout with a fixed input bar
+- Auto-reconnect with exponential backoff (up to 10 retries)
+- Connection status indicator
