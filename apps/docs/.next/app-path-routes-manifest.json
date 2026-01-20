@@ -1,0 +1,9 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/api/search/route": "/api/search",
+  "/docs/[[...slug]]/page": "/docs/[[...slug]]",
+  "/docs/opengraph-image/route": "/docs/opengraph-image",
+  "/opengraph-image/route": "/opengraph-image",
+  "/page": "/"
+}
