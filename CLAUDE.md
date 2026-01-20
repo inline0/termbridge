@@ -7,7 +7,7 @@ Local terminal beaming CLI. Exposes your terminal via a public HTTPS URL for mob
 Termbridge is an open-source CLI that runs entirely on the user's machine. It starts a local web server with a browser UI and WebSocket endpoint, backed by tmux PTY streaming. A Cloudflare tunnel exposes the local server on a public HTTPS URL with QR code for easy mobile access.
 
 **Package name:** `termbridge`
-**Version:** 0.1.1
+**Version:** 0.2.0
 **License:** MIT
 
 ---
