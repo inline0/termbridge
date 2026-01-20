@@ -1,0 +1,81 @@
+---
+title: Architecture
+description: How the local server, tunnel, and terminal streaming fit together.
+---
+
+# Architecture
+
+## High-level flow
+
+```
+Browser (phone)
+  |
+  | HTTPS
+  v
+Cloudflare Quick Tunnel
+  |
+  | HTTP/WS
+  v
+Local Termbridge server
+  |
+  | PTY
+  v
+Tmux session
+```
+
+## Components
+
+### CLI process
+
+- Starts the HTTP server that serves the UI assets.
+- Starts the WebSocket server for terminal I/O.
+- Creates one or more tmux sessions.
+- Issues one-time redemption tokens.
+- Starts and monitors the Cloudflare tunnel.
+
+### Terminal backend
+
+- Uses `node-pty` to attach to tmux for real keystrokes and output.
+- Sets `TERM=xterm-256color` and `COLORTERM=truecolor` for full color support.
+- Disables the tmux status bar to keep the UI clean.
+
+### Terminal registry
+
+- Tracks available terminal sessions.
+- Provides a list for the UI and validates selected terminal IDs.
+
+### Auth and session
+
+- One-time token is printed as a URL and encoded in a QR code.
+- `GET /s/:token` redeems the token and sets a cookie session.
+- WebSocket connections require a valid session cookie.
+
+## API endpoints
+
+- `GET /healthz` - health check
+- `GET /api/terminals` - list terminals
+- `POST /api/terminals` - create a new tmux session
+- `WS /ws/terminal/:terminalId` - stream terminal I/O
+
+## WebSocket protocol
+
+Client -> server:
+
+```json
+{ "type": "input", "data": "ls -la" }
+{ "type": "resize", "cols": 120, "rows": 32 }
+{ "type": "control", "key": "ctrl_c" }
+```
+
+Server -> client:
+
+```json
+{ "type": "output", "data": "..." }
+{ "type": "status", "state": "connected" }
+```
+
+## UI stack
+
+- Vite + TanStack Router
+- xterm.js + Fit addon + WebGL renderer
+- Mobile-first layout with a fixed input bar

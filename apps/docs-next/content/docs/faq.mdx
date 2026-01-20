@@ -1,0 +1,30 @@
+---
+title: FAQ
+description: Quick answers to common questions.
+---
+
+# FAQ
+
+## Does Termbridge run any backend server?
+
+No. Everything runs locally on your machine. The only public surface is the Cloudflare tunnel.
+
+## Can I run multiple terminals?
+
+Yes. One server can host multiple tmux sessions. Use the terminal switcher in the UI to select a session.
+
+## Is the tunnel URL secure?
+
+Termbridge issues a one-time token and redeems it for a cookie session. The token URL should only be shared with devices you trust.
+
+## Can I use it without Cloudflare?
+
+Not yet. The tunnel provider is currently Cloudflare only.
+
+## Does it support Windows?
+
+Not officially. macOS and Linux are the target platforms for the MVP.
+
+## Can I beam other tools (Codex, OpenCode, Claude Code)?
+
+Yes. If those tools run inside a tmux session on your machine, Termbridge will stream them just like any other terminal.

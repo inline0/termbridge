@@ -1,0 +1,70 @@
+---
+title: Getting Started
+description: Install prerequisites and run Termbridge for the first time.
+---
+
+# Getting Started
+
+## Prerequisites
+
+Termbridge depends on local tools that must be available in your PATH:
+
+- **Node.js 18+** (for `npx termbridge`)
+- **tmux** (terminal session manager)
+- **cloudflared** (Cloudflare Quick Tunnel)
+
+### macOS (Homebrew)
+
+```bash
+brew install node tmux cloudflared
+```
+
+### Linux
+
+Install Node and tmux through your package manager, then install cloudflared from Cloudflare:
+
+```bash
+# Example (Ubuntu)
+sudo apt-get update
+sudo apt-get install -y nodejs tmux
+```
+
+Cloudflare installation guide: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
+
+## Run Termbridge
+
+```bash
+npx termbridge
+```
+
+You should see:
+
+- A local URL (ex: `http://127.0.0.1:51234`)
+- A public tunnel URL
+- An ASCII QR code
+
+Open the public URL on your phone (or scan the QR code) to connect.
+
+## What happens next
+
+1. A local HTTP server starts on `127.0.0.1`.
+2. A tmux session is created (or reused if it already exists).
+3. A Cloudflare Quick Tunnel is launched.
+4. A one-time token URL is printed and encoded into the QR code.
+5. Your phone redeems the token and receives a session cookie.
+6. The UI connects to the terminal via WebSocket.
+
+## First session behavior
+
+- Termbridge creates a tmux session (default name is derived from the port).
+- The first terminal in the list is loaded automatically.
+- You can create multiple sessions in dev by setting `TERMBRIDGE_SESSIONS`.
+
+## Using an existing tmux session
+
+If you pass `--session <name>` and that session already exists, Termbridge will attach to it instead of creating a new one.
+
+## Next steps
+
+- **CLI Reference** for flags and environment variables.
+- **Usage** for multi-session workflows and mobile controls.
