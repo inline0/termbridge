@@ -96,6 +96,12 @@ const getCookie = (setCookie: string | null) => {
   return setCookie.split(";")[0] ?? "";
 };
 
+const getCsrfToken = async (baseUrl: string, cookie: string) => {
+  const response = await fetch(`${baseUrl}/api/csrf`, { headers: { cookie } });
+  const payload = (await response.json()) as { csrfToken: string };
+  return payload.csrfToken;
+};
+
 describe("createAppServer", () => {
   it("serves health and redirects", async () => {
     const fixture = await createServerFixture();
@@ -149,6 +155,46 @@ describe("createAppServer", () => {
 
     expect(listResponse.status).toBe(200);
     expect(listPayload.terminals).toHaveLength(1);
+
+    await fixture.close();
+  });
+
+  it("returns csrf token for authenticated requests", async () => {
+    const fixture = await createServerFixture();
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+
+    const csrfResponse = await fetch(`${fixture.baseUrl}/api/csrf`, { headers: { cookie } });
+    const payload = await csrfResponse.json() as { csrfToken: string };
+
+    expect(csrfResponse.status).toBe(200);
+    expect(payload.csrfToken).toBeDefined();
+    expect(typeof payload.csrfToken).toBe("string");
+
+    await fixture.close();
+  });
+
+  it("rejects csrf requests without auth", async () => {
+    const fixture = await createServerFixture();
+
+    const csrfResponse = await fetch(`${fixture.baseUrl}/api/csrf`);
+    expect(csrfResponse.status).toBe(401);
+
+    await fixture.close();
+  });
+
+  it("rejects non-GET methods on csrf endpoint", async () => {
+    const fixture = await createServerFixture();
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+
+    const csrfResponse = await fetch(`${fixture.baseUrl}/api/csrf`, {
+      method: "POST",
+      headers: { cookie }
+    });
+    expect(csrfResponse.status).toBe(404);
 
     await fixture.close();
   });
@@ -233,6 +279,26 @@ describe("createAppServer", () => {
     await fixture.close();
   });
 
+  it("rejects request bodies that are too large", async () => {
+    const fixture = await createServerFixture({ redemptionLimit: 5 });
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+
+    const largeBody = JSON.stringify({ name: "x".repeat(100 * 1024) }); // >64KB
+
+    const createResponse = await fetch(`${fixture.baseUrl}/api/terminals`, {
+      method: "POST",
+      headers: { cookie, "content-type": "application/json" },
+      body: largeBody
+    });
+
+    expect(createResponse.status).toBe(413);
+    expect(await createResponse.text()).toBe("request body too large");
+
+    await fixture.close();
+  });
+
   it("accepts malformed JSON bodies by falling back", async () => {
     const fixture = await createServerFixture({ redemptionLimit: 5 });
     const { token } = fixture.auth.issueToken();
@@ -272,11 +338,12 @@ describe("createAppServer", () => {
     const { token } = fixture.auth.issueToken();
     const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
     const cookie = getCookie(redeem.headers.get("set-cookie"));
+    const csrfToken = await getCsrfToken(fixture.baseUrl, cookie);
 
     const session = await fixture.backend.createSession("session-ws");
     const record = fixture.terminalRegistry.add(session.name, session.name, "tmux");
 
-    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/ws/terminal/${record.id}`,
+    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/ws/terminal/${record.id}?csrf=${csrfToken}`,
       { headers: { cookie } }
     );
 
@@ -308,16 +375,48 @@ describe("createAppServer", () => {
     await fixture.close();
   });
 
+  it("rejects websocket messages that are too large", async () => {
+    const fixture = await createServerFixture();
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+    const csrfToken = await getCsrfToken(fixture.baseUrl, cookie);
+
+    const session = await fixture.backend.createSession("session-large");
+    const record = fixture.terminalRegistry.add(session.name, session.name, "tmux");
+
+    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/ws/terminal/${record.id}?csrf=${csrfToken}`,
+      { headers: { cookie } }
+    );
+
+    const messages: string[] = [];
+    ws.on("message", (data) => messages.push(data.toString()));
+
+    await new Promise((resolve) => ws.on("open", resolve));
+
+    // Send input with data that exceeds MAX_INPUT_LENGTH (64KB)
+    const largeInput = JSON.stringify({ type: "input", data: "x".repeat(100 * 1024) });
+    ws.send(largeInput);
+
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    expect(messages.some((message) => message.includes("message too large"))).toBe(true);
+
+    ws.close();
+    await fixture.close();
+  });
+
   it("rejects websocket connections with invalid origins", async () => {
     const fixture = await createServerFixture();
     const { token } = fixture.auth.issueToken();
     const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
     const cookie = getCookie(redeem.headers.get("set-cookie"));
+    const csrfToken = await getCsrfToken(fixture.baseUrl, cookie);
 
     const session = await fixture.backend.createSession("session-origin");
     const record = fixture.terminalRegistry.add(session.name, session.name, "tmux");
 
-    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/ws/terminal/${record.id}`,
+    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/ws/terminal/${record.id}?csrf=${csrfToken}`,
       { headers: { cookie, origin: "http://evil.test" } }
     );
 
@@ -330,11 +429,12 @@ describe("createAppServer", () => {
     const { token } = fixture.auth.issueToken();
     const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
     const cookie = getCookie(redeem.headers.get("set-cookie"));
+    const csrfToken = await getCsrfToken(fixture.baseUrl, cookie);
 
     const session = await fixture.backend.createSession("session-bad-origin");
     const record = fixture.terminalRegistry.add(session.name, session.name, "tmux");
 
-    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/ws/terminal/${record.id}`,
+    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/ws/terminal/${record.id}?csrf=${csrfToken}`,
       { headers: { cookie, origin: "not-a-url" } }
     );
 
@@ -353,13 +453,48 @@ describe("createAppServer", () => {
     await fixture.close();
   });
 
-  it("rejects websocket connections without a terminal", async () => {
+  it("rejects websocket connections without csrf token", async () => {
     const fixture = await createServerFixture();
     const { token } = fixture.auth.issueToken();
     const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
     const cookie = getCookie(redeem.headers.get("set-cookie"));
 
-    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/ws/terminal/missing`, {
+    const session = await fixture.backend.createSession("session-no-csrf");
+    const record = fixture.terminalRegistry.add(session.name, session.name, "tmux");
+
+    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/ws/terminal/${record.id}`, {
+      headers: { cookie }
+    });
+
+    await new Promise((resolve) => ws.on("error", resolve));
+    await fixture.close();
+  });
+
+  it("rejects websocket connections with invalid csrf token", async () => {
+    const fixture = await createServerFixture();
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+
+    const session = await fixture.backend.createSession("session-bad-csrf");
+    const record = fixture.terminalRegistry.add(session.name, session.name, "tmux");
+
+    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/ws/terminal/${record.id}?csrf=invalid-token`, {
+      headers: { cookie }
+    });
+
+    await new Promise((resolve) => ws.on("error", resolve));
+    await fixture.close();
+  });
+
+  it("rejects websocket connections without a terminal", async () => {
+    const fixture = await createServerFixture();
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+    const csrfToken = await getCsrfToken(fixture.baseUrl, cookie);
+
+    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/ws/terminal/missing?csrf=${csrfToken}`, {
       headers: { cookie }
     });
 
@@ -390,11 +525,12 @@ describe("createAppServer", () => {
     const { token } = fixture.auth.issueToken();
     const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
     const cookie = getCookie(redeem.headers.get("set-cookie"));
+    const csrfToken = await getCsrfToken(fixture.baseUrl, cookie);
 
     const session = await fixture.backend.createSession("session-limit");
     const record = fixture.terminalRegistry.add(session.name, session.name, "tmux");
 
-    const wsUrl = `ws://127.0.0.1:${new URL(fixture.baseUrl).port}/ws/terminal/${record.id}`;
+    const wsUrl = `ws://127.0.0.1:${new URL(fixture.baseUrl).port}/ws/terminal/${record.id}?csrf=${csrfToken}`;
     const first = new WebSocket(wsUrl, { headers: { cookie } });
     await new Promise((resolve) => first.on("open", resolve));
 

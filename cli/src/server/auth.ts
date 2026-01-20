@@ -12,6 +12,7 @@ export type TokenRecord = {
 
 export type SessionRecord = {
   id: string;
+  csrfToken: string;
   createdAt: number;
   lastSeen: number;
 };
@@ -31,12 +32,15 @@ export type Auth = {
   getSession: (sessionId: string) => SessionRecord | null;
   getSessionFromRequest: (request: IncomingMessage) => SessionRecord | null;
   createSessionCookie: (sessionId: string) => string;
+  verifyCsrfToken: (sessionId: string, csrfToken: string) => boolean;
 };
 
 const hashToken = (token: string) =>
   createHash("sha256").update(token).digest("hex");
 
 const createSessionId = () => randomBytes(18).toString("base64url");
+
+const createCsrfToken = () => randomBytes(24).toString("base64url");
 
 const parseCookies = (cookieHeader: string | undefined) => {
   const cookies: Record<string, string> = {};
@@ -99,6 +103,7 @@ export const createAuth = ({
 
     const session: SessionRecord = {
       id: createSessionId(),
+      csrfToken: createCsrfToken(),
       createdAt: clock(),
       lastSeen: clock()
     };
@@ -156,11 +161,20 @@ export const createAuth = ({
     return parts.join("; ");
   };
 
+  const verifyCsrfToken = (sessionId: string, csrfToken: string) => {
+    const session = sessions.get(sessionId);
+    if (!session) {
+      return false;
+    }
+    return session.csrfToken === csrfToken;
+  };
+
   return {
     issueToken,
     redeemToken,
     getSession,
     getSessionFromRequest,
-    createSessionCookie
+    createSessionCookie,
+    verifyCsrfToken
   };
 };

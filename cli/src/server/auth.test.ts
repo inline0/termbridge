@@ -128,4 +128,20 @@ describe("createAuth", () => {
     expect(cookie).not.toContain("Secure");
     expect(cookie).toContain("SameSite=Lax");
   });
+
+  it("verifies CSRF tokens", () => {
+    const auth = createAuth({
+      tokenTtlMs: 1000,
+      sessionIdleMs: 5000,
+      sessionMaxMs: 10_000
+    });
+
+    const { token } = auth.issueToken();
+    const session = auth.redeemToken(token, "ip");
+
+    expect(session).not.toBeNull();
+    expect(auth.verifyCsrfToken(session!.id, session!.csrfToken)).toBe(true);
+    expect(auth.verifyCsrfToken(session!.id, "wrong-token")).toBe(false);
+    expect(auth.verifyCsrfToken("non-existent-session", "any-token")).toBe(false);
+  });
 });

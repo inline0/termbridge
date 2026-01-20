@@ -138,7 +138,7 @@ export const TerminalControls = ({
       {showActions ? (
         <div className="pt-3">
           <div className="relative">
-            <div className="h-11">
+            <div className="h-auto">
               <div
                 ref={actionScrollRef}
                 id="terminal-actions"

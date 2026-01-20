@@ -37,6 +37,10 @@ export type StartedServer = {
   close: () => Promise<void>;
 };
 
+const MAX_HTTP_BODY_SIZE = 64 * 1024; // 64KB for HTTP requests
+const MAX_WS_MESSAGE_SIZE = 1024 * 1024; // 1MB for WebSocket messages
+const MAX_INPUT_LENGTH = 64 * 1024; // 64KB for terminal input
+
 const jsonResponse = (response: ServerResponse, status: number, payload: unknown) => {
   const body = JSON.stringify(payload);
   response.statusCode = status;
@@ -45,10 +49,15 @@ const jsonResponse = (response: ServerResponse, status: number, payload: unknown
   response.end(body);
 };
 
-const readJsonBody = async (request: IncomingMessage) => {
+const readJsonBody = async (request: IncomingMessage): Promise<unknown | null | "too_large"> => {
   const chunks: Uint8Array[] = [];
+  let totalSize = 0;
 
   for await (const chunk of request) {
+    totalSize += chunk.length;
+    if (totalSize > MAX_HTTP_BODY_SIZE) {
+      return "too_large";
+    }
     chunks.push(chunk);
   }
 
@@ -81,14 +90,27 @@ const isAllowedOrigin = (origin: string | undefined, host: string | undefined) =
 
 const allowedControlKeys: Set<TerminalControlKey> = new Set(TERMINAL_CONTROL_KEYS);
 
-export const parseClientMessage = (payload: WebSocket.RawData): TerminalClientMessage | null => {
+export type ParseResult =
+  | { ok: true; message: TerminalClientMessage }
+  | { ok: false; error: "too_large" | "invalid" };
+
+export const parseClientMessage = (payload: WebSocket.RawData): ParseResult => {
+  const size = typeof payload === "string" ? payload.length : payload.byteLength;
+
+  if (size > MAX_WS_MESSAGE_SIZE) {
+    return { ok: false, error: "too_large" };
+  }
+
   const text = typeof payload === "string" ? payload : payload.toString();
 
   try {
     const parsed = JSON.parse(text) as TerminalClientMessage;
 
     if (parsed.type === "input" && typeof parsed.data === "string") {
-      return parsed;
+      if (parsed.data.length > MAX_INPUT_LENGTH) {
+        return { ok: false, error: "too_large" };
+      }
+      return { ok: true, message: parsed };
     }
 
     if (
@@ -96,16 +118,16 @@ export const parseClientMessage = (payload: WebSocket.RawData): TerminalClientMe
       typeof parsed.cols === "number" &&
       typeof parsed.rows === "number"
     ) {
-      return parsed;
+      return { ok: true, message: parsed };
     }
 
     if (parsed.type === "control" && allowedControlKeys.has(parsed.key)) {
-      return parsed;
+      return { ok: true, message: parsed };
     }
 
-    return null;
+    return { ok: false, error: "invalid" };
   } catch {
-    return null;
+    return { ok: false, error: "invalid" };
   }
 };
 
@@ -161,6 +183,25 @@ export const createAppServer = (deps: ServerDeps) => {
       return;
     }
 
+    if (url.pathname === "/api/csrf") {
+      const session = deps.auth.getSessionFromRequest(request);
+
+      if (!session) {
+        response.statusCode = 401;
+        response.end("unauthorized");
+        return;
+      }
+
+      if (request.method === "GET") {
+        jsonResponse(response, 200, { csrfToken: session.csrfToken });
+        return;
+      }
+
+      response.statusCode = 404;
+      response.end("not found");
+      return;
+    }
+
     if (url.pathname === "/api/terminals") {
       const session = deps.auth.getSessionFromRequest(request);
 
@@ -178,6 +219,12 @@ export const createAppServer = (deps: ServerDeps) => {
 
       if (request.method === "POST") {
         const body = await readJsonBody(request);
+
+        if (body === "too_large") {
+          response.statusCode = 413;
+          response.end("request body too large");
+          return;
+        }
 
         if (body && typeof body !== "object") {
           response.statusCode = 400;
@@ -239,6 +286,13 @@ export const createAppServer = (deps: ServerDeps) => {
       return;
     }
 
+    const csrfToken = url.searchParams.get("csrf");
+
+    if (!csrfToken || !deps.auth.verifyCsrfToken(session.id, csrfToken)) {
+      socket.destroy();
+      return;
+    }
+
     const record = deps.terminalRegistry.get(terminalId);
 
     if (!record) {
@@ -262,16 +316,18 @@ export const createAppServer = (deps: ServerDeps) => {
     });
 
     socket.on("message", (payload) => {
-      const message = parseClientMessage(payload);
+      const result = parseClientMessage(payload);
 
-      if (!message) {
+      if (!result.ok) {
         sendWsMessage(socket, {
           type: "status",
           state: "error",
-          message: "invalid payload"
+          message: result.error === "too_large" ? "message too large" : "invalid payload"
         });
         return;
       }
+
+      const message = result.message;
 
       if (message.type === "input") {
         void deps.terminalBackend.write(info.sessionName, message.data);

@@ -20,6 +20,35 @@ describe("TerminalPage", () => {
     source: "tmux"
   });
 
+  const createMockClient = (overrides: {
+    destroy?: ReturnType<typeof vi.fn>;
+    sendControl?: ReturnType<typeof vi.fn>;
+    sendInput?: ReturnType<typeof vi.fn>;
+    getConnectionState?: ReturnType<typeof vi.fn>;
+    onConnectionStateChange?: ReturnType<typeof vi.fn>;
+  } = {}) => ({
+    destroy: overrides.destroy ?? vi.fn(),
+    sendControl: overrides.sendControl ?? vi.fn(),
+    sendInput: overrides.sendInput ?? vi.fn(),
+    getConnectionState: overrides.getConnectionState ?? vi.fn(() => "connected"),
+    onConnectionStateChange: overrides.onConnectionStateChange ?? vi.fn(() => () => undefined)
+  });
+
+  const createMockFetch = (terminals: TerminalListItem[], status = 200) => {
+    return vi.fn(async (url: string) => {
+      if (url.includes("/api/csrf")) {
+        return new Response(JSON.stringify({ csrfToken: "test-csrf-token" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      return new Response(JSON.stringify({ terminals }), {
+        status,
+        headers: { "Content-Type": "application/json" }
+      });
+    }) as unknown as typeof fetch;
+  };
+
   beforeEach(() => {
     createTerminalClientMock.mockReset();
   });
@@ -38,11 +67,7 @@ describe("TerminalPage", () => {
   });
 
   it("handles empty lists", async () => {
-    const response = new Response(JSON.stringify({ terminals: [] }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
-    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+    global.fetch = createMockFetch([]);
 
     render(<TerminalPage terminalId={null} />);
 
@@ -52,8 +77,7 @@ describe("TerminalPage", () => {
   });
 
   it("handles errors", async () => {
-    const response = new Response("", { status: 500 });
-    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+    global.fetch = createMockFetch([], 500);
 
     render(<TerminalPage terminalId={null} />);
 
@@ -64,17 +88,9 @@ describe("TerminalPage", () => {
 
   it("creates the terminal client for the first session", async () => {
     const destroy = vi.fn();
-    createTerminalClientMock.mockReturnValue({
-      destroy,
-      sendControl: vi.fn(),
-      sendInput: vi.fn()
-    });
+    createTerminalClientMock.mockReturnValue(createMockClient({ destroy }));
 
-    const response = new Response(JSON.stringify({ terminals: [makeTerminal("term-1")] }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
-    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+    global.fetch = createMockFetch([makeTerminal("term-1")]);
 
     const { unmount } = render(<TerminalPage terminalId="term-1" />);
 
@@ -87,11 +103,7 @@ describe("TerminalPage", () => {
   });
 
   it("navigates to the first terminal when none is selected", async () => {
-    const response = new Response(JSON.stringify({ terminals: [makeTerminal("term-1")] }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
-    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+    global.fetch = createMockFetch([makeTerminal("term-1")]);
     const onSelectTerminal = vi.fn();
 
     render(<TerminalPage terminalId={null} onSelectTerminal={onSelectTerminal} />);
@@ -102,14 +114,7 @@ describe("TerminalPage", () => {
   });
 
   it("navigates to the first terminal when the id is unknown", async () => {
-    const response = new Response(
-      JSON.stringify({ terminals: [makeTerminal("term-1"), makeTerminal("term-2")] }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" }
-      }
-    );
-    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+    global.fetch = createMockFetch([makeTerminal("term-1"), makeTerminal("term-2")]);
     const onSelectTerminal = vi.fn();
 
     render(<TerminalPage terminalId="term-99" onSelectTerminal={onSelectTerminal} />);
@@ -121,17 +126,9 @@ describe("TerminalPage", () => {
 
   it("uses a fallback selection handler when none is provided", async () => {
     const destroy = vi.fn();
-    createTerminalClientMock.mockReturnValue({
-      destroy,
-      sendControl: vi.fn(),
-      sendInput: vi.fn()
-    });
+    createTerminalClientMock.mockReturnValue(createMockClient({ destroy }));
 
-    const response = new Response(JSON.stringify({ terminals: [makeTerminal("term-1")] }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
-    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+    global.fetch = createMockFetch([makeTerminal("term-1")]);
 
     render(<TerminalPage terminalId="term-1" />);
 
@@ -195,13 +192,9 @@ describe("TerminalPage", () => {
   it("sends input when the send button is clicked", async () => {
     const destroy = vi.fn();
     const sendInput = vi.fn();
-    createTerminalClientMock.mockReturnValue({ destroy, sendControl: vi.fn(), sendInput });
+    createTerminalClientMock.mockReturnValue(createMockClient({ destroy, sendInput }));
 
-    const response = new Response(JSON.stringify({ terminals: [makeTerminal("term-1")] }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
-    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+    global.fetch = createMockFetch([makeTerminal("term-1")]);
 
     render(<TerminalPage terminalId="term-1" />);
 
@@ -221,13 +214,9 @@ describe("TerminalPage", () => {
   it("sends only a newline when the message is empty", async () => {
     const destroy = vi.fn();
     const sendInput = vi.fn();
-    createTerminalClientMock.mockReturnValue({ destroy, sendControl: vi.fn(), sendInput });
+    createTerminalClientMock.mockReturnValue(createMockClient({ destroy, sendInput }));
 
-    const response = new Response(JSON.stringify({ terminals: [makeTerminal("term-1")] }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
-    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+    global.fetch = createMockFetch([makeTerminal("term-1")]);
 
     render(<TerminalPage terminalId="term-1" />);
 
@@ -244,13 +233,9 @@ describe("TerminalPage", () => {
   it("sends input on enter keypress", async () => {
     const destroy = vi.fn();
     const sendInput = vi.fn();
-    createTerminalClientMock.mockReturnValue({ destroy, sendControl: vi.fn(), sendInput });
+    createTerminalClientMock.mockReturnValue(createMockClient({ destroy, sendInput }));
 
-    const response = new Response(JSON.stringify({ terminals: [makeTerminal("term-1")] }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
-    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+    global.fetch = createMockFetch([makeTerminal("term-1")]);
 
     render(<TerminalPage terminalId="term-1" />);
 
@@ -269,13 +254,9 @@ describe("TerminalPage", () => {
   it("ignores non-enter keypresses in the message input", async () => {
     const destroy = vi.fn();
     const sendInput = vi.fn();
-    createTerminalClientMock.mockReturnValue({ destroy, sendControl: vi.fn(), sendInput });
+    createTerminalClientMock.mockReturnValue(createMockClient({ destroy, sendInput }));
 
-    const response = new Response(JSON.stringify({ terminals: [makeTerminal("term-1")] }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
-    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+    global.fetch = createMockFetch([makeTerminal("term-1")]);
 
     render(<TerminalPage terminalId="term-1" />);
 
@@ -293,13 +274,9 @@ describe("TerminalPage", () => {
   it("shows action bar and sends control keys", async () => {
     const destroy = vi.fn();
     const sendControl = vi.fn();
-    createTerminalClientMock.mockReturnValue({ destroy, sendControl, sendInput: vi.fn() });
+    createTerminalClientMock.mockReturnValue(createMockClient({ destroy, sendControl }));
 
-    const response = new Response(JSON.stringify({ terminals: [makeTerminal("term-1")] }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
-    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+    global.fetch = createMockFetch([makeTerminal("term-1")]);
 
     render(<TerminalPage terminalId="term-1" />);
 
@@ -318,13 +295,9 @@ describe("TerminalPage", () => {
     const destroy = vi.fn();
     const sendInput = vi.fn();
     const sendControl = vi.fn();
-    createTerminalClientMock.mockReturnValue({ destroy, sendControl, sendInput });
+    createTerminalClientMock.mockReturnValue(createMockClient({ destroy, sendControl, sendInput }));
 
-    const response = new Response(JSON.stringify({ terminals: [makeTerminal("term-1")] }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
-    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+    global.fetch = createMockFetch([makeTerminal("term-1")]);
 
     render(<TerminalPage terminalId="term-1" />);
 
@@ -352,17 +325,9 @@ describe("TerminalPage", () => {
 
   it("wires a resize observer for the actions strip when available", async () => {
     const destroy = vi.fn();
-    createTerminalClientMock.mockReturnValue({
-      destroy,
-      sendControl: vi.fn(),
-      sendInput: vi.fn()
-    });
+    createTerminalClientMock.mockReturnValue(createMockClient({ destroy }));
 
-    const response = new Response(JSON.stringify({ terminals: [makeTerminal("term-1")] }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
-    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+    global.fetch = createMockFetch([makeTerminal("term-1")]);
 
     const observe = vi.fn();
     const disconnect = vi.fn();
@@ -393,17 +358,9 @@ describe("TerminalPage", () => {
 
   it("shows scroll gradients when actions overflow", async () => {
     const destroy = vi.fn();
-    createTerminalClientMock.mockReturnValue({
-      destroy,
-      sendControl: vi.fn(),
-      sendInput: vi.fn()
-    });
+    createTerminalClientMock.mockReturnValue(createMockClient({ destroy }));
 
-    const response = new Response(JSON.stringify({ terminals: [makeTerminal("term-1")] }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
-    global.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+    global.fetch = createMockFetch([makeTerminal("term-1")]);
 
     render(<TerminalPage terminalId="term-1" />);
 
@@ -431,6 +388,45 @@ describe("TerminalPage", () => {
     await waitFor(() => {
       expect(screen.getByTestId("terminal-actions-gradient-left")).toBeTruthy();
       expect(screen.getByTestId("terminal-actions-gradient-right")).toBeTruthy();
+    });
+  });
+
+  it("shows connection status indicator", async () => {
+    const destroy = vi.fn();
+    let connectionStateCallback: ((state: string) => void) | null = null;
+    const onConnectionStateChange = vi.fn((callback: (state: string) => void) => {
+      connectionStateCallback = callback;
+      return () => {
+        connectionStateCallback = null;
+      };
+    });
+    createTerminalClientMock.mockReturnValue(
+      createMockClient({ destroy, onConnectionStateChange })
+    );
+
+    global.fetch = createMockFetch([makeTerminal("term-1")]);
+
+    render(<TerminalPage terminalId="term-1" />);
+
+    await waitFor(() => {
+      expect(createTerminalClientMock).toHaveBeenCalled();
+    });
+
+    expect(screen.getByTestId("connection-indicator")).toHaveAttribute("data-state", "connecting");
+
+    connectionStateCallback?.("connected");
+    await waitFor(() => {
+      expect(screen.getByTestId("connection-indicator")).toHaveAttribute("data-state", "connected");
+    });
+
+    connectionStateCallback?.("reconnecting");
+    await waitFor(() => {
+      expect(screen.getByTestId("connection-indicator")).toHaveAttribute("data-state", "reconnecting");
+    });
+
+    connectionStateCallback?.("disconnected");
+    await waitFor(() => {
+      expect(screen.getByTestId("connection-indicator")).toHaveAttribute("data-state", "disconnected");
     });
   });
 });

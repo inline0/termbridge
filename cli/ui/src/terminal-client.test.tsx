@@ -130,7 +130,9 @@ describe("terminal-client", () => {
       location: { protocol: "https:", host: "example.com" }
     } as Window;
 
-    expect(getWebSocketUrl("abc", windowRef)).toBe("wss://example.com/ws/terminal/abc");
+    expect(getWebSocketUrl("abc", "csrf-token-123", windowRef)).toBe(
+      "wss://example.com/ws/terminal/abc?csrf=csrf-token-123"
+    );
   });
 
   it("connects, resizes, and streams output", () => {
@@ -150,7 +152,7 @@ describe("terminal-client", () => {
     const socket = new FakeWebSocket("ws://localhost");
     const WebSocketImpl = createWebSocketCtor(socket);
 
-    const client = createTerminalClient(document.body, "terminal-1", {
+    const client = createTerminalClient(document.body, "terminal-1", "csrf-test", {
       createTerminal: () => terminal as unknown as Terminal,
       createFitAddon: () => fitAddon as unknown as FitAddon,
       WebSocketImpl,
@@ -195,7 +197,7 @@ describe("terminal-client", () => {
     const socket = new FakeWebSocket("ws://localhost");
     const WebSocketImpl = createWebSocketCtor(socket);
 
-    const client = createTerminalClient(document.body, "terminal-input-empty", {
+    const client = createTerminalClient(document.body, "terminal-input-empty", "csrf-test", {
       createTerminal: () => terminal as unknown as Terminal,
       createFitAddon: () => fitAddon as unknown as FitAddon,
       WebSocketImpl,
@@ -246,7 +248,7 @@ describe("terminal-client", () => {
     const socket = new FakeWebSocket("ws://localhost");
     const WebSocketImpl = createWebSocketCtor(socket);
 
-    const client = createTerminalClient(container, "terminal-size", {
+    const client = createTerminalClient(container, "terminal-size", "csrf-test", {
       createTerminal: () => terminal as unknown as Terminal,
       createFitAddon: () => fitAddon as unknown as FitAddon,
       WebSocketImpl,
@@ -303,7 +305,7 @@ describe("terminal-client", () => {
     const socket = new FakeWebSocket("ws://localhost");
     const WebSocketImpl = createWebSocketCtor(socket);
 
-    const client = createTerminalClient(container, "terminal-fonts", {
+    const client = createTerminalClient(container, "terminal-fonts", "csrf-test", {
       createTerminal: () => terminal as unknown as Terminal,
       createFitAddon: () => fitAddon as unknown as FitAddon,
       WebSocketImpl,
@@ -346,7 +348,7 @@ describe("terminal-client", () => {
     const socket = new FakeWebSocket("ws://localhost");
     const WebSocketImpl = createWebSocketCtor(socket);
 
-    const client = createTerminalClient(container, "terminal-fonts-error", {
+    const client = createTerminalClient(container, "terminal-fonts-error", "csrf-test", {
       createTerminal: () => terminal as unknown as Terminal,
       createFitAddon: () => fitAddon as unknown as FitAddon,
       WebSocketImpl,
@@ -380,7 +382,7 @@ describe("terminal-client", () => {
     const socket = new FakeWebSocket("ws://localhost");
     const WebSocketImpl = createWebSocketCtor(socket);
 
-    const client = createTerminalClient(document.body, "terminal-wait", {
+    const client = createTerminalClient(document.body, "terminal-wait", "csrf-test", {
       createTerminal: () => terminal as unknown as Terminal,
       createFitAddon: () => fitAddon as unknown as FitAddon,
       WebSocketImpl,
@@ -428,7 +430,7 @@ describe("terminal-client", () => {
     const socket = new FakeWebSocket("ws://localhost");
     const WebSocketImpl = createWebSocketCtor(socket);
 
-    const client = createTerminalClient(container, "terminal-timeout", {
+    const client = createTerminalClient(container, "terminal-timeout", "csrf-test", {
       createTerminal: () => terminal as unknown as Terminal,
       createFitAddon: () => fitAddon as unknown as FitAddon,
       WebSocketImpl,
@@ -472,7 +474,7 @@ describe("terminal-client", () => {
     const socket = new FakeWebSocket("ws://localhost");
     const WebSocketImpl = createWebSocketCtor(socket);
 
-    const client = createTerminalClient(document.body, "terminal-2", {
+    const client = createTerminalClient(document.body, "terminal-2", "csrf-test", {
       createTerminal: () => terminal as unknown as Terminal,
       createFitAddon: () => fitAddon as unknown as FitAddon,
       WebSocketImpl,
@@ -509,7 +511,7 @@ describe("terminal-client", () => {
     const socket = new FakeWebSocket("ws://localhost");
     const WebSocketImpl = createWebSocketCtor(socket);
 
-    const client = createTerminalClient(container, "terminal-retry", {
+    const client = createTerminalClient(container, "terminal-retry", "csrf-test", {
       createTerminal: () => terminal as unknown as Terminal,
       createFitAddon: () => fitAddon as unknown as FitAddon,
       WebSocketImpl,
@@ -547,7 +549,7 @@ describe("terminal-client", () => {
     const socket = new FakeWebSocket("ws://localhost");
     const WebSocketImpl = createWebSocketCtor(socket);
 
-    const client = createTerminalClient(container, "terminal-retry-limit", {
+    const client = createTerminalClient(container, "terminal-retry-limit", "csrf-test", {
       createTerminal: () => terminal as unknown as Terminal,
       createFitAddon: () => fitAddon as unknown as FitAddon,
       WebSocketImpl,
@@ -572,7 +574,7 @@ describe("terminal-client", () => {
 
     global.WebSocket = createWebSocketCtor(socket);
 
-    const client = createTerminalClient(document.body, "terminal-default");
+    const client = createTerminalClient(document.body, "terminal-default", "csrf-test");
     socket.emit("open");
     client.sendControl("ctrl_c");
 
@@ -600,7 +602,7 @@ describe("terminal-client", () => {
     const socket = new FakeWebSocket("ws://localhost");
     const WebSocketImpl = createWebSocketCtor(socket);
 
-    const client = createTerminalClient(document.body, "terminal-debug", {
+    const client = createTerminalClient(document.body, "terminal-debug", "csrf-test", {
       createTerminal: () => terminal as unknown as Terminal,
       createFitAddon: () => fitAddon as unknown as FitAddon,
       WebSocketImpl,
@@ -662,7 +664,7 @@ describe("terminal-client", () => {
     const socket = new FakeWebSocket("ws://localhost");
     const WebSocketImpl = createWebSocketCtor(socket);
 
-    const client = createTerminalClient(container, "terminal-webgl", {
+    const client = createTerminalClient(container, "terminal-webgl", "csrf-test", {
       createTerminal: () => terminal as unknown as Terminal,
       createFitAddon: () => fitAddon as unknown as FitAddon,
       WebSocketImpl,
@@ -714,7 +716,7 @@ describe("terminal-client", () => {
     const socket = new FakeWebSocket("ws://localhost");
     const WebSocketImpl = createWebSocketCtor(socket);
 
-    const client = createTerminalClient(container, "terminal-webgl-destroy", {
+    const client = createTerminalClient(container, "terminal-webgl-destroy", "csrf-test", {
       createTerminal: () => terminal as unknown as Terminal,
       createFitAddon: () => fitAddon as unknown as FitAddon,
       WebSocketImpl,
@@ -729,5 +731,390 @@ describe("terminal-client", () => {
     }
     const webglAddon = lastWebglAddon as unknown as WebglAddonStub;
     expect(webglAddon.dispose).toHaveBeenCalled();
+  });
+
+  it("reconnects automatically when the socket closes", () => {
+    vi.useFakeTimers();
+
+    const terminal = new FakeTerminal();
+    const fitAddon = new FakeFitAddon();
+    fitAddon.proposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
+
+    const container = document.createElement("div");
+    Object.defineProperty(container, "clientWidth", { value: 120 });
+    Object.defineProperty(container, "clientHeight", { value: 80 });
+    document.body.appendChild(container);
+
+    const windowRef = {
+      location: { protocol: "http:", host: "localhost" },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn()
+    } as unknown as Window;
+
+    const sockets: FakeWebSocket[] = [];
+    const WebSocketImpl = class {
+      url: string;
+      socket: FakeWebSocket;
+
+      constructor(url: string) {
+        this.url = url;
+        this.socket = new FakeWebSocket(url);
+        sockets.push(this.socket);
+      }
+
+      addEventListener(
+        type: string,
+        handler: (event: { data?: unknown }) => void
+      ) {
+        this.socket.addEventListener(type, handler);
+      }
+
+      send = (data: unknown) => this.socket.send(data);
+      close = () => this.socket.close();
+    } as unknown as typeof WebSocket;
+
+    const client = createTerminalClient(container, "terminal-reconnect", "csrf-test", {
+      createTerminal: () => terminal as unknown as Terminal,
+      createFitAddon: () => fitAddon as unknown as FitAddon,
+      WebSocketImpl,
+      windowRef
+    });
+
+    expect(sockets.length).toBe(1);
+    sockets[0]?.emit("open");
+    expect(client.getConnectionState()).toBe("connected");
+
+    sockets[0]?.emit("close");
+    expect(client.getConnectionState()).toBe("reconnecting");
+
+    vi.advanceTimersByTime(1000);
+    expect(sockets.length).toBe(2);
+
+    sockets[1]?.emit("open");
+    expect(client.getConnectionState()).toBe("connected");
+
+    client.destroy();
+    vi.useRealTimers();
+  });
+
+  it("stops reconnecting after max attempts", () => {
+    vi.useFakeTimers();
+
+    const terminal = new FakeTerminal();
+    const fitAddon = new FakeFitAddon();
+    fitAddon.proposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
+
+    const container = document.createElement("div");
+    Object.defineProperty(container, "clientWidth", { value: 120 });
+    Object.defineProperty(container, "clientHeight", { value: 80 });
+    document.body.appendChild(container);
+
+    const windowRef = {
+      location: { protocol: "http:", host: "localhost" },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn()
+    } as unknown as Window;
+
+    const sockets: FakeWebSocket[] = [];
+    const WebSocketImpl = class {
+      url: string;
+      socket: FakeWebSocket;
+
+      constructor(url: string) {
+        this.url = url;
+        this.socket = new FakeWebSocket(url);
+        sockets.push(this.socket);
+      }
+
+      addEventListener(
+        type: string,
+        handler: (event: { data?: unknown }) => void
+      ) {
+        this.socket.addEventListener(type, handler);
+      }
+
+      send = (data: unknown) => this.socket.send(data);
+      close = () => this.socket.close();
+    } as unknown as typeof WebSocket;
+
+    const client = createTerminalClient(container, "terminal-max-reconnect", "csrf-test", {
+      createTerminal: () => terminal as unknown as Terminal,
+      createFitAddon: () => fitAddon as unknown as FitAddon,
+      WebSocketImpl,
+      windowRef
+    });
+
+    sockets[0]?.emit("open");
+    expect(client.getConnectionState()).toBe("connected");
+
+    for (let i = 0; i < 10; i++) {
+      sockets[sockets.length - 1]?.emit("close");
+      vi.runAllTimers();
+    }
+
+    expect(sockets.length).toBe(11);
+    sockets[sockets.length - 1]?.emit("close");
+    expect(client.getConnectionState()).toBe("disconnected");
+
+    vi.advanceTimersByTime(60000);
+    expect(sockets.length).toBe(11);
+
+    client.destroy();
+    vi.useRealTimers();
+  });
+
+  it("notifies connection state changes", () => {
+    const terminal = new FakeTerminal();
+    const fitAddon = new FakeFitAddon();
+    fitAddon.proposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
+
+    const windowRef = {
+      location: { protocol: "http:", host: "localhost" },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callback(0);
+        return 1;
+      },
+      cancelAnimationFrame: vi.fn()
+    } as unknown as Window;
+
+    const socket = new FakeWebSocket("ws://localhost");
+    const WebSocketImpl = createWebSocketCtor(socket);
+
+    const client = createTerminalClient(document.body, "terminal-state-callback", "csrf-test", {
+      createTerminal: () => terminal as unknown as Terminal,
+      createFitAddon: () => fitAddon as unknown as FitAddon,
+      WebSocketImpl,
+      windowRef
+    });
+
+    const stateChanges: string[] = [];
+    const unsubscribe = client.onConnectionStateChange((state) => {
+      stateChanges.push(state);
+    });
+
+    expect(client.getConnectionState()).toBe("connecting");
+    socket.emit("open");
+    expect(stateChanges).toContain("connected");
+
+    unsubscribe();
+    socket.emit("close");
+    expect(stateChanges).not.toContain("reconnecting");
+
+    client.destroy();
+  });
+
+  it("does not reconnect after destroy", () => {
+    vi.useFakeTimers();
+
+    const terminal = new FakeTerminal();
+    const fitAddon = new FakeFitAddon();
+    fitAddon.proposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
+
+    const container = document.createElement("div");
+    Object.defineProperty(container, "clientWidth", { value: 120 });
+    Object.defineProperty(container, "clientHeight", { value: 80 });
+    document.body.appendChild(container);
+
+    const windowRef = {
+      location: { protocol: "http:", host: "localhost" },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn()
+    } as unknown as Window;
+
+    const sockets: FakeWebSocket[] = [];
+    const WebSocketImpl = class {
+      url: string;
+      socket: FakeWebSocket;
+
+      constructor(url: string) {
+        this.url = url;
+        this.socket = new FakeWebSocket(url);
+        sockets.push(this.socket);
+      }
+
+      addEventListener(
+        type: string,
+        handler: (event: { data?: unknown }) => void
+      ) {
+        this.socket.addEventListener(type, handler);
+      }
+
+      send = (data: unknown) => this.socket.send(data);
+      close = () => this.socket.close();
+    } as unknown as typeof WebSocket;
+
+    const client = createTerminalClient(container, "terminal-no-reconnect-destroy", "csrf-test", {
+      createTerminal: () => terminal as unknown as Terminal,
+      createFitAddon: () => fitAddon as unknown as FitAddon,
+      WebSocketImpl,
+      windowRef
+    });
+
+    sockets[0]?.emit("open");
+    sockets[0]?.emit("close");
+    expect(sockets.length).toBe(1);
+
+    client.destroy();
+
+    vi.advanceTimersByTime(60000);
+    expect(sockets.length).toBe(1);
+
+    vi.useRealTimers();
+  });
+
+  it("aborts connectSocket if destroyed flag is set when timeout fires", () => {
+    const originalClearTimeout = global.clearTimeout;
+    const storedCallbacks: Array<() => void> = [];
+    const mockSetTimeout = vi.fn((callback: () => void, _delay: number) => {
+      storedCallbacks.push(callback);
+      return storedCallbacks.length as unknown as NodeJS.Timeout;
+    });
+    const mockClearTimeout = vi.fn();
+
+    global.setTimeout = mockSetTimeout as unknown as typeof setTimeout;
+    global.clearTimeout = mockClearTimeout as unknown as typeof clearTimeout;
+
+    const terminal = new FakeTerminal();
+    const fitAddon = new FakeFitAddon();
+    fitAddon.proposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
+
+    const container = document.createElement("div");
+    Object.defineProperty(container, "clientWidth", { value: 120 });
+    Object.defineProperty(container, "clientHeight", { value: 80 });
+    document.body.appendChild(container);
+
+    const windowRef = {
+      location: { protocol: "http:", host: "localhost" },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn()
+    } as unknown as Window;
+
+    let socketCount = 0;
+    const WebSocketImpl = class {
+      url: string;
+      listeners: Record<string, Array<(event: { data?: unknown }) => void>> = {};
+      send = vi.fn();
+      close = vi.fn();
+
+      constructor(url: string) {
+        this.url = url;
+        socketCount++;
+      }
+
+      addEventListener(type: string, handler: (event: { data?: unknown }) => void) {
+        if (!this.listeners[type]) {
+          this.listeners[type] = [];
+        }
+        this.listeners[type].push(handler);
+      }
+
+      emit(type: string, data?: unknown) {
+        const handlers = this.listeners[type] ?? [];
+        handlers.forEach((handler) => handler({ data }));
+      }
+    };
+
+    const sockets: InstanceType<typeof WebSocketImpl>[] = [];
+    const WrappedWebSocketImpl = class extends WebSocketImpl {
+      constructor(url: string) {
+        super(url);
+        sockets.push(this);
+      }
+    } as unknown as typeof WebSocket;
+
+    const client = createTerminalClient(container, "terminal-destroy-race", "csrf-test", {
+      createTerminal: () => terminal as unknown as Terminal,
+      createFitAddon: () => fitAddon as unknown as FitAddon,
+      WebSocketImpl: WrappedWebSocketImpl,
+      windowRef
+    });
+
+    sockets[0]?.emit("open");
+    sockets[0]?.emit("close");
+
+    const callbacksBefore = storedCallbacks.length;
+    expect(callbacksBefore).toBeGreaterThan(0);
+
+    client.destroy();
+
+    const reconnectCallback = storedCallbacks[storedCallbacks.length - 1];
+    reconnectCallback?.();
+
+    expect(socketCount).toBe(1);
+
+    global.setTimeout = originalClearTimeout as unknown as typeof setTimeout;
+    global.clearTimeout = originalClearTimeout;
+  });
+
+  it("sets disconnected state when close fires after destroy", () => {
+    const terminal = new FakeTerminal();
+    const fitAddon = new FakeFitAddon();
+    fitAddon.proposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
+
+    const windowRef = {
+      location: { protocol: "http:", host: "localhost" },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callback(0);
+        return 1;
+      },
+      cancelAnimationFrame: vi.fn()
+    } as unknown as Window;
+
+    const socket = new FakeWebSocket("ws://localhost");
+    const WebSocketImpl = createWebSocketCtor(socket);
+
+    const client = createTerminalClient(document.body, "terminal-close-after-destroy", "csrf-test", {
+      createTerminal: () => terminal as unknown as Terminal,
+      createFitAddon: () => fitAddon as unknown as FitAddon,
+      WebSocketImpl,
+      windowRef
+    });
+
+    socket.emit("open");
+    expect(client.getConnectionState()).toBe("connected");
+
+    client.destroy();
+    socket.emit("close");
+
+    expect(client.getConnectionState()).toBe("disconnected");
+  });
+
+  it("handles socket errors before close", () => {
+    const terminal = new FakeTerminal();
+    const fitAddon = new FakeFitAddon();
+    fitAddon.proposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
+
+    const windowRef = {
+      location: { protocol: "http:", host: "localhost" },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callback(0);
+        return 1;
+      },
+      cancelAnimationFrame: vi.fn()
+    } as unknown as Window;
+
+    const socket = new FakeWebSocket("ws://localhost");
+    const WebSocketImpl = createWebSocketCtor(socket);
+
+    const client = createTerminalClient(document.body, "terminal-error", "csrf-test", {
+      createTerminal: () => terminal as unknown as Terminal,
+      createFitAddon: () => fitAddon as unknown as FitAddon,
+      WebSocketImpl,
+      windowRef
+    });
+
+    socket.emit("open");
+    expect(client.getConnectionState()).toBe("connected");
+
+    socket.emit("error");
+    expect(client.getConnectionState()).toBe("connected");
+
+    client.destroy();
   });
 });

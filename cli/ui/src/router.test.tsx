@@ -7,7 +7,9 @@ vi.mock("./terminal-client", () => ({
   createTerminalClient: vi.fn(() => ({
     destroy: vi.fn(),
     sendControl: vi.fn(),
-    sendInput: vi.fn()
+    sendInput: vi.fn(),
+    getConnectionState: vi.fn(() => "connected"),
+    onConnectionStateChange: vi.fn(() => () => undefined)
   }))
 }));
 
@@ -35,9 +37,12 @@ describe("router", () => {
 
   it("renders the index route", async () => {
     window.history.pushState({}, "", "/app/");
-    const fetchMock = vi.fn(async () => ({
+    const fetchMock = vi.fn(async (url: string) => ({
       ok: true,
-      json: async () => ({ terminals: [] })
+      json: async () =>
+        url.includes("/api/csrf")
+          ? { csrfToken: "test-csrf-token" }
+          : { terminals: [] }
     })) as unknown as typeof fetch;
     global.fetch = fetchMock;
     if (typeof window !== "undefined") {
@@ -53,9 +58,12 @@ describe("router", () => {
 
   it("renders the terminal route", async () => {
     window.history.pushState({}, "", "/app/terminal/term-1");
-    const fetchMock = vi.fn(async () => ({
+    const fetchMock = vi.fn(async (url: string) => ({
       ok: true,
-      json: async () => ({ terminals: [makeTerminal("term-1")] })
+      json: async () =>
+        url.includes("/api/csrf")
+          ? { csrfToken: "test-csrf-token" }
+          : { terminals: [makeTerminal("term-1")] }
     })) as unknown as typeof fetch;
     global.fetch = fetchMock;
     if (typeof window !== "undefined") {

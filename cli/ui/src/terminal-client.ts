@@ -8,10 +8,14 @@ import type {
   TerminalServerMessage
 } from "@termbridge/shared";
 
+export type ConnectionState = "connecting" | "connected" | "disconnected" | "reconnecting";
+
 export type TerminalClient = {
   sendControl: (key: TerminalControlKey) => void;
   sendInput: (data: string) => void;
   destroy: () => void;
+  getConnectionState: () => ConnectionState;
+  onConnectionStateChange: (callback: (state: ConnectionState) => void) => () => void;
 };
 
 export type TerminalClientDeps = {
@@ -26,9 +30,9 @@ type WindowLike = Window & {
   WebGLRenderingContext?: typeof WebGLRenderingContext;
 };
 
-export const getWebSocketUrl = (terminalId: string, windowRef: Window) => {
+export const getWebSocketUrl = (terminalId: string, csrfToken: string, windowRef: Window) => {
   const protocol = windowRef.location.protocol === "https:" ? "wss" : "ws";
-  return `${protocol}://${windowRef.location.host}/ws/terminal/${terminalId}`;
+  return `${protocol}://${windowRef.location.host}/ws/terminal/${terminalId}?csrf=${encodeURIComponent(csrfToken)}`;
 };
 
 const terminalTheme = {
@@ -80,6 +84,7 @@ const parseServerMessage = (payload: unknown): TerminalServerMessage | null => {
 export const createTerminalClient = (
   container: HTMLElement,
   terminalId: string,
+  csrfToken: string,
   deps: TerminalClientDeps = {}
 ): TerminalClient => {
   const createTerminal =
@@ -121,15 +126,94 @@ export const createTerminalClient = (
     debugWindow.__TERMbridgeTerminal = terminal;
   }
 
-  const socket = new WebSocketImpl(getWebSocketUrl(terminalId, windowRef));
+  let socket: WebSocket | null = null;
+  let connectionState: ConnectionState = "connecting";
+  const connectionStateCallbacks = new Set<(state: ConnectionState) => void>();
+  let reconnectAttempt = 0;
+  let reconnectTimeout: number | null = null;
+  let destroyed = false;
+  const maxReconnectAttempts = 10;
+  const baseReconnectDelayMs = 1000;
+  const maxReconnectDelayMs = 30000;
+
+  const setConnectionState = (state: ConnectionState) => {
+    if (connectionState === state) {
+      return;
+    }
+    connectionState = state;
+    for (const callback of connectionStateCallbacks) {
+      callback(state);
+    }
+  };
+
+  const getReconnectDelay = () => {
+    const delay = baseReconnectDelayMs * 2 ** reconnectAttempt;
+    return Math.min(delay, maxReconnectDelayMs);
+  };
 
   const sendMessage = (message: TerminalClientMessage) => {
-    if (!socketReady) {
+    if (!socketReady || !socket) {
       return;
     }
 
     socket.send(JSON.stringify(message));
   };
+
+  const connectSocket = () => {
+    if (destroyed) {
+      return;
+    }
+
+    socket = new WebSocketImpl(getWebSocketUrl(terminalId, csrfToken, windowRef));
+
+    socket.addEventListener("open", () => {
+      socketReady = true;
+      reconnectAttempt = 0;
+      lastSize = null;
+      setConnectionState("connected");
+      scheduleResize();
+    });
+
+    socket.addEventListener("message", (event) => {
+      const message = parseServerMessage(event.data);
+
+      if (!message) {
+        return;
+      }
+
+      if (message.type === "output") {
+        terminal.write(message.data);
+      }
+    });
+
+    socket.addEventListener("close", () => {
+      socketReady = false;
+
+      if (destroyed) {
+        setConnectionState("disconnected");
+        return;
+      }
+
+      if (reconnectAttempt >= maxReconnectAttempts) {
+        setConnectionState("disconnected");
+        return;
+      }
+
+      setConnectionState("reconnecting");
+      const delay = getReconnectDelay();
+      reconnectAttempt += 1;
+      reconnectTimeout = window.setTimeout(() => {
+        reconnectTimeout = null;
+        connectSocket();
+      }, delay) as unknown as number;
+    });
+
+    socket.addEventListener("error", () => {
+      // Error events precede close events; connection handling is done in the close handler
+    });
+  };
+
+  connectSocket();
 
   const applyResize = () => {
     const dims = fitAddon.proposeDimensions();
@@ -216,24 +300,6 @@ export const createTerminalClient = (
     sendMessage({ type: "input", data });
   });
 
-  socket.addEventListener("open", () => {
-    socketReady = true;
-    lastSize = null;
-    scheduleResize();
-  });
-
-  socket.addEventListener("message", (event) => {
-    const message = parseServerMessage(event.data);
-
-    if (!message) {
-      return;
-    }
-
-    if (message.type === "output") {
-      terminal.write(message.data);
-    }
-  });
-
   windowRef.addEventListener("resize", scheduleResize);
 
   const ResizeObserverImpl = windowRef.ResizeObserver;
@@ -275,11 +341,17 @@ export const createTerminalClient = (
   };
 
   const destroy = () => {
+    destroyed = true;
     windowRef.removeEventListener("resize", scheduleResize);
     resizeObserver?.disconnect();
     resizeObserver = null;
     cancelScheduledResize();
-    socket.close();
+    if (reconnectTimeout !== null) {
+      clearTimeout(reconnectTimeout);
+      reconnectTimeout = null;
+    }
+    connectionStateCallbacks.clear();
+    socket?.close();
     if (webglAddon) {
       try {
         webglAddon.dispose();
@@ -289,5 +361,14 @@ export const createTerminalClient = (
     terminal.dispose();
   };
 
-  return { sendControl, sendInput, destroy };
+  const getConnectionState = () => connectionState;
+
+  const onConnectionStateChange = (callback: (state: ConnectionState) => void) => {
+    connectionStateCallbacks.add(callback);
+    return () => {
+      connectionStateCallbacks.delete(callback);
+    };
+  };
+
+  return { sendControl, sendInput, destroy, getConnectionState, onConnectionStateChange };
 };
