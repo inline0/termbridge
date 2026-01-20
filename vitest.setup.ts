@@ -38,7 +38,7 @@ vi.mock("@silk-hq/components", () => {
     if (asChild && React.isValidElement(children)) {
       return React.cloneElement(children, sanitized);
     }
-    return React.createElement("button", sanitized, children);
+    return React.createElement("button", { type: "button", ...sanitized }, children);
   };
 
   return {

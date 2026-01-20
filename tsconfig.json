@@ -1,3 +1,4 @@
 {
-  "extends": "@termbridge/tsconfig/base.json"
+  "extends": "@termbridge/tsconfig/base.json",
+  "exclude": ["apps/docs"]
 }
