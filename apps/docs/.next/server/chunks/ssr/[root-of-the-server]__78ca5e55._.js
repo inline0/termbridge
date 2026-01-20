@@ -1,3 +1,0 @@
-module.exports=[98177,a=>a.a(async(b,c)=>{try{var d=a.i(7997);a.i(61293);var e=a.i(32741),f=a.i(90193),g=a.i(11312),h=b([f]);function i({children:a}){return(0,d.jsx)(e.DocsLayout,{config:g.default,pageTree:f.source.pageTree,children:a})}[f]=h.then?(await h)():h,a.s(["default",()=>i]),c()}catch(a){c(a)}},!1),87903,a=>{a.v(a=>Promise.resolve().then(()=>a(12714)))}];
-
-//# sourceMappingURL=%5Broot-of-the-server%5D__78ca5e55._.js.map
