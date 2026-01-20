@@ -5,26 +5,39 @@ description: Quick answers to common questions.
 
 # FAQ
 
-## Does Termbridge run any backend server?
+## Is my data going through someone else's server?
 
-No. Everything runs locally on your machine. The only public surface is the Cloudflare tunnel.
+No. Everything runs on your machine. Cloudflare creates a tunnel, but your terminal data goes directly from your browser to your computer - nothing is stored anywhere else.
 
-## Can I run multiple terminals?
+## How secure is the connection?
 
-Yes. One server can host multiple tmux sessions. Use the terminal switcher in the UI to select a session.
+Pretty secure:
+- The URL includes a one-time token that expires after use
+- Sessions are protected by HttpOnly cookies
+- All traffic is encrypted via HTTPS
 
-## Is the tunnel URL secure?
+Just don't share the QR code or URL with people you don't trust.
 
-Termbridge issues a one-time token and redeems it for a cookie session. The token URL should only be shared with devices you trust.
+## Can I run multiple terminals at once?
 
-## Can I use it without Cloudflare?
+Yes. Termbridge can run several tmux sessions simultaneously. Use the terminal switcher in the UI to jump between them.
 
-Not yet. The tunnel provider is currently Cloudflare only.
+## Will it work with Claude Code, Codex, or other AI tools?
 
-## Does it support Windows?
+Absolutely. If it runs in a terminal, Termbridge can stream it. Start your AI coding tool in the tmux session, and you can monitor it from your phone.
 
-Not officially. macOS and Linux are the target platforms for the MVP.
+## Does it work on Windows?
 
-## Can I beam other tools (Codex, OpenCode, Claude Code)?
+Not officially. Termbridge is built for macOS and Linux. It might work with WSL, but it's not tested.
 
-Yes. If those tools run inside a tmux session on your machine, Termbridge will stream them just like any other terminal.
+## Can I use a different tunnel provider?
+
+Not yet - Cloudflare is the only option right now. More providers are planned.
+
+## What happens if I close my laptop?
+
+The tunnel stays active as long as Termbridge is running. If your computer sleeps or Termbridge exits, the connection closes. Your tmux sessions stay alive though, so you can restart Termbridge and reconnect.
+
+## Can multiple people connect at once?
+
+Yes, but they all see the same terminal. It's a single PTY, so multiple viewers see the same output and can all type. Think of it like screen sharing for your terminal.

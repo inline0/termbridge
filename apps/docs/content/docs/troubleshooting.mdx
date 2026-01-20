@@ -1,53 +1,81 @@
 ---
 title: Troubleshooting
-description: Fix common setup and runtime issues.
+description: Solutions for common issues.
 ---
 
 # Troubleshooting
 
-## `tmux` not found
+## "tmux not found"
 
-Install tmux and ensure it is on your PATH.
+tmux isn't installed or isn't in your PATH.
 
 ```bash
+# macOS
 brew install tmux
+
+# Ubuntu/Debian
+sudo apt install tmux
 ```
 
-## `cloudflared` not found
+## "cloudflared not found"
 
-Install Cloudflare's tunnel client.
+Cloudflare's tunnel client isn't installed.
 
 ```bash
+# macOS
 brew install cloudflared
 ```
 
-## Tunnel failed to start
+For Linux, download from [cloudflare.com/downloads](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/).
 
-- Verify `cloudflared` runs on its own (`cloudflared --version`).
-- Ensure you can reach `https://trycloudflare.com` from your network.
-- Termbridge will still print the local URL if the tunnel fails.
+## Tunnel won't start
 
-## Blank UI or "Unable to load terminals"
+A few things to check:
 
-- Confirm the local server is running.
-- Check the browser console for 401 or 403 responses.
-- Restart the CLI to get a fresh redemption token.
+1. Verify cloudflared works: `cloudflared --version`
+2. Make sure you can reach `https://trycloudflare.com`
+3. Check if a firewall is blocking outbound connections
 
-## No terminal output
+Even if the tunnel fails, Termbridge will still work locally - you'll see a local URL you can use on the same network.
 
-- Make sure the tmux session is running: `tmux ls`.
-- If you are already inside tmux, the session should still appear.
-- Check that your shell supports `TERM=xterm-256color`.
+## Blank screen or "Unable to load terminals"
 
-## QR code opens but shows a blank page on mobile
+This usually means the session expired or something went wrong with auth:
 
-- The QR URL is single-use. Run `npx termbridge` again to regenerate.
-- Verify your phone can access the tunnel URL.
+1. Check if the local server is still running
+2. Look at the browser console for 401/403 errors
+3. Restart Termbridge to get a fresh URL and QR code
 
-## `node-pty` spawn-helper errors
+## No output in the terminal
 
-Termbridge attempts to mark `node-pty`'s spawn-helper as executable. If it fails:
+The tmux session might not be running:
+
+```bash
+# Check if sessions exist
+tmux ls
+```
+
+If sessions show up but the terminal is blank, try:
+- Reloading the page
+- Checking that your shell supports `TERM=xterm-256color`
+
+## QR code scans but page is blank
+
+The QR code contains a one-time token. If you've already scanned it once, it won't work again.
+
+Solution: Restart Termbridge to generate a new QR code.
+
+## node-pty errors about spawn-helper
+
+Termbridge tries to fix this automatically, but if you see permission errors:
 
 ```bash
 chmod +x node_modules/node-pty/prebuilds/**/spawn-helper
 ```
+
+## Still stuck?
+
+Open an issue at [github.com/fabrikat/termbridge](https://github.com/fabrikat/termbridge/issues) with:
+- Your OS and Node.js version
+- The error message
+- Steps to reproduce

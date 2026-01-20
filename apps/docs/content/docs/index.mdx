@@ -1,39 +1,59 @@
 ---
 title: Introduction
-description: Local-first terminal beaming for any device.
+description: Access your terminal from anywhere - phone, tablet, or another computer.
 ---
 
-# Introduction
+# Your terminal, anywhere
 
-Termbridge is a local-first CLI that beams your terminal to any browser. It runs a local server, streams a real tmux session into an xterm.js UI, and exposes the server through a Cloudflare Quick Tunnel so you can open it on your phone.
-
-## What you get
-
-- **One command**: `npx termbridge` starts the server, creates a tmux session, and prints a QR code.
-- **Real terminal**: tmux + node-pty means true colors, TUIs, and proper key handling.
-- **Multi-session**: one server can host multiple tmux sessions, switchable in-app.
-- **No backend**: everything runs on your machine. The tunnel is the only public surface.
-
-## Core ideas
-
-### Local-first by default
-
-The server, WebSocket, and terminal registry live locally. There is no Termbridge-operated backend, and no data is stored externally.
-
-### Secure handoff
-
-Termbridge issues a one-time token and redeems it into a cookie session. The token URL is what you scan on mobile.
-
-### Mobile-friendly UI
-
-The UI is intentionally minimal: a full-height terminal with a compact control bar and a terminal switcher sheet.
-
-## Quick peek
+Termbridge lets you access your local terminal from any device with a browser. Run one command, scan a QR code, and you're connected.
 
 ```bash
 npx termbridge
 ```
 
-Scan the QR code, open the URL, and you should see your terminal instantly.
+That's it. Your terminal is now accessible from your phone.
 
-Next: head to **Getting Started** for setup and prerequisites.
+## Why Termbridge?
+
+**Check builds from the couch.** Kicked off a long build? Watch it finish from your phone while you grab coffee.
+
+**Monitor servers on the go.** SSH'd into a server running a process? Keep an eye on it from anywhere.
+
+**Run AI coding tools remotely.** Using Claude Code, Codex, or similar tools? Watch them work from your tablet while you're away from your desk.
+
+**Quick access, no setup.** No port forwarding, no VPN, no complicated configuration. Just run the command and scan.
+
+## How it works
+
+1. You run `npx termbridge` on your computer
+2. Termbridge creates a secure tunnel to your terminal
+3. You scan the QR code (or copy the URL)
+4. Your terminal appears in your browser, fully interactive
+
+Everything runs locally on your machine. The tunnel just makes it accessible - no data is stored anywhere else.
+
+## What you can do
+
+- **Full terminal access** - Colors, TUIs like htop, vim, and proper key handling all work
+- **Multiple sessions** - Run several terminals and switch between them in the app
+- **Mobile controls** - On-screen buttons for Ctrl+C, arrows, Tab, and other keys
+- **Secure by default** - One-time tokens mean only you can connect
+
+## Quick start
+
+Make sure you have [Node.js](https://nodejs.org), [tmux](https://github.com/tmux/tmux), and [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/) installed, then:
+
+```bash
+npx termbridge
+```
+
+Scan the QR code with your phone and you're in.
+
+<Cards>
+  <Card title="Getting Started" href="/docs/getting-started">
+    Full setup guide with installation steps
+  </Card>
+  <Card title="Usage" href="/docs/usage">
+    Multi-session workflows and mobile tips
+  </Card>
+</Cards>

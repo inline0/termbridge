@@ -1,60 +1,117 @@
 ---
 title: Usage
-description: Multi-session workflows and mobile controls.
+description: Get the most out of Termbridge with these tips and workflows.
 ---
 
 # Usage
 
-## Multiple terminals
-
-Termbridge can host multiple tmux sessions from a single server. The UI includes a terminal switcher sheet for selecting a session.
-
-Termbridge only lists sessions it created or attached to in the current run.
-
-### Development shortcut
-
-```bash
-TERMBRIDGE_SESSIONS=3 bun run dev:beam
-```
-
-This will create three sessions: `<base>`, `<base>-2`, and `<base>-3`.
-
-### Switching sessions
-
-1. Tap the terminal switcher button (terminal icon) in the input bar.
-2. Select a session from the list.
-3. The UI navigates to `/app/terminal/:terminalId` and connects the WebSocket.
-
 ## Mobile controls
 
-The action bar provides common terminal keys:
+When you're on a phone or tablet, you'll see a control bar with common keys:
 
-- `Enter`
-- Arrow keys
-- `Tab`
-- `Esc`
-- `Ctrl+C`
+| Button | What it sends |
+|--------|---------------|
+| `Enter` | Submit commands |
+| `↑` `↓` `←` `→` | Arrow keys (history, navigation) |
+| `Tab` | Autocomplete |
+| `Esc` | Exit modes, cancel |
+| `Ctrl+C` | Interrupt/kill process |
 
-The bar is horizontally scrollable on mobile and uses scroll snapping for quick access.
+The bar scrolls horizontally - swipe to see more options.
 
-## Sending input
+<Callout type="info">
+  Tip: Rotate your phone to landscape mode for more screen space when running TUIs like htop or vim.
+</Callout>
 
-- Type in the input field and press **Enter** to send.
-- Use the send button to submit the input immediately.
+## Multiple terminals
+
+Need more than one terminal? Termbridge can run several at once.
+
+### Switch between terminals
+
+1. Tap the terminal icon in the bottom bar
+2. A list of available sessions appears
+3. Tap one to switch
+
+### Create a new terminal
+
+In the terminal switcher, tap "New Terminal" to create an additional session.
+
+### Use case: Build + logs
+
+Run your build in one terminal, tail logs in another:
+
+```bash
+# Terminal 1: Build
+npm run build
+
+# Terminal 2: Logs
+tail -f logs/app.log
+```
+
+Switch between them without losing your place.
+
+## Running AI coding tools
+
+Termbridge works great for monitoring AI coding assistants like Claude Code, Codex, or OpenCode.
+
+### Watch Claude Code from your phone
+
+```bash
+# Start a named session
+termbridge --session claude
+
+# In another terminal, attach Claude Code to it
+tmux send-keys -t claude "claude" Enter
+```
+
+Now scan the QR and watch Claude work from anywhere.
+
+### Attach to an existing session
+
+If you already have a tmux session running:
+
+```bash
+termbridge --session my-existing-session
+```
+
+Termbridge will connect to it instead of creating a new one.
+
+## Common workflows
+
+### Monitor a long-running process
+
+```bash
+# Start termbridge
+npx termbridge
+
+# In the terminal, run your process
+npm run build  # or any long task
+```
+
+Scan the QR, put your phone in your pocket, check back later.
+
+### Quick server check
+
+```bash
+# SSH into a server in tmux, then beam it
+tmux new-session -d -s server "ssh user@myserver.com"
+termbridge --session server
+```
+
+### Pair programming (sort of)
+
+Share the public URL with someone - they can watch (and type) in real-time. Just remember the URL is only secured by the one-time token, so only share with people you trust.
 
 ## Tips
 
-- For TUIs that rely on size (like `htop`), rotate the device or resize the browser to trigger a terminal fit.
-- Use tmux panes/windows as you normally would; Termbridge streams the active tmux session.
+- **Fonts matter**: The terminal looks best when your system has a monospace font loaded
+- **Resize works**: Rotate your device or resize the browser to adjust the terminal size
+- **tmux commands work**: `Ctrl+B` shortcuts work as normal (though you might need to type them in the input field)
+- **Reconnect automatically**: If you lose connection, just refresh the page
 
-## Beaming AI tools
+## Limitations
 
-If you run tools like Codex, OpenCode, or Claude Code inside tmux, Termbridge will stream them like any other terminal.
-
-Example flow:
-
-```bash
-tmux new-session -d -s codex
-tmux send-keys -t codex "codex" Enter
-termbridge start --session codex
-```
+- **One user at a time**: The terminal is a single PTY - multiple viewers see the same thing and can all type
+- **Session persistence**: If Termbridge exits, the tunnel closes (but tmux sessions stay unless you used `--kill-on-exit`)
+- **Cloudflare only**: Currently only supports Cloudflare tunnels (more providers planned)

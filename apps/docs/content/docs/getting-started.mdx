@@ -1,35 +1,53 @@
 ---
 title: Getting Started
-description: Install prerequisites and run Termbridge for the first time.
+description: Get Termbridge running in under 5 minutes.
 ---
 
 # Getting Started
 
-## Prerequisites
+## Install the prerequisites
 
-Termbridge depends on local tools that must be available in your PATH:
+Termbridge needs three tools installed on your computer:
 
-- **Node.js 18+** (for `npx termbridge`)
-- **tmux** (terminal session manager)
-- **cloudflared** (Cloudflare Quick Tunnel)
+<Steps>
+  <Step>
+    ### Node.js 18+
 
-### macOS (Homebrew)
+    Download from [nodejs.org](https://nodejs.org) or use your package manager.
 
-```bash
-brew install node tmux cloudflared
-```
+    ```bash
+    # Check if installed
+    node --version
+    ```
+  </Step>
+  <Step>
+    ### tmux
 
-### Linux
+    The terminal multiplexer that powers Termbridge sessions.
 
-Install Node and tmux through your package manager, then install cloudflared from Cloudflare:
+    ```bash
+    # macOS
+    brew install tmux
 
-```bash
-# Example (Ubuntu)
-sudo apt-get update
-sudo apt-get install -y nodejs tmux
-```
+    # Ubuntu/Debian
+    sudo apt install tmux
+    ```
+  </Step>
+  <Step>
+    ### cloudflared
 
-Cloudflare installation guide: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
+    Creates the secure tunnel to your terminal.
+
+    ```bash
+    # macOS
+    brew install cloudflared
+
+    # Linux - see cloudflare.com/downloads
+    ```
+
+    [Download cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
+  </Step>
+</Steps>
 
 ## Run Termbridge
 
@@ -37,34 +55,70 @@ Cloudflare installation guide: https://developers.cloudflare.com/cloudflare-one/
 npx termbridge
 ```
 
-You should see:
+You'll see output like this:
 
-- A local URL (ex: `http://127.0.0.1:51234`)
-- A public tunnel URL
-- An ASCII QR code
+```
+┌─────────────────────────────────────────┐
+│  Termbridge                             │
+│                                         │
+│  Local:   http://127.0.0.1:51234        │
+│  Public:  https://abc123.trycloudflare.com │
+│                                         │
+│  ██████████████                         │
+│  ██          ██  <- Scan this QR code   │
+│  ██████████████                         │
+│                                         │
+└─────────────────────────────────────────┘
+```
 
-Open the public URL on your phone (or scan the QR code) to connect.
+## Connect from your phone
 
-## What happens next
+1. Open your phone's camera
+2. Point it at the QR code
+3. Tap the link that appears
+4. Your terminal loads in the browser
 
-1. A local HTTP server starts on `127.0.0.1`.
-2. A tmux session is created (or reused if it already exists).
-3. A Cloudflare Quick Tunnel is launched.
-4. A one-time token URL is printed and encoded into the QR code.
-5. Your phone redeems the token and receives a session cookie.
-6. The UI connects to the terminal via WebSocket.
+That's it - you're connected!
 
-## First session behavior
+## What just happened?
 
-- Termbridge creates a tmux session (default name is derived from the port).
-- The first terminal in the list is loaded automatically.
-- You can create multiple sessions in dev by setting `TERMBRIDGE_SESSIONS`.
+1. Termbridge started a local server on your machine
+2. It created a tmux session for your terminal
+3. Cloudflare created a secure tunnel (the `trycloudflare.com` URL)
+4. The QR code contains a one-time token for secure access
+5. When you scanned it, you got a session cookie and connected
 
-## Using an existing tmux session
+## Try it out
 
-If you pass `--session <name>` and that session already exists, Termbridge will attach to it instead of creating a new one.
+Once connected, try some commands:
+
+```bash
+# See system info
+htop
+
+# Check a git repo
+cd ~/your-project && git status
+
+# Run any CLI tool
+```
+
+The terminal supports full colors, TUIs, and all the keys you'd expect.
+
+## Keep it running
+
+Termbridge needs to stay running for the connection to work. When you're done:
+
+- Press `Ctrl+C` in the terminal where Termbridge is running
+- The tunnel closes and the connection ends
+- Your tmux session stays alive (unless you used `--kill-on-exit`)
 
 ## Next steps
 
-- **CLI Reference** for flags and environment variables.
-- **Usage** for multi-session workflows and mobile controls.
+<Cards>
+  <Card title="Usage" href="/docs/usage">
+    Learn about multiple sessions and mobile controls
+  </Card>
+  <Card title="CLI Reference" href="/docs/cli">
+    See all available flags and options
+  </Card>
+</Cards>

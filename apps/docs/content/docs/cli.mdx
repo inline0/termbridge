@@ -1,72 +1,74 @@
 ---
 title: CLI Reference
-description: Commands, flags, and environment variables.
+description: All the flags and options you might need.
 ---
 
 # CLI Reference
 
-## `termbridge`
+## Basic usage
 
-Running without a subcommand is equivalent to `termbridge start`.
-
-```bash
-termbridge
-```
-
-## `termbridge start`
-
-Starts the local server, creates a tmux session, and launches the Cloudflare tunnel.
-
-```bash
-termbridge start --port 8080 --session dev --kill-on-exit --no-qr --tunnel cloudflare
-```
-
-### Flags
-
-| Flag | Description | Default |
-| --- | --- | --- |
-| `--port <port>` | Bind the local server to a fixed port | random free port |
-| `--session <name>` | tmux session name override | auto-generated |
-| `--kill-on-exit` | kill tmux sessions on exit | `false` |
-| `--no-qr` | disable QR code output | `false` |
-| `--tunnel cloudflare` | tunnel provider | `cloudflare` |
-
-### Examples
-
-Default:
+Just run the command - no arguments needed:
 
 ```bash
 npx termbridge
 ```
 
-Fixed port and custom session:
+This starts everything: local server, tmux session, and Cloudflare tunnel.
+
+## Flags
+
+| Flag | What it does | Default |
+|------|--------------|---------|
+| `--port <port>` | Use a specific port instead of a random one | Random |
+| `--session <name>` | Name your tmux session | Auto-generated |
+| `--kill-on-exit` | Clean up tmux sessions when Termbridge exits | Off |
+| `--no-qr` | Don't print the QR code (useful for scripts) | Off |
+| `--tunnel cloudflare` | Tunnel provider (only cloudflare for now) | cloudflare |
+
+## Examples
+
+### Attach to an existing tmux session
+
+If you already have a tmux session running:
 
 ```bash
-termbridge start --port 8080 --session codex
+termbridge --session my-session
 ```
 
-Exit cleanup:
+### Fixed port for bookmarking
 
 ```bash
-termbridge start --kill-on-exit
+termbridge --port 8080
 ```
 
-No QR (for scripts):
+### Clean exit (no leftover sessions)
 
 ```bash
-termbridge start --no-qr
+termbridge --kill-on-exit
+```
+
+### Scripting (no QR output)
+
+```bash
+termbridge --no-qr
 ```
 
 ## Environment variables
 
-| Variable | Description |
-| --- | --- |
-| `TERMBRIDGE_SESSIONS=2` | Create multiple tmux sessions at startup (dev/testing). |
-| `TERMBRIDGE_INSECURE_COOKIE=1` | Allow HTTP cookies for local development. |
-| `TERMBRIDGE_DEV_UI=http://127.0.0.1:5173` | Override Vite dev UI URL when running `dev:beam`. |
+For development and testing:
 
-## Exit behavior
+| Variable | What it does |
+|----------|--------------|
+| `TERMBRIDGE_SESSIONS=2` | Create multiple tmux sessions on startup |
+| `TERMBRIDGE_INSECURE_COOKIE=1` | Allow HTTP cookies (local dev only) |
+| `TERMBRIDGE_DEV_UI=http://127.0.0.1:5173` | Override Vite dev UI URL |
 
-- The CLI must keep running for the tunnel to stay active.
-- `Ctrl+C` shuts down the tunnel and the local server.
-- With `--kill-on-exit`, Termbridge closes the tmux sessions it created.
+## Stopping Termbridge
+
+Press `Ctrl+C` in the terminal where Termbridge is running. This:
+
+- Closes the Cloudflare tunnel
+- Stops the local server
+- Keeps tmux sessions alive (unless you used `--kill-on-exit`)
+
+Your tmux sessions persist by default, so you can reconnect later.
