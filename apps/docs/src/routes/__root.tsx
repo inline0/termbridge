@@ -14,8 +14,19 @@ export const Route = createRootRoute({
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: config.title },
+      {
+        name: "description",
+        content: "Beam your local terminal to any device with tmux + Cloudflare tunnels.",
+      },
+      {
+        name: "og:description",
+        content: "Beam your local terminal to any device with tmux + Cloudflare tunnels.",
+      },
+      { name: "apple-mobile-web-app-title", content: "Termbridge" },
     ],
-    links: config.icon ? [{ rel: "icon", href: config.icon }] : [],
+    links: [
+      { rel: "icon", href: config.icon ?? "/icon.png" },
+    ],
   }),
   shellComponent: RootDocument,
   component: RootComponent,

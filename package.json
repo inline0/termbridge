@@ -35,6 +35,6 @@
     "vitest": "^4.0.17"
   },
   "dependencies": {
-    "onedocs": "^0.1.7"
+    "onedocs": "^0.1.8"
   }
 }
