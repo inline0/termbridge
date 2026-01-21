@@ -120,11 +120,18 @@ describe("createCloudflaredProvider", () => {
     );
     child.emit("exit", 1);
 
-    const error = await startPromise.catch((cause) => cause as Error);
-    expect(error).toBeInstanceOf(Error);
-    expect(error.message).toContain("err2");
-    expect(error.message).toContain("err7");
-    expect(error.message).not.toContain("err1");
+    let caught: unknown = null;
+    try {
+      await startPromise;
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Error);
+    const message = (caught as Error).message;
+    expect(message).toContain("err2");
+    expect(message).toContain("err7");
+    expect(message).not.toContain("err1");
   });
 
   it("resolves with provided public URL when using token", async () => {
