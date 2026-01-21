@@ -20,7 +20,7 @@ Running `termbridge` without a subcommand is equivalent to `termbridge start`.
 You can also run `termbridge start` explicitly with all flags:
 
 ```bash
-termbridge start --port 8080 --session dev --kill-on-exit --no-qr --tunnel cloudflare
+termbridge start --port 8080 --proxy 5173 --session dev --kill-on-exit --no-qr --tunnel cloudflare
 ```
 
 ## Flags
@@ -28,6 +28,7 @@ termbridge start --port 8080 --session dev --kill-on-exit --no-qr --tunnel cloud
 | Flag | What it does | Default |
 |------|--------------|---------|
 | `--port <port>` | Use a specific port instead of a random one | Random |
+| `--proxy <port>` | Proxy a local dev server (enables Terminal/Preview tabs) | - |
 | `--session <name>` | Name your tmux session | Auto-generated |
 | `--kill-on-exit` | Clean up tmux sessions when Termbridge exits | Off |
 | `--no-qr` | Don't print the QR code (useful for scripts) | Off |
@@ -61,6 +62,18 @@ termbridge --kill-on-exit
 termbridge --no-qr
 ```
 
+### Proxy a Vite dev server
+
+```bash
+# Start your Vite app first
+cd my-app && npm run dev  # runs on port 5173
+
+# Then start Termbridge with proxy
+termbridge --proxy 5173
+```
+
+The UI shows Terminal/Preview tabs. Preview loads your app through the proxy with HMR support.
+
 ## Environment variables
 
 For development and testing:
@@ -69,7 +82,9 @@ For development and testing:
 |----------|--------------|
 | `TERMBRIDGE_SESSIONS=2` | Create multiple tmux sessions on startup |
 | `TERMBRIDGE_INSECURE_COOKIE=1` | Allow HTTP cookies (local dev only) |
-| `TERMBRIDGE_DEV_UI=http://127.0.0.1:5173` | Override Vite dev UI URL |
+| `TERMBRIDGE_PROXY_PORT=5173` | Proxy port for dev:beam:proxy script |
+| `TERMBRIDGE_DEV_UI=http://127.0.0.1:5000` | Override Vite dev UI URL |
+| `TERMBRIDGE_DEV_PORT=3000` | Override Termbridge server port in dev |
 
 ## Stopping Termbridge
 

@@ -1,6 +1,6 @@
-import { createServer as createHttpServer } from "node:http";
+import { createServer as createHttpServer, request as httpRequest } from "node:http";
 import { randomBytes } from "node:crypto";
-import { WebSocketServer } from "ws";
+import { WebSocketServer, WebSocket as WsWebSocket } from "ws";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { WebSocket } from "ws";
 import {
@@ -30,6 +30,8 @@ export type ServerDeps = {
   redemptionLimiter: RateLimiter;
   wsLimiter: RateLimiter;
   logger: Logger;
+  proxyPort?: number;
+  devProxyUrl?: string; // Direct URL to proxy target for dev mode (enables HMR in iframe)
 };
 
 export type StartedServer = {
@@ -138,28 +140,55 @@ const sendWsMessage = (socket: WebSocket, message: TerminalServerMessage) => {
 const createSessionName = () => `termbridge-${randomBytes(4).toString("hex")}`;
 
 export const createAppServer = (deps: ServerDeps) => {
-  const staticHandler = createStaticHandler(deps.uiDistPath, "/app");
+  const staticHandler = createStaticHandler(deps.uiDistPath, "/__tb/app");
   const wss = new WebSocketServer({ noServer: true });
   const connectionInfo = new WeakMap<WebSocket, { sessionName: string }>();
+
+  const proxyRequest = (
+    request: IncomingMessage,
+    response: ServerResponse,
+    targetPath: string,
+    search: string
+  ) => {
+    const targetUrl = `http://localhost:${deps.proxyPort}${targetPath}${search}`;
+    const proxyHeaders = { ...request.headers };
+    delete proxyHeaders.cookie;
+    delete proxyHeaders.host;
+    proxyHeaders.host = `localhost:${deps.proxyPort}`;
+
+    const proxyReq = httpRequest(
+      targetUrl,
+      { method: request.method, headers: proxyHeaders },
+      (proxyRes) => {
+        response.writeHead(proxyRes.statusCode as number, proxyRes.headers);
+        proxyRes.pipe(response);
+      }
+    );
+    proxyReq.on("error", () => {
+      response.statusCode = 502;
+      response.end("proxy error");
+    });
+    request.pipe(proxyReq);
+  };
 
   const server = createHttpServer(async (request, response) => {
     const url = new URL(request.url as string, `http://${request.headers.host as string}`);
 
-    if (request.method === "GET" && url.pathname === "/healthz") {
+    if (request.method === "GET" && url.pathname === "/__tb/healthz") {
       response.statusCode = 200;
       response.end("ok");
       return;
     }
 
-    if (request.method === "GET" && url.pathname === "/") {
+    if (request.method === "GET" && url.pathname === "/" && !deps.proxyPort) {
       response.statusCode = 302;
-      response.setHeader("Location", "/app");
+      response.setHeader("Location", "/__tb/app");
       response.end();
       return;
     }
 
-    if (request.method === "GET" && url.pathname.startsWith("/s/")) {
-      const token = url.pathname.slice(3);
+    if (request.method === "GET" && url.pathname.startsWith("/__tb/s/")) {
+      const token = url.pathname.slice("/__tb/s/".length);
       const ip = getIp(request);
 
       if (!deps.redemptionLimiter.allow(ip)) {
@@ -178,12 +207,12 @@ export const createAppServer = (deps: ServerDeps) => {
 
       response.statusCode = 302;
       response.setHeader("Set-Cookie", deps.auth.createSessionCookie(session.id));
-      response.setHeader("Location", "/app");
+      response.setHeader("Location", "/__tb/app");
       response.end();
       return;
     }
 
-    if (url.pathname === "/api/csrf") {
+    if (url.pathname === "/__tb/api/csrf") {
       const session = deps.auth.getSessionFromRequest(request);
 
       if (!session) {
@@ -202,7 +231,7 @@ export const createAppServer = (deps: ServerDeps) => {
       return;
     }
 
-    if (url.pathname === "/api/terminals") {
+    if (url.pathname === "/__tb/api/terminals") {
       const session = deps.auth.getSessionFromRequest(request);
 
       if (!session) {
@@ -244,9 +273,31 @@ export const createAppServer = (deps: ServerDeps) => {
       }
     }
 
+    if (request.method === "GET" && url.pathname === "/__tb/api/config") {
+      const session = deps.auth.getSessionFromRequest(request);
+
+      if (!session) {
+        response.statusCode = 401;
+        response.end("unauthorized");
+        return;
+      }
+
+      jsonResponse(response, 200, {
+        proxyPort: deps.proxyPort ?? null,
+        devProxyUrl: deps.devProxyUrl ?? null
+      });
+      return;
+    }
+
     const handled = await staticHandler(request, response);
 
     if (!handled) {
+      // If proxy mode is enabled and user is authenticated, proxy to target app
+      if (deps.proxyPort && deps.auth.getSessionFromRequest(request)) {
+        proxyRequest(request, response, url.pathname, url.search);
+        return;
+      }
+
       response.statusCode = 404;
       response.end("not found");
     }
@@ -255,7 +306,29 @@ export const createAppServer = (deps: ServerDeps) => {
   server.on("upgrade", (request, socket, head) => {
     const url = new URL(request.url as string, `http://${request.headers.host as string}`);
 
-    if (!url.pathname.startsWith("/ws/terminal/")) {
+    if (!url.pathname.startsWith("/__tb/ws/terminal/")) {
+      // Proxy WebSocket to target app if proxy mode enabled
+      if (deps.proxyPort && deps.auth.getSessionFromRequest(request)) {
+        const targetUrl = `ws://localhost:${deps.proxyPort}${url.pathname}${url.search}`;
+
+        const proxyWs = new WsWebSocket(targetUrl);
+
+        proxyWs.on("open", () => {
+          wss.handleUpgrade(request, socket, head, (clientWs) => {
+            clientWs.on("message", (data) => proxyWs.send(data));
+            proxyWs.on("message", (data) => clientWs.send(data));
+            clientWs.on("close", () => proxyWs.close());
+            proxyWs.on("close", () => clientWs.close());
+          });
+        });
+
+        proxyWs.on("error", () => {
+          socket.destroy();
+        });
+
+        return;
+      }
+
       socket.destroy();
       return;
     }

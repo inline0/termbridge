@@ -7,8 +7,10 @@ import {
 } from "./terminal-client";
 import { TerminalControls } from "./terminal-controls";
 import type { TerminalListState } from "./terminal-list-state";
+import { ViewTabs } from "./view-tabs";
 
 type CsrfResponse = { csrfToken: string };
+type ConfigResponse = { proxyPort: number | null; devProxyUrl: string | null };
 
 type TerminalPageProps = {
   terminalId?: string | null;
@@ -22,24 +24,29 @@ export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps
   const [terminals, setTerminals] = useState<TerminalListItem[]>([]);
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
   const [connectionState, setConnectionState] = useState<ConnectionState>("connecting");
+  const [proxyPort, setProxyPort] = useState<number | null>(null);
+  const [devProxyUrl, setDevProxyUrl] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState<"terminal" | "preview">("terminal");
 
   useEffect(() => {
     let active = true;
 
     const loadData = async () => {
       try {
-        const [terminalsResponse, csrfResponse] = await Promise.all([
-          fetch("/api/terminals"),
-          fetch("/api/csrf")
+        const [terminalsResponse, csrfResponse, configResponse] = await Promise.all([
+          fetch("/__tb/api/terminals"),
+          fetch("/__tb/api/csrf"),
+          fetch("/__tb/api/config")
         ]);
 
-        if (!terminalsResponse.ok || !csrfResponse.ok) {
+        if (!terminalsResponse.ok || !csrfResponse.ok || !configResponse.ok) {
           throw new Error("api request failed");
         }
 
-        const [terminalsPayload, csrfPayload] = await Promise.all([
+        const [terminalsPayload, csrfPayload, configPayload] = await Promise.all([
           terminalsResponse.json() as Promise<TerminalListResponse>,
-          csrfResponse.json() as Promise<CsrfResponse>
+          csrfResponse.json() as Promise<CsrfResponse>,
+          configResponse.json() as Promise<ConfigResponse>
         ]);
 
         const nextTerminals = terminalsPayload.terminals;
@@ -50,6 +57,8 @@ export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps
 
         setTerminals(nextTerminals);
         setCsrfToken(csrfPayload.csrfToken);
+        setProxyPort(configPayload.proxyPort);
+        setDevProxyUrl(configPayload.devProxyUrl);
 
         if (nextTerminals.length === 0) {
           setState("empty");
@@ -148,9 +157,16 @@ export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps
     />
   ) : null;
 
+  const showTabs = proxyPort !== null;
+
   return (
-    <div className="relative grid h-full w-full grid-cols-1 grid-rows-[minmax(0,1fr)_auto] bg-background text-foreground">
-      {statusLabel ? (
+    <div
+      className={`relative grid h-full w-full grid-cols-1 bg-background text-foreground ${
+        showTabs ? "grid-rows-[auto_minmax(0,1fr)_auto]" : "grid-rows-[minmax(0,1fr)_auto]"
+      }`}
+    >
+      {showTabs ? <ViewTabs activeView={activeView} onViewChange={setActiveView} /> : null}
+      {statusLabel && activeView === "terminal" ? (
         <div
           className="terminal-status absolute inset-0 z-20 flex items-center justify-center bg-background/85 text-xs font-medium text-muted-foreground"
           role="status"
@@ -158,11 +174,20 @@ export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps
           {statusLabel}
         </div>
       ) : null}
-      {connectionIndicator}
-      <div className="min-h-0 min-w-0">
+      {activeView === "terminal" ? connectionIndicator : null}
+      <div className="min-h-0 min-w-0 relative">
+        {showTabs ? (
+          <iframe
+            src={devProxyUrl ?? "/"}
+            title="Preview"
+            className={`h-full w-full border-0 ${activeView === "preview" ? "" : "invisible absolute inset-0"}`}
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+            data-testid="preview-iframe"
+          />
+        ) : null}
         <div
           ref={hostRef}
-          className="terminal-host h-full w-full"
+          className={`terminal-host h-full w-full ${activeView === "preview" ? "invisible absolute inset-0" : ""}`}
           data-testid="terminal-host"
         />
       </div>

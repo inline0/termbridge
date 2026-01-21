@@ -8,6 +8,10 @@ import {
   Zap,
   Command,
   QrCode,
+  AppWindow,
+  RefreshCw,
+  PanelTop,
+  Workflow,
 } from "lucide-react";
 
 const iconClass = "h-5 w-5 text-fd-primary";
@@ -70,6 +74,26 @@ export default defineConfig({
         title: "QR Flow",
         description: "Share a secure, scannable URL for fast device handoff.",
         icon: <QrCode className={iconClass} />,
+      },
+      {
+        title: "Dev Server Preview",
+        description: "Proxy your local Vite app and preview it alongside the terminal.",
+        icon: <AppWindow className={iconClass} />,
+      },
+      {
+        title: "HMR Passthrough",
+        description: "WebSocket proxying keeps Vite's Hot Module Replacement working.",
+        icon: <RefreshCw className={iconClass} />,
+      },
+      {
+        title: "Tab Switching",
+        description: "Toggle between Terminal and Preview views with a single tap.",
+        icon: <PanelTop className={iconClass} />,
+      },
+      {
+        title: "Full-Stack Workflow",
+        description: "Run terminal commands and watch your app update in real-time.",
+        icon: <Workflow className={iconClass} />,
       },
     ],
   },

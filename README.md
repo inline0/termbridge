@@ -46,6 +46,7 @@ termbridge --port 8080 --session dev --kill-on-exit --no-qr --tunnel cloudflare
 
 Flags:
 - `--port <port>`: fixed local port (default: random free port)
+- `--proxy <port>`: proxy a local dev server through termbridge (shows Terminal/Preview tabs)
 - `--session <name>`: tmux session name override
 - `--kill-on-exit`: kill tmux sessions on exit
 - `--no-qr`: disable QR output
@@ -55,7 +56,7 @@ Flags:
 
 - `TERMBRIDGE_SESSIONS=2`: create multiple tmux sessions on start
 - `TERMBRIDGE_INSECURE_COOKIE=1`: allow HTTP cookies for local dev
-- `TERMBRIDGE_DEV_UI=http://127.0.0.1:5173`: override Vite dev UI URL
+- `TERMBRIDGE_PROXY_PORT=5174`: proxy port for dev:beam:proxy script
 
 ## Documentation
 

@@ -1,5 +1,7 @@
 export type CliOptions = {
   port?: number;
+  proxy?: number;
+  devProxyUrl?: string;
   session?: string;
   killOnExit: boolean;
   noQr: boolean;
@@ -54,6 +56,28 @@ export const parseArgs = (argv: string[]): ParsedArgs => {
       }
 
       options.port = port;
+      continue;
+    }
+
+    if (current === "--proxy") {
+      const proxy = parseNumber(args.shift());
+
+      if (!proxy || proxy <= 0) {
+        throw new Error("invalid proxy port");
+      }
+
+      options.proxy = proxy;
+      continue;
+    }
+
+    if (current === "--dev-proxy-url") {
+      const url = args.shift();
+
+      if (!url) {
+        throw new Error("missing dev proxy URL");
+      }
+
+      options.devProxyUrl = url;
       continue;
     }
 

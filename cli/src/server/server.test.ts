@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import WebSocket from "ws";
+import { createServer as createHttpServer } from "node:http";
+import WebSocket, { WebSocketServer } from "ws";
 import { createAuth } from "./auth";
 import { createRateLimiter } from "./rate-limit";
 import { createTerminalRegistry } from "./terminal-registry";
@@ -34,7 +35,7 @@ const createTestBackend = () => {
   return backend;
 };
 
-const createServerFixture = async (options: { redemptionLimit?: number; wsLimit?: number } = {}) => {
+const createServerFixture = async (options: { redemptionLimit?: number; wsLimit?: number; proxyPort?: number } = {}) => {
   const uiDir = await mkdtemp(join(tmpdir(), "termbridge-ui-"));
   await writeFile(join(uiDir, "index.html"), "index");
 
@@ -70,7 +71,8 @@ const createServerFixture = async (options: { redemptionLimit?: number; wsLimit?
       info: () => undefined,
       warn: () => undefined,
       error: () => undefined
-    }
+    },
+    proxyPort: options.proxyPort
   });
 
   const started = await server.listen(0);
@@ -97,7 +99,7 @@ const getCookie = (setCookie: string | null) => {
 };
 
 const getCsrfToken = async (baseUrl: string, cookie: string) => {
-  const response = await fetch(`${baseUrl}/api/csrf`, { headers: { cookie } });
+  const response = await fetch(`${baseUrl}/__tb/api/csrf`, { headers: { cookie } });
   const payload = (await response.json()) as { csrfToken: string };
   return payload.csrfToken;
 };
@@ -106,7 +108,7 @@ describe("createAppServer", () => {
   it("serves health and redirects", async () => {
     const fixture = await createServerFixture();
 
-    const health = await fetch(`${fixture.baseUrl}/healthz`);
+    const health = await fetch(`${fixture.baseUrl}/__tb/healthz`);
     expect(health.status).toBe(200);
 
     const redirect = await fetch(`${fixture.baseUrl}/`, { redirect: "manual" });
@@ -118,7 +120,7 @@ describe("createAppServer", () => {
   it("serves the UI", async () => {
     const fixture = await createServerFixture();
 
-    const response = await fetch(`${fixture.baseUrl}/app/`);
+    const response = await fetch(`${fixture.baseUrl}/__tb/app/`);
     expect(response.status).toBe(200);
     expect(await response.text()).toBe("index");
 
@@ -138,7 +140,7 @@ describe("createAppServer", () => {
     const fixture = await createServerFixture();
 
     const { token } = fixture.auth.issueToken();
-    const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
     const cookie = getCookie(redeem.headers.get("set-cookie"));
 
     expect(redeem.status).toBe(302);
@@ -148,7 +150,7 @@ describe("createAppServer", () => {
     const session = await fixture.backend.createSession("session-1");
     fixture.terminalRegistry.add(session.name, session.name, "tmux");
 
-    const listResponse = await fetch(`${fixture.baseUrl}/api/terminals`, {
+    const listResponse = await fetch(`${fixture.baseUrl}/__tb/api/terminals`, {
       headers: { cookie }
     });
     const listPayload = await listResponse.json();
@@ -162,10 +164,10 @@ describe("createAppServer", () => {
   it("returns csrf token for authenticated requests", async () => {
     const fixture = await createServerFixture();
     const { token } = fixture.auth.issueToken();
-    const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
     const cookie = getCookie(redeem.headers.get("set-cookie"));
 
-    const csrfResponse = await fetch(`${fixture.baseUrl}/api/csrf`, { headers: { cookie } });
+    const csrfResponse = await fetch(`${fixture.baseUrl}/__tb/api/csrf`, { headers: { cookie } });
     const payload = await csrfResponse.json() as { csrfToken: string };
 
     expect(csrfResponse.status).toBe(200);
@@ -178,7 +180,7 @@ describe("createAppServer", () => {
   it("rejects csrf requests without auth", async () => {
     const fixture = await createServerFixture();
 
-    const csrfResponse = await fetch(`${fixture.baseUrl}/api/csrf`);
+    const csrfResponse = await fetch(`${fixture.baseUrl}/__tb/api/csrf`);
     expect(csrfResponse.status).toBe(401);
 
     await fixture.close();
@@ -187,10 +189,10 @@ describe("createAppServer", () => {
   it("rejects non-GET methods on csrf endpoint", async () => {
     const fixture = await createServerFixture();
     const { token } = fixture.auth.issueToken();
-    const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
     const cookie = getCookie(redeem.headers.get("set-cookie"));
 
-    const csrfResponse = await fetch(`${fixture.baseUrl}/api/csrf`, {
+    const csrfResponse = await fetch(`${fixture.baseUrl}/__tb/api/csrf`, {
       method: "POST",
       headers: { cookie }
     });
@@ -202,14 +204,14 @@ describe("createAppServer", () => {
   it("blocks unauthorized and rate-limited requests", async () => {
     const fixture = await createServerFixture();
 
-    const unauth = await fetch(`${fixture.baseUrl}/api/terminals`);
+    const unauth = await fetch(`${fixture.baseUrl}/__tb/api/terminals`);
     expect(unauth.status).toBe(401);
 
     const { token } = fixture.auth.issueToken();
-    const first = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const first = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
     expect(first.status).toBe(302);
 
-    const second = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const second = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
     expect(second.status).toBe(429);
 
     await fixture.close();
@@ -218,7 +220,7 @@ describe("createAppServer", () => {
   it("rejects invalid tokens", async () => {
     const fixture = await createServerFixture({ redemptionLimit: 5 });
 
-    const redeem = await fetch(`${fixture.baseUrl}/s/invalid`, { redirect: "manual" });
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/invalid`, { redirect: "manual" });
     expect(redeem.status).toBe(401);
 
     await fixture.close();
@@ -228,10 +230,10 @@ describe("createAppServer", () => {
     const fixture = await createServerFixture();
 
     const { token } = fixture.auth.issueToken();
-    const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
     const cookie = getCookie(redeem.headers.get("set-cookie"));
 
-    const createResponse = await fetch(`${fixture.baseUrl}/api/terminals`, {
+    const createResponse = await fetch(`${fixture.baseUrl}/__tb/api/terminals`, {
       method: "POST",
       headers: { cookie, "content-type": "application/json" },
       body: JSON.stringify({ name: "custom" })
@@ -249,10 +251,10 @@ describe("createAppServer", () => {
     const fixture = await createServerFixture();
 
     const { token } = fixture.auth.issueToken();
-    const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
     const cookie = getCookie(redeem.headers.get("set-cookie"));
 
-    const response = await fetch(`${fixture.baseUrl}/api/terminals`, {
+    const response = await fetch(`${fixture.baseUrl}/__tb/api/terminals`, {
       method: "PUT",
       headers: { cookie }
     });
@@ -265,10 +267,10 @@ describe("createAppServer", () => {
   it("rejects invalid terminal creation bodies", async () => {
     const fixture = await createServerFixture({ redemptionLimit: 5 });
     const { token } = fixture.auth.issueToken();
-    const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
     const cookie = getCookie(redeem.headers.get("set-cookie"));
 
-    const createResponse = await fetch(`${fixture.baseUrl}/api/terminals`, {
+    const createResponse = await fetch(`${fixture.baseUrl}/__tb/api/terminals`, {
       method: "POST",
       headers: { cookie, "content-type": "application/json" },
       body: "true"
@@ -282,12 +284,12 @@ describe("createAppServer", () => {
   it("rejects request bodies that are too large", async () => {
     const fixture = await createServerFixture({ redemptionLimit: 5 });
     const { token } = fixture.auth.issueToken();
-    const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
     const cookie = getCookie(redeem.headers.get("set-cookie"));
 
     const largeBody = JSON.stringify({ name: "x".repeat(100 * 1024) }); // >64KB
 
-    const createResponse = await fetch(`${fixture.baseUrl}/api/terminals`, {
+    const createResponse = await fetch(`${fixture.baseUrl}/__tb/api/terminals`, {
       method: "POST",
       headers: { cookie, "content-type": "application/json" },
       body: largeBody
@@ -302,10 +304,10 @@ describe("createAppServer", () => {
   it("accepts malformed JSON bodies by falling back", async () => {
     const fixture = await createServerFixture({ redemptionLimit: 5 });
     const { token } = fixture.auth.issueToken();
-    const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
     const cookie = getCookie(redeem.headers.get("set-cookie"));
 
-    const createResponse = await fetch(`${fixture.baseUrl}/api/terminals`, {
+    const createResponse = await fetch(`${fixture.baseUrl}/__tb/api/terminals`, {
       method: "POST",
       headers: { cookie, "content-type": "application/json" },
       body: "{"
@@ -319,10 +321,10 @@ describe("createAppServer", () => {
   it("creates a terminal with a default name when body is empty", async () => {
     const fixture = await createServerFixture({ redemptionLimit: 5 });
     const { token } = fixture.auth.issueToken();
-    const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
     const cookie = getCookie(redeem.headers.get("set-cookie"));
 
-    const createResponse = await fetch(`${fixture.baseUrl}/api/terminals`, {
+    const createResponse = await fetch(`${fixture.baseUrl}/__tb/api/terminals`, {
       method: "POST",
       headers: { cookie }
     });
@@ -336,14 +338,14 @@ describe("createAppServer", () => {
   it("handles websocket connections and messages", async () => {
     const fixture = await createServerFixture();
     const { token } = fixture.auth.issueToken();
-    const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
     const cookie = getCookie(redeem.headers.get("set-cookie"));
     const csrfToken = await getCsrfToken(fixture.baseUrl, cookie);
 
     const session = await fixture.backend.createSession("session-ws");
     const record = fixture.terminalRegistry.add(session.name, session.name, "tmux");
 
-    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/ws/terminal/${record.id}?csrf=${csrfToken}`,
+    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/__tb/ws/terminal/${record.id}?csrf=${csrfToken}`,
       { headers: { cookie } }
     );
 
@@ -378,14 +380,14 @@ describe("createAppServer", () => {
   it("rejects websocket messages that are too large", async () => {
     const fixture = await createServerFixture();
     const { token } = fixture.auth.issueToken();
-    const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
     const cookie = getCookie(redeem.headers.get("set-cookie"));
     const csrfToken = await getCsrfToken(fixture.baseUrl, cookie);
 
     const session = await fixture.backend.createSession("session-large");
     const record = fixture.terminalRegistry.add(session.name, session.name, "tmux");
 
-    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/ws/terminal/${record.id}?csrf=${csrfToken}`,
+    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/__tb/ws/terminal/${record.id}?csrf=${csrfToken}`,
       { headers: { cookie } }
     );
 
@@ -409,14 +411,14 @@ describe("createAppServer", () => {
   it("rejects websocket connections with invalid origins", async () => {
     const fixture = await createServerFixture();
     const { token } = fixture.auth.issueToken();
-    const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
     const cookie = getCookie(redeem.headers.get("set-cookie"));
     const csrfToken = await getCsrfToken(fixture.baseUrl, cookie);
 
     const session = await fixture.backend.createSession("session-origin");
     const record = fixture.terminalRegistry.add(session.name, session.name, "tmux");
 
-    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/ws/terminal/${record.id}?csrf=${csrfToken}`,
+    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/__tb/ws/terminal/${record.id}?csrf=${csrfToken}`,
       { headers: { cookie, origin: "http://evil.test" } }
     );
 
@@ -427,14 +429,14 @@ describe("createAppServer", () => {
   it("rejects websocket connections with malformed origins", async () => {
     const fixture = await createServerFixture();
     const { token } = fixture.auth.issueToken();
-    const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
     const cookie = getCookie(redeem.headers.get("set-cookie"));
     const csrfToken = await getCsrfToken(fixture.baseUrl, cookie);
 
     const session = await fixture.backend.createSession("session-bad-origin");
     const record = fixture.terminalRegistry.add(session.name, session.name, "tmux");
 
-    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/ws/terminal/${record.id}?csrf=${csrfToken}`,
+    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/__tb/ws/terminal/${record.id}?csrf=${csrfToken}`,
       { headers: { cookie, origin: "not-a-url" } }
     );
 
@@ -447,7 +449,7 @@ describe("createAppServer", () => {
     const session = await fixture.backend.createSession("session-no-cookie");
     const record = fixture.terminalRegistry.add(session.name, session.name, "tmux");
 
-    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/ws/terminal/${record.id}`);
+    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/__tb/ws/terminal/${record.id}`);
 
     await new Promise((resolve) => ws.on("error", resolve));
     await fixture.close();
@@ -456,13 +458,13 @@ describe("createAppServer", () => {
   it("rejects websocket connections without csrf token", async () => {
     const fixture = await createServerFixture();
     const { token } = fixture.auth.issueToken();
-    const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
     const cookie = getCookie(redeem.headers.get("set-cookie"));
 
     const session = await fixture.backend.createSession("session-no-csrf");
     const record = fixture.terminalRegistry.add(session.name, session.name, "tmux");
 
-    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/ws/terminal/${record.id}`, {
+    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/__tb/ws/terminal/${record.id}`, {
       headers: { cookie }
     });
 
@@ -473,13 +475,13 @@ describe("createAppServer", () => {
   it("rejects websocket connections with invalid csrf token", async () => {
     const fixture = await createServerFixture();
     const { token } = fixture.auth.issueToken();
-    const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
     const cookie = getCookie(redeem.headers.get("set-cookie"));
 
     const session = await fixture.backend.createSession("session-bad-csrf");
     const record = fixture.terminalRegistry.add(session.name, session.name, "tmux");
 
-    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/ws/terminal/${record.id}?csrf=invalid-token`, {
+    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/__tb/ws/terminal/${record.id}?csrf=invalid-token`, {
       headers: { cookie }
     });
 
@@ -490,11 +492,11 @@ describe("createAppServer", () => {
   it("rejects websocket connections without a terminal", async () => {
     const fixture = await createServerFixture();
     const { token } = fixture.auth.issueToken();
-    const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
     const cookie = getCookie(redeem.headers.get("set-cookie"));
     const csrfToken = await getCsrfToken(fixture.baseUrl, cookie);
 
-    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/ws/terminal/missing?csrf=${csrfToken}`, {
+    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/__tb/ws/terminal/missing?csrf=${csrfToken}`, {
       headers: { cookie }
     });
 
@@ -505,7 +507,7 @@ describe("createAppServer", () => {
   it("rejects websocket upgrades for other paths", async () => {
     const fixture = await createServerFixture();
 
-    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/ws/other`);
+    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/__tb/ws/other`);
     await new Promise((resolve) => ws.on("error", resolve));
 
     await fixture.close();
@@ -514,7 +516,7 @@ describe("createAppServer", () => {
   it("rejects websocket upgrades without an id", async () => {
     const fixture = await createServerFixture();
 
-    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/ws/terminal/`);
+    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/__tb/ws/terminal/`);
     await new Promise((resolve) => ws.on("error", resolve));
 
     await fixture.close();
@@ -523,14 +525,14 @@ describe("createAppServer", () => {
   it("rejects websocket connections when rate limited", async () => {
     const fixture = await createServerFixture({ wsLimit: 1 });
     const { token } = fixture.auth.issueToken();
-    const redeem = await fetch(`${fixture.baseUrl}/s/${token}`, { redirect: "manual" });
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
     const cookie = getCookie(redeem.headers.get("set-cookie"));
     const csrfToken = await getCsrfToken(fixture.baseUrl, cookie);
 
     const session = await fixture.backend.createSession("session-limit");
     const record = fixture.terminalRegistry.add(session.name, session.name, "tmux");
 
-    const wsUrl = `ws://127.0.0.1:${new URL(fixture.baseUrl).port}/ws/terminal/${record.id}?csrf=${csrfToken}`;
+    const wsUrl = `ws://127.0.0.1:${new URL(fixture.baseUrl).port}/__tb/ws/terminal/${record.id}?csrf=${csrfToken}`;
     const first = new WebSocket(wsUrl, { headers: { cookie } });
     await new Promise((resolve) => first.on("open", resolve));
 
@@ -539,5 +541,263 @@ describe("createAppServer", () => {
 
     first.close();
     await fixture.close();
+  });
+
+  it("returns config with null proxyPort when not configured", async () => {
+    const fixture = await createServerFixture();
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+
+    const configResponse = await fetch(`${fixture.baseUrl}/__tb/api/config`, { headers: { cookie } });
+    const payload = await configResponse.json() as { proxyPort: number | null };
+
+    expect(configResponse.status).toBe(200);
+    expect(payload.proxyPort).toBe(null);
+
+    await fixture.close();
+  });
+
+  it("returns config with proxyPort when configured", async () => {
+    const fixture = await createServerFixture({ proxyPort: 5173 });
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+
+    const configResponse = await fetch(`${fixture.baseUrl}/__tb/api/config`, { headers: { cookie } });
+    const payload = await configResponse.json() as { proxyPort: number | null };
+
+    expect(configResponse.status).toBe(200);
+    expect(payload.proxyPort).toBe(5173);
+
+    await fixture.close();
+  });
+
+  it("rejects config requests without auth", async () => {
+    const fixture = await createServerFixture();
+
+    const configResponse = await fetch(`${fixture.baseUrl}/__tb/api/config`);
+    expect(configResponse.status).toBe(401);
+
+    await fixture.close();
+  });
+
+  it("returns 502 when proxy target is unreachable", async () => {
+    const fixture = await createServerFixture({ proxyPort: 59999 });
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+
+    const proxyResponse = await fetch(`${fixture.baseUrl}/some-path`, { headers: { cookie } });
+    expect(proxyResponse.status).toBe(502);
+    expect(await proxyResponse.text()).toBe("proxy error");
+
+    await fixture.close();
+  });
+
+  it("rejects proxy websocket without auth", async () => {
+    const fixture = await createServerFixture({ proxyPort: 5173 });
+
+    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/some-ws-path`);
+    await new Promise((resolve) => ws.on("error", resolve));
+
+    await fixture.close();
+  });
+
+  it("rejects proxy websocket when proxy not configured", async () => {
+    const fixture = await createServerFixture();
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+
+    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/some-ws-path`, {
+      headers: { cookie }
+    });
+    await new Promise((resolve) => ws.on("error", resolve));
+
+    await fixture.close();
+  });
+
+  it("rejects proxy websocket when target is unreachable", async () => {
+    const fixture = await createServerFixture({ proxyPort: 59999 });
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+
+    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/some-ws-path`, {
+      headers: { cookie }
+    });
+    await new Promise((resolve) => ws.on("error", resolve));
+
+    await fixture.close();
+  });
+
+  it("proxies HTTP requests to target server", async () => {
+    const targetServer = createHttpServer((req, res) => {
+      res.writeHead(200, { "Content-Type": "text/plain" });
+      res.end("hello from target");
+    });
+    await new Promise<void>((resolve) => targetServer.listen(0, "127.0.0.1", resolve));
+    const targetPort = (targetServer.address() as { port: number }).port;
+
+    const fixture = await createServerFixture({ proxyPort: targetPort });
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+
+    const proxyResponse = await fetch(`${fixture.baseUrl}/some-path`, { headers: { cookie } });
+    expect(proxyResponse.status).toBe(200);
+    expect(await proxyResponse.text()).toBe("hello from target");
+
+    await fixture.close();
+    await new Promise<void>((resolve) => targetServer.close(() => resolve()));
+  });
+
+  it("proxies HTTP requests with paths preserved", async () => {
+    const targetServer = createHttpServer((req, res) => {
+      res.writeHead(200, { "Content-Type": "text/plain" });
+      res.end(`path: ${req.url}`);
+    });
+    await new Promise<void>((resolve) => targetServer.listen(0, "127.0.0.1", resolve));
+    const targetPort = (targetServer.address() as { port: number }).port;
+
+    const fixture = await createServerFixture({ proxyPort: targetPort });
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+
+    const proxyResponse = await fetch(`${fixture.baseUrl}/app/page`, { headers: { cookie } });
+    expect(proxyResponse.status).toBe(200);
+    expect(await proxyResponse.text()).toBe("path: /app/page");
+
+    await fixture.close();
+    await new Promise<void>((resolve) => targetServer.close(() => resolve()));
+  });
+
+  it("does not rewrite Location headers for external hosts", async () => {
+    const targetServer = createHttpServer((req, res) => {
+      res.writeHead(302, { Location: "http://external.example.com/path" });
+      res.end();
+    });
+    await new Promise<void>((resolve) => targetServer.listen(0, "127.0.0.1", resolve));
+    const targetPort = (targetServer.address() as { port: number }).port;
+
+    const fixture = await createServerFixture({ proxyPort: targetPort });
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+
+    const proxyResponse = await fetch(`${fixture.baseUrl}/some-path`, {
+      headers: { cookie },
+      redirect: "manual"
+    });
+    expect(proxyResponse.status).toBe(302);
+    expect(proxyResponse.headers.get("location")).toBe("http://external.example.com/path");
+
+    await fixture.close();
+    await new Promise<void>((resolve) => targetServer.close(() => resolve()));
+  });
+
+  it("proxies WebSocket connections to target server", async () => {
+    const targetServer = createHttpServer();
+    const targetWss = new WebSocketServer({ server: targetServer });
+    const messages: string[] = [];
+
+    targetWss.on("connection", (ws) => {
+      ws.on("message", (data) => {
+        messages.push(data.toString());
+        ws.send(`echo: ${data.toString()}`);
+      });
+    });
+
+    await new Promise<void>((resolve) => targetServer.listen(0, "127.0.0.1", resolve));
+    const targetPort = (targetServer.address() as { port: number }).port;
+
+    const fixture = await createServerFixture({ proxyPort: targetPort });
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+
+    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/some-ws-path`, {
+      headers: { cookie }
+    });
+
+    const clientMessages: string[] = [];
+    ws.on("message", (data) => clientMessages.push(data.toString()));
+
+    await new Promise((resolve) => ws.on("open", resolve));
+
+    ws.send("hello");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    expect(messages).toContain("hello");
+    expect(clientMessages).toContain("echo: hello");
+
+    ws.close();
+    await fixture.close();
+    targetWss.close();
+    await new Promise<void>((resolve) => targetServer.close(() => resolve()));
+  });
+
+  it("closes client WebSocket when target closes", async () => {
+    const targetServer = createHttpServer();
+    const targetWss = new WebSocketServer({ server: targetServer });
+
+    targetWss.on("connection", (ws) => {
+      ws.close();
+    });
+
+    await new Promise<void>((resolve) => targetServer.listen(0, "127.0.0.1", resolve));
+    const targetPort = (targetServer.address() as { port: number }).port;
+
+    const fixture = await createServerFixture({ proxyPort: targetPort });
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+
+    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/some-ws-path`, {
+      headers: { cookie }
+    });
+
+    await new Promise((resolve) => ws.on("close", resolve));
+
+    await fixture.close();
+    targetWss.close();
+    await new Promise<void>((resolve) => targetServer.close(() => resolve()));
+  });
+
+  it("proxies WebSocket with path preserved", async () => {
+    const targetServer = createHttpServer();
+    const targetWss = new WebSocketServer({ server: targetServer });
+    let receivedPath = "";
+
+    targetServer.on("upgrade", (request) => {
+      receivedPath = request.url ?? "";
+    });
+
+    targetWss.on("connection", (ws) => {
+      ws.send("connected");
+    });
+
+    await new Promise<void>((resolve) => targetServer.listen(0, "127.0.0.1", resolve));
+    const targetPort = (targetServer.address() as { port: number }).port;
+
+    const fixture = await createServerFixture({ proxyPort: targetPort });
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+
+    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/_vite/ws`, {
+      headers: { cookie }
+    });
+
+    await new Promise((resolve) => ws.on("message", resolve));
+
+    expect(receivedPath).toBe("/_vite/ws");
+
+    ws.close();
+    await fixture.close();
+    targetWss.close();
+    await new Promise<void>((resolve) => targetServer.close(() => resolve()));
   });
 });

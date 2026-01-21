@@ -40,7 +40,7 @@ export const TerminalSwitcher = ({
           variant="secondary"
           size="icon"
           aria-label="Terminals"
-          className="h-10 w-10 rounded-full bg-input/50"
+          className="h-11 w-11 rounded-full bg-input/50"
         >
           <Terminal className="size-4" aria-hidden="true" />
         </Button>

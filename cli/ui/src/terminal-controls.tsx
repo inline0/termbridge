@@ -188,7 +188,7 @@ export const TerminalControls = ({
             aria-label="Add"
             aria-expanded={showActions}
             aria-controls="terminal-actions"
-            className="h-10 w-10 rounded-full bg-input/50"
+            className="h-11 w-11 rounded-full bg-input/50"
             onClick={() => setShowActions((prev) => !prev)}
           >
             <PlusIcon

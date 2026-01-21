@@ -63,6 +63,46 @@ tail -f logs/app.log
 
 Switch between them without losing your place.
 
+## Dev server preview
+
+Use `--proxy` to preview your local dev server alongside the terminal. This is perfect for mobile testing or watching your app while running commands.
+
+### Proxy a Vite app
+
+```bash
+# Terminal 1: Start your Vite app
+cd my-app && npm run dev  # runs on port 5173
+
+# Terminal 2: Start Termbridge with proxy
+termbridge --proxy 5173
+```
+
+The UI shows **Terminal** and **Preview** tabs at the top:
+- **Terminal tab**: Your tmux session, same as always
+- **Preview tab**: An iframe loading your app through the proxy
+
+### HMR support
+
+Vite's Hot Module Replacement works through the proxy - WebSocket connections to `/_vite/ws` are forwarded to your dev server. Edit your code and see changes in the Preview tab instantly.
+
+### Use case: Full-stack development
+
+Run your build, watch tests, or tail logs in the terminal while previewing your app:
+
+```bash
+# Start the app
+npm run dev
+
+# In another terminal
+termbridge --proxy 5173
+```
+
+Now you can:
+1. Watch build output in the Terminal tab
+2. See your app in the Preview tab
+3. Switch between them with a tap
+4. Keep working from your phone
+
 ## Running AI coding tools
 
 Termbridge works great for monitoring AI coding assistants like Claude Code, Codex, or OpenCode.

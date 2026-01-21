@@ -99,7 +99,7 @@ describe("runInkCli", () => {
         options,
         localUrl: "http://127.0.0.1:4000",
         publicUrl: "https://tunnel",
-        redeemUrl: "https://tunnel/s/token",
+        redeemUrl: "https://tunnel/__tb/s/token",
         sessionName: "session",
         qr: null
       })
@@ -119,7 +119,7 @@ describe("runInkCli", () => {
         options: { ...options, noQr: true },
         localUrl: "http://127.0.0.1:4000",
         publicUrl: "https://tunnel",
-        redeemUrl: "https://tunnel/s/token",
+        redeemUrl: "https://tunnel/__tb/s/token",
         sessionName: "session",
         qr: null
       })
@@ -131,7 +131,7 @@ describe("runInkCli", () => {
         options,
         localUrl: "http://127.0.0.1:4000",
         publicUrl: "https://tunnel",
-        redeemUrl: "https://tunnel/s/token",
+        redeemUrl: "https://tunnel/__tb/s/token",
         sessionName: "session",
         qr: "QR"
       })

@@ -196,13 +196,13 @@ maybeDescribe("cli integration", () => {
       45_000
     );
     redeemUrl = tunnelMatch[1] ?? "";
-    token = redeemUrl.split("/s/")[1] ?? "";
+    token = redeemUrl.split("/__tb/s/")[1] ?? "";
 
     if (!localUrl || !redeemUrl || !token) {
       throw new Error("failed to parse cli output");
     }
 
-    const health = await fetch(`${localUrl}/healthz`);
+    const health = await fetch(`${localUrl}/__tb/healthz`);
     if (!health.ok) {
       throw new Error(`health check failed: ${health.status}`);
     }
@@ -293,7 +293,7 @@ maybeDescribe("cli integration", () => {
     });
 
     const redeem = await withTimeout(
-      fetch(`${localUrl}/s/${token}`, { redirect: "manual" }),
+      fetch(`${localUrl}/__tb/s/${token}`, { redirect: "manual" }),
       10_000,
       "redeem fetch"
     );
@@ -313,8 +313,8 @@ maybeDescribe("cli integration", () => {
 
     try {
       const [terminalsResponse] = await Promise.all([
-        page.waitForResponse((response) => response.url().endsWith("/api/terminals")),
-        page.goto(`${localUrl}/app`, { waitUntil: "domcontentloaded" })
+        page.waitForResponse((response) => response.url().endsWith("/__tb/api/terminals")),
+        page.goto(`${localUrl}/__tb/app`, { waitUntil: "domcontentloaded" })
       ]);
       logStep("page loaded");
       expect(terminalsResponse.status()).toBe(200);

@@ -54,7 +54,7 @@ const routeTree = rootRoute.addChildren([indexRoute, terminalRoute]);
 
 export const router = createRouter({
   routeTree,
-  basepath: "/app"
+  basepath: "/__tb/app"
 });
 
 declare module "@tanstack/react-router" {

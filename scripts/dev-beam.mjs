@@ -6,6 +6,7 @@ const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const cliDir = resolve(rootDir, "cli");
 const port = process.env.TERMBRIDGE_DEV_PORT ?? "8787";
 const session = process.env.TERMBRIDGE_DEV_SESSION ?? "codex";
+const proxyPort = process.env.TERMBRIDGE_PROXY_PORT;
 const devUiOverride = process.env.TERMBRIDGE_DEV_UI;
 let devUiOrigin = devUiOverride ? new URL(devUiOverride).origin : "";
 let token = "";
@@ -32,9 +33,15 @@ const serverEnv = {
   TERMBRIDGE_INSECURE_COOKIE: process.env.TERMBRIDGE_INSECURE_COOKIE ?? "1"
 };
 
+const serverArgs = [resolve(cliDir, "dist/bin.js"), "--session", session, "--port", port, "--no-qr"];
+if (proxyPort) {
+  serverArgs.push("--proxy", proxyPort);
+  serverArgs.push("--dev-proxy-url", `http://localhost:${proxyPort}`);
+}
+
 const server = spawn(
   process.execPath,
-  [resolve(cliDir, "dist/bin.js"), "--session", session, "--port", port, "--no-qr"],
+  serverArgs,
   { cwd: cliDir, env: serverEnv, stdio: ["inherit", "pipe", "pipe"] }
 );
 
@@ -44,8 +51,8 @@ const maybePrintDevUrls = () => {
   }
 
   printedDevUrls = true;
-  const redeemUrl = `${devUiOrigin}/s/${token}`;
-  const appUrl = `${devUiOrigin}/app`;
+  const redeemUrl = `${devUiOrigin}/__tb/s/${token}`;
+  const appUrl = `${devUiOrigin}/__tb/app`;
   process.stdout.write(`Dev redeem URL: ${redeemUrl}\n`);
   process.stdout.write(`Dev app URL: ${appUrl}\n`);
 };
@@ -59,7 +66,7 @@ const maybePrintDevUrl = (chunk) => {
     return;
   }
 
-  const nextToken = match[1]?.split("/s/")[1];
+  const nextToken = match[1]?.split("/__tb/s/")[1];
   if (!nextToken) {
     return;
   }

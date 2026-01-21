@@ -34,10 +34,18 @@ describe("TerminalPage", () => {
     onConnectionStateChange: overrides.onConnectionStateChange ?? vi.fn(() => () => undefined)
   });
 
-  const createMockFetch = (terminals: TerminalListItem[], status = 200) => {
+  const createMockFetch = (terminals: TerminalListItem[], options: { status?: number; proxyPort?: number | null } = {}) => {
+    const status = options.status ?? 200;
+    const proxyPort = options.proxyPort ?? null;
     return vi.fn(async (url: string) => {
-      if (url.includes("/api/csrf")) {
+      if (url.includes("/__tb/api/csrf")) {
         return new Response(JSON.stringify({ csrfToken: "test-csrf-token" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      if (url.includes("/__tb/api/config")) {
+        return new Response(JSON.stringify({ proxyPort }), {
           status: 200,
           headers: { "Content-Type": "application/json" }
         });
@@ -77,7 +85,7 @@ describe("TerminalPage", () => {
   });
 
   it("handles errors", async () => {
-    global.fetch = createMockFetch([], 500);
+    global.fetch = createMockFetch([], { status: 500 });
 
     render(<TerminalPage terminalId={null} />);
 
@@ -428,5 +436,85 @@ describe("TerminalPage", () => {
     await waitFor(() => {
       expect(screen.getByTestId("connection-indicator")).toHaveAttribute("data-state", "disconnected");
     });
+  });
+
+  it("does not show tabs when proxyPort is null", async () => {
+    const destroy = vi.fn();
+    createTerminalClientMock.mockReturnValue(createMockClient({ destroy }));
+
+    global.fetch = createMockFetch([makeTerminal("term-1")], { proxyPort: null });
+
+    render(<TerminalPage terminalId="term-1" />);
+
+    await waitFor(() => {
+      expect(createTerminalClientMock).toHaveBeenCalled();
+    });
+
+    expect(screen.queryByRole("tablist")).toBeNull();
+    expect(screen.getByTestId("terminal-host")).toBeInTheDocument();
+  });
+
+  it("shows tabs when proxyPort is configured", async () => {
+    const destroy = vi.fn();
+    createTerminalClientMock.mockReturnValue(createMockClient({ destroy }));
+
+    global.fetch = createMockFetch([makeTerminal("term-1")], { proxyPort: 5173 });
+
+    render(<TerminalPage terminalId="term-1" />);
+
+    await waitFor(() => {
+      expect(createTerminalClientMock).toHaveBeenCalled();
+    });
+
+    expect(screen.getByRole("tablist")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Terminal" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Preview" })).toHaveAttribute("aria-selected", "false");
+  });
+
+  it("switches to preview view when Preview tab is clicked", async () => {
+    const destroy = vi.fn();
+    createTerminalClientMock.mockReturnValue(createMockClient({ destroy }));
+
+    global.fetch = createMockFetch([makeTerminal("term-1")], { proxyPort: 5173 });
+
+    render(<TerminalPage terminalId="term-1" />);
+
+    await waitFor(() => {
+      expect(createTerminalClientMock).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByRole("tab", { name: "Preview" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("tab", { name: "Preview" })).toHaveAttribute("aria-selected", "true");
+      expect(screen.getByRole("tab", { name: "Terminal" })).toHaveAttribute("aria-selected", "false");
+    });
+
+    expect(screen.getByTestId("preview-iframe")).toBeInTheDocument();
+    expect(screen.getByTestId("preview-iframe")).toHaveAttribute("src", "/");
+    expect(screen.getByTestId("terminal-host")).toHaveClass("invisible");
+  });
+
+  it("keeps controls visible when in preview view", async () => {
+    const destroy = vi.fn();
+    createTerminalClientMock.mockReturnValue(createMockClient({ destroy }));
+
+    global.fetch = createMockFetch([makeTerminal("term-1")], { proxyPort: 5173 });
+
+    render(<TerminalPage terminalId="term-1" />);
+
+    await waitFor(() => {
+      expect(createTerminalClientMock).toHaveBeenCalled();
+    });
+
+    expect(screen.getByLabelText("Message")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Preview" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("tab", { name: "Preview" })).toHaveAttribute("aria-selected", "true");
+    });
+
+    expect(screen.getByLabelText("Message")).toBeInTheDocument();
   });
 });

@@ -36,11 +36,11 @@ describe("router", () => {
   });
 
   it("renders the index route", async () => {
-    window.history.pushState({}, "", "/app/");
+    window.history.pushState({}, "", "/__tb/app/");
     const fetchMock = vi.fn(async (url: string) => ({
       ok: true,
       json: async () =>
-        url.includes("/api/csrf")
+        url.includes("/__tb/api/csrf")
           ? { csrfToken: "test-csrf-token" }
           : { terminals: [] }
     })) as unknown as typeof fetch;
@@ -57,11 +57,11 @@ describe("router", () => {
   });
 
   it("renders the terminal route", async () => {
-    window.history.pushState({}, "", "/app/terminal/term-1");
+    window.history.pushState({}, "", "/__tb/app/terminal/term-1");
     const fetchMock = vi.fn(async (url: string) => ({
       ok: true,
       json: async () =>
-        url.includes("/api/csrf")
+        url.includes("/__tb/api/csrf")
           ? { csrfToken: "test-csrf-token" }
           : { terminals: [makeTerminal("term-1")] }
     })) as unknown as typeof fetch;

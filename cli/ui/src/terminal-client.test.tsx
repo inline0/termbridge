@@ -131,7 +131,7 @@ describe("terminal-client", () => {
     } as Window;
 
     expect(getWebSocketUrl("abc", "csrf-token-123", windowRef)).toBe(
-      "wss://example.com/ws/terminal/abc?csrf=csrf-token-123"
+      "wss://example.com/__tb/ws/terminal/abc?csrf=csrf-token-123"
     );
   });
 

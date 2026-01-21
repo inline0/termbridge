@@ -5,6 +5,7 @@ Usage:
 
 Options:
   --port <port>       Bind the local server to a fixed port
+  --proxy <port>      Proxy a local dev server (e.g., Vite) through termbridge
   --session <name>    Use a specific tmux session name
   --kill-on-exit      Kill the tmux session when the CLI exits
   --no-qr             Disable QR code output

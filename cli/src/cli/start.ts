@@ -15,6 +15,8 @@ import { createAppServer } from "../server/server";
 
 export type StartOptions = {
   port?: number;
+  proxy?: number;
+  devProxyUrl?: string; // Direct URL to proxy target for dev mode (enables HMR in iframe)
   session?: string;
   killOnExit: boolean;
   noQr: boolean;
@@ -33,6 +35,8 @@ export type StartDeps = {
     auth: Auth;
     terminalRegistry: TerminalRegistry;
     terminalBackend: TerminalBackend;
+    proxyPort?: number;
+    devProxyUrl?: string;
   }) => { listen: (port: number) => Promise<StartedServer> };
   qr?: {
     generate: (text: string, options: { small: boolean }) => void;
@@ -117,7 +121,9 @@ export const startCommand = async (
     uiDistPath: resolveUiDistPath(),
     auth,
     terminalRegistry,
-    terminalBackend
+    terminalBackend,
+    proxyPort: options.proxy,
+    devProxyUrl: options.devProxyUrl
   });
 
   const started = await server.listen(options.port ?? 0);
@@ -147,7 +153,7 @@ export const startCommand = async (
     throw error;
   }
 
-  const redeemUrl = `${publicUrl}/s/${token}`;
+  const redeemUrl = `${publicUrl}/__tb/s/${token}`;
 
   logger.info(`Local server: ${localUrl}`);
   logger.info(`Tunnel URL: ${redeemUrl}`);

@@ -47,9 +47,18 @@ Tmux session
 ### Auth and session
 
 - One-time token is printed as a URL and encoded in a QR code.
-- `GET /s/:token` redeems the token and sets a cookie session.
+- `GET /__tb/s/:token` redeems the token and sets a cookie session.
 - WebSocket connections require a valid session cookie and CSRF token.
-- CSRF token fetched via `GET /api/csrf` and passed in WebSocket query param.
+- CSRF token fetched via `GET /__tb/api/csrf` and passed in WebSocket query param.
+
+### Proxy mode
+
+When `--proxy <port>` is passed:
+- All termbridge routes live under `/__tb/` prefix
+- Non-`/__tb/` requests are proxied to the target app
+- UI shows Terminal/Preview tabs
+- Preview tab loads an iframe pointing to `/`
+- WebSocket connections for HMR are forwarded to the target
 
 ### Security
 
@@ -59,11 +68,20 @@ Tmux session
 
 ## API endpoints
 
-- `GET /healthz` - health check
-- `GET /api/terminals` - list terminals
-- `GET /api/csrf` - get CSRF token for WebSocket
-- `POST /api/terminals` - create a new tmux session
-- `WS /ws/terminal/:terminalId?csrf=<token>` - stream terminal I/O
+All routes live under the `/__tb/` prefix to avoid conflicts with proxied apps:
+
+- `GET /__tb/healthz` - health check
+- `GET /__tb/s/:token` - token redemption → cookie → redirect
+- `GET /__tb/api/terminals` - list terminals
+- `GET /__tb/api/csrf` - get CSRF token for WebSocket
+- `GET /__tb/api/config` - get config (proxyPort, devProxyUrl)
+- `POST /__tb/api/terminals` - create a new tmux session
+- `GET /__tb/app/*` - SPA fallback
+- `WS /__tb/ws/terminal/:terminalId?csrf=<token>` - stream terminal I/O
+
+When proxy mode is enabled:
+- `GET /` - redirects to proxied app (or `/__tb/app` if disabled)
+- `* /*` - proxied to target app
 
 ## WebSocket protocol
 

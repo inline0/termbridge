@@ -10,6 +10,7 @@
     "dev": "bun run --cwd cli dev",
     "dev:beam": "node scripts/dev-beam.mjs",
     "dev:beam:multi": "TERMBRIDGE_SESSIONS=2 bun run dev:beam",
+    "dev:beam:proxy": "TERMBRIDGE_PROXY_PORT=5173 bun run dev:beam",
     "build": "bun run --cwd cli build",
     "beam:codex": "bun run --cwd cli build && node cli/dist/bin.js --session codex",
     "test": "bun run test:mocked && bun run test:cli",

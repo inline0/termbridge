@@ -33,13 +33,29 @@ describe("parseArgs", () => {
     expect(parseArgs(["--help"]).command).toBe("help");
   });
 
+  it("parses proxy flag", () => {
+    const parsed = parseArgs(["--proxy", "5173"]);
+    expect(parsed.options.proxy).toBe(5173);
+  });
+
+  it("parses dev-proxy-url flag", () => {
+    const parsed = parseArgs(["--dev-proxy-url", "http://localhost:5174"]);
+    expect(parsed.options.devProxyUrl).toBe("http://localhost:5174");
+  });
+
   it("rejects invalid inputs", () => {
     expect(() => parseArgs(["--port", "bad"]))
       .toThrow("invalid port");
     expect(() => parseArgs(["--port"]))
       .toThrow("invalid port");
+    expect(() => parseArgs(["--proxy", "bad"]))
+      .toThrow("invalid proxy port");
+    expect(() => parseArgs(["--proxy"]))
+      .toThrow("invalid proxy port");
     expect(() => parseArgs(["--session"]))
       .toThrow("missing session name");
+    expect(() => parseArgs(["--dev-proxy-url"]))
+      .toThrow("missing dev proxy URL");
     expect(() => parseArgs(["--tunnel", "ngrok"]))
       .toThrow("unsupported tunnel provider");
     expect(() => parseArgs(["--unknown"])).toThrow("unknown option");

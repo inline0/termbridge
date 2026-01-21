@@ -32,7 +32,7 @@ type WindowLike = Window & {
 
 export const getWebSocketUrl = (terminalId: string, csrfToken: string, windowRef: Window) => {
   const protocol = windowRef.location.protocol === "https:" ? "wss" : "ws";
-  return `${protocol}://${windowRef.location.host}/ws/terminal/${terminalId}?csrf=${encodeURIComponent(csrfToken)}`;
+  return `${protocol}://${windowRef.location.host}/__tb/ws/terminal/${terminalId}?csrf=${encodeURIComponent(csrfToken)}`;
 };
 
 const terminalTheme = {

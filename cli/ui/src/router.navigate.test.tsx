@@ -37,7 +37,7 @@ describe("router navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Select terminal" }));
 
     await waitFor(() => {
-      expect(window.location.pathname).toBe("/app/terminal/term-2");
+      expect(window.location.pathname).toBe("/__tb/app/terminal/term-2");
     });
   });
 
@@ -48,7 +48,7 @@ describe("router navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Select terminal" }));
 
     await waitFor(() => {
-      expect(window.location.pathname).toBe("/app/terminal/term-2");
+      expect(window.location.pathname).toBe("/__tb/app/terminal/term-2");
     });
   });
 });
