@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { TerminalListItem } from "@termbridge/shared";
 import { TerminalPage } from "./terminal-page";
+import type { TerminalClient } from "./terminal-client";
 
 vi.mock("./terminal-client", () => ({
   createTerminalClient: vi.fn()
@@ -26,13 +27,13 @@ describe("TerminalPage", () => {
     sendInput?: ReturnType<typeof vi.fn>;
     getConnectionState?: ReturnType<typeof vi.fn>;
     onConnectionStateChange?: ReturnType<typeof vi.fn>;
-  } = {}) => ({
+  } = {}): TerminalClient => ({
     destroy: overrides.destroy ?? vi.fn(),
     sendControl: overrides.sendControl ?? vi.fn(),
     sendInput: overrides.sendInput ?? vi.fn(),
     getConnectionState: overrides.getConnectionState ?? vi.fn(() => "connected"),
     onConnectionStateChange: overrides.onConnectionStateChange ?? vi.fn(() => () => undefined)
-  });
+  }) as TerminalClient;
 
   const createMockFetch = (terminals: TerminalListItem[], options: { status?: number; proxyPort?: number | null } = {}) => {
     const status = options.status ?? 200;
@@ -401,11 +402,12 @@ describe("TerminalPage", () => {
 
   it("shows connection status indicator", async () => {
     const destroy = vi.fn();
-    let connectionStateCallback: ((state: string) => void) | null = null;
-    const onConnectionStateChange = vi.fn((callback: (state: string) => void) => {
-      connectionStateCallback = callback;
+    type StateCallback = (state: string) => void;
+    const callbackRef: { current: StateCallback | null } = { current: null };
+    const onConnectionStateChange = vi.fn((callback: StateCallback) => {
+      callbackRef.current = callback;
       return () => {
-        connectionStateCallback = null;
+        callbackRef.current = null;
       };
     });
     createTerminalClientMock.mockReturnValue(
@@ -422,17 +424,17 @@ describe("TerminalPage", () => {
 
     expect(screen.getByTestId("connection-indicator")).toHaveAttribute("data-state", "connecting");
 
-    connectionStateCallback?.("connected");
+    callbackRef.current?.("connected");
     await waitFor(() => {
       expect(screen.getByTestId("connection-indicator")).toHaveAttribute("data-state", "connected");
     });
 
-    connectionStateCallback?.("reconnecting");
+    callbackRef.current?.("reconnecting");
     await waitFor(() => {
       expect(screen.getByTestId("connection-indicator")).toHaveAttribute("data-state", "reconnecting");
     });
 
-    connectionStateCallback?.("disconnected");
+    callbackRef.current?.("disconnected");
     await waitFor(() => {
       expect(screen.getByTestId("connection-indicator")).toHaveAttribute("data-state", "disconnected");
     });

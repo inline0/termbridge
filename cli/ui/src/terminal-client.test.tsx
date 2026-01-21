@@ -1012,7 +1012,9 @@ describe("terminal-client", () => {
 
       emit(type: string, data?: unknown) {
         const handlers = this.listeners[type] ?? [];
-        handlers.forEach((handler) => handler({ data }));
+        handlers.forEach((handler) => {
+          handler({ data });
+        });
       }
     };
 

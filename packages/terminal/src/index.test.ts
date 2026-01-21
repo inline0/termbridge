@@ -51,7 +51,8 @@ describe("createTmuxBackend", () => {
       spawnPty,
       env: { TEST_ENV: "1" },
       defaultCols: 80,
-      defaultRows: 24
+      defaultRows: 24,
+      _skipSpawnHelperCheck: true
     });
 
     await backend.createSession("session");

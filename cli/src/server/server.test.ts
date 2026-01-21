@@ -633,7 +633,7 @@ describe("createAppServer", () => {
   });
 
   it("proxies HTTP requests to target server", async () => {
-    const targetServer = createHttpServer((req, res) => {
+    const targetServer = createHttpServer((_req, res) => {
       res.writeHead(200, { "Content-Type": "text/plain" });
       res.end("hello from target");
     });
@@ -675,7 +675,7 @@ describe("createAppServer", () => {
   });
 
   it("does not rewrite Location headers for external hosts", async () => {
-    const targetServer = createHttpServer((req, res) => {
+    const targetServer = createHttpServer((_req, res) => {
       res.writeHead(302, { Location: "http://external.example.com/path" });
       res.end();
     });

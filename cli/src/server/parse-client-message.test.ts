@@ -15,6 +15,13 @@ describe("parseClientMessage", () => {
     expect(result).toEqual({ ok: true, message: { type: "resize", cols: 80, rows: 24 } });
   });
 
+  it("parses buffer array payloads", () => {
+    const json = JSON.stringify({ type: "control", key: "ctrl_c" });
+    const payload = [Buffer.from(json.slice(0, 10)), Buffer.from(json.slice(10))];
+    const result = parseClientMessage(payload);
+    expect(result).toEqual({ ok: true, message: { type: "control", key: "ctrl_c" } });
+  });
+
   it("rejects invalid payloads", () => {
     expect(parseClientMessage("{bad" as unknown as WebSocket.RawData)).toEqual({
       ok: false,

@@ -96,14 +96,24 @@ export type ParseResult =
   | { ok: true; message: TerminalClientMessage }
   | { ok: false; error: "too_large" | "invalid" };
 
-export const parseClientMessage = (payload: WebSocket.RawData): ParseResult => {
-  const size = typeof payload === "string" ? payload.length : payload.byteLength;
+export const parseClientMessage = (payload: WebSocket.Data): ParseResult => {
+  const size =
+    typeof payload === "string"
+      ? payload.length
+      : Array.isArray(payload)
+        ? payload.reduce((sum, buf) => sum + buf.length, 0)
+        : payload.byteLength;
 
   if (size > MAX_WS_MESSAGE_SIZE) {
     return { ok: false, error: "too_large" };
   }
 
-  const text = typeof payload === "string" ? payload : payload.toString();
+  const text =
+    typeof payload === "string"
+      ? payload
+      : Array.isArray(payload)
+        ? Buffer.concat(payload).toString()
+        : payload.toString();
 
   try {
     const parsed = JSON.parse(text) as TerminalClientMessage;

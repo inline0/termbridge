@@ -142,6 +142,7 @@ export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps
 
   const connectionIndicator = activeTerminalId ? (
     <span
+      role="status"
       className={`absolute right-2 top-2 z-10 inline-block h-2 w-2 rounded-full ${
         connectionState === "connected"
           ? "bg-green-500"

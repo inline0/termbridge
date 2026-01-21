@@ -31,6 +31,8 @@ export type TmuxBackendDeps = {
   env?: NodeJS.ProcessEnv;
   defaultCols?: number;
   defaultRows?: number;
+  /** @internal Skip spawn-helper check when using mock spawnPty in tests */
+  _skipSpawnHelperCheck?: boolean;
 };
 
 const controlKeyMap: Record<TerminalControlKey, string> = {
@@ -48,7 +50,8 @@ const defaultDeps: Required<TmuxBackendDeps> = {
   spawnPty: pty.spawn,
   env: process.env,
   defaultCols: 80,
-  defaultRows: 24
+  defaultRows: 24,
+  _skipSpawnHelperCheck: false
 };
 
 const ensureSpawnHelperExecutable = () => {
@@ -153,7 +156,9 @@ export const createTmuxBackend = (deps: TmuxBackendDeps = {}): TerminalBackend =
       return entry.pty;
     }
 
-    ensureSpawnHelperExecutable();
+    if (!runtime._skipSpawnHelperCheck) {
+      ensureSpawnHelperExecutable();
+    }
 
     const ptyInstance = runtime.spawnPty("tmux", ["attach-session", "-t", entry.session.name], {
       name: "xterm-256color",

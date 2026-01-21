@@ -37,7 +37,8 @@ describe("startCommand", () => {
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
-      createSessionCookie: () => ""
+      createSessionCookie: () => "",
+      verifyCsrfToken: () => false
     };
 
     const terminalBackend: TerminalBackend = {
@@ -103,7 +104,8 @@ describe("startCommand", () => {
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
-      createSessionCookie: () => ""
+      createSessionCookie: () => "",
+      verifyCsrfToken: () => false
     };
 
     const terminalBackend: TerminalBackend = {
@@ -153,7 +155,8 @@ describe("startCommand", () => {
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
-      createSessionCookie: () => ""
+      createSessionCookie: () => "",
+      verifyCsrfToken: () => false
     };
 
     const terminalBackend: TerminalBackend = {
@@ -202,7 +205,8 @@ describe("startCommand", () => {
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
-      createSessionCookie: () => ""
+      createSessionCookie: () => "",
+      verifyCsrfToken: () => false
     };
 
     const terminalBackend: TerminalBackend = {
@@ -258,7 +262,8 @@ describe("startCommand", () => {
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
-      createSessionCookie: () => ""
+      createSessionCookie: () => "",
+      verifyCsrfToken: () => false
     };
 
     const terminalBackend: TerminalBackend = {
@@ -310,7 +315,8 @@ describe("startCommand", () => {
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
-      createSessionCookie: () => ""
+      createSessionCookie: () => "",
+      verifyCsrfToken: () => false
     };
 
     const terminalBackend: TerminalBackend = {
