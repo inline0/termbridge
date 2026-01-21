@@ -70,6 +70,34 @@ describe("startCommand defaults", () => {
     consoleWarn.mockRestore();
   });
 
+  it("finds existing ui dist path", async () => {
+    existsSync.mockImplementation((path: string) => path.includes("ui/dist"));
+    const consoleInfo = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const listen = vi.fn(async (): Promise<StartedServer> => ({
+      port: 4041,
+      close: vi.fn(async () => undefined)
+    }));
+
+    const processRef = {
+      on: vi.fn()
+    } as unknown as NodeJS.Process;
+
+    const result = await startCommand(
+      { killOnExit: false, noQr: false, tunnel: "cloudflare" },
+      {
+        createServer: () => ({ listen }),
+        process: processRef
+      }
+    );
+
+    await result.stop();
+    existsSync.mockReturnValue(false);
+
+    consoleInfo.mockRestore();
+    consoleWarn.mockRestore();
+  });
+
   it("logs tunnel failures with the default logger", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     tunnelProvider.start = vi.fn(async () => {
