@@ -110,7 +110,8 @@ describe("createTmuxBackend", () => {
     const spawnPty = vi.fn(() => ptyInstance as unknown as IPty);
     const backend = createTmuxBackend({
       execFile,
-      spawnPty
+      spawnPty,
+      _skipSpawnHelperCheck: true
     });
 
     await backend.createSession("session");
@@ -173,7 +174,8 @@ describe("createTmuxBackend", () => {
   it("no-ops for unknown sessions", async () => {
     const backend = createTmuxBackend({
       execFile: vi.fn(async () => ({ stdout: "" })),
-      spawnPty: vi.fn(() => new FakePty() as unknown as IPty)
+      spawnPty: vi.fn(() => new FakePty() as unknown as IPty),
+      _skipSpawnHelperCheck: true
     });
 
     const unsubscribe = backend.onOutput("missing", () => undefined);
@@ -196,7 +198,8 @@ describe("createTmuxBackend", () => {
 
     const backend = createTmuxBackend({
       execFile,
-      spawnPty
+      spawnPty,
+      _skipSpawnHelperCheck: true
     });
 
     await backend.createSession("session");
@@ -217,7 +220,8 @@ describe("createTmuxBackend", () => {
     const spawnPty = vi.fn(() => ptyInstance as unknown as IPty);
     const backend = createTmuxBackend({
       execFile,
-      spawnPty
+      spawnPty,
+      _skipSpawnHelperCheck: true
     });
 
     await backend.createSession("session");
@@ -239,7 +243,8 @@ describe("createTmuxBackend", () => {
 
     const backend = createTmuxBackend({
       execFile,
-      spawnPty
+      spawnPty,
+      _skipSpawnHelperCheck: true
     });
 
     await backend.createSession("session");

@@ -60,6 +60,9 @@ describe("spawn-helper", () => {
     await backend.createSession("session");
     const unsubscribe = backend.onOutput("session", () => undefined);
     unsubscribe();
+    // Call again to cover the idempotent early-return path
+    const unsubscribe2 = backend.onOutput("session", () => undefined);
+    unsubscribe2();
 
     expect(accessSync).toHaveBeenCalled();
     expect(chmodSync).toHaveBeenCalledWith(
