@@ -6,6 +6,8 @@ export type CliOptions = {
   killOnExit: boolean;
   noQr: boolean;
   tunnel: "cloudflare";
+  tunnelToken?: string;
+  tunnelUrl?: string;
 };
 
 export type ParsedArgs = {
@@ -110,6 +112,28 @@ export const parseArgs = (argv: string[]): ParsedArgs => {
       }
 
       options.tunnel = "cloudflare";
+      continue;
+    }
+
+    if (current === "--tunnel-token") {
+      const token = args.shift();
+
+      if (!token) {
+        throw new Error("missing tunnel token");
+      }
+
+      options.tunnelToken = token;
+      continue;
+    }
+
+    if (current === "--tunnel-url") {
+      const url = args.shift();
+
+      if (!url) {
+        throw new Error("missing tunnel url");
+      }
+
+      options.tunnelUrl = url;
       continue;
     }
 

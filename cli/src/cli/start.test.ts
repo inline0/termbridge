@@ -53,7 +53,7 @@ describe("startCommand", () => {
     const terminalRegistry = createTerminalRegistryStub();
 
     const tunnelProvider: TunnelProvider = {
-      start: vi.fn(async () => ({ publicUrl: "https://tunnel" })),
+      start: vi.fn(async (_url: string, _options?: unknown) => ({ publicUrl: "https://tunnel" })),
       stop: vi.fn(async () => undefined)
     };
 
@@ -120,7 +120,7 @@ describe("startCommand", () => {
     const terminalRegistry = createTerminalRegistryStub();
 
     const tunnelProvider: TunnelProvider = {
-      start: vi.fn(async () => ({ publicUrl: "https://tunnel" })),
+      start: vi.fn(async (_url: string, _options?: unknown) => ({ publicUrl: "https://tunnel" })),
       stop: vi.fn(async () => undefined)
     };
 
@@ -171,7 +171,7 @@ describe("startCommand", () => {
     const terminalRegistry = createTerminalRegistryStub();
 
     const tunnelProvider: TunnelProvider = {
-      start: vi.fn(async () => ({ publicUrl: "https://tunnel" })),
+      start: vi.fn(async (_url: string, _options?: unknown) => ({ publicUrl: "https://tunnel" })),
       stop: vi.fn(async () => undefined)
     };
 
@@ -191,6 +191,277 @@ describe("startCommand", () => {
     expect(terminalBackend.createSession).toHaveBeenCalledWith("custom");
 
     await result.stop();
+  });
+
+  it("requires a port when using a tunnel token", async () => {
+    const listen = vi.fn(async (): Promise<StartedServer> => ({
+      port: 5051,
+      close: vi.fn(async () => undefined)
+    }));
+    const createServer = vi.fn(() => ({ listen }));
+
+    const auth: Auth = {
+      issueToken: () => ({ token: "token" }),
+      redeemToken: () => null,
+      getSession: () => null,
+      getSessionFromRequest: () => null,
+      createSessionCookie: () => "",
+      verifyCsrfToken: () => false
+    };
+
+    const terminalBackend: TerminalBackend = {
+      createSession: vi.fn(async (name) => ({ name, createdAt: new Date() })),
+      write: vi.fn(async () => undefined),
+      resize: vi.fn(async () => undefined),
+      sendControl: vi.fn(async () => undefined),
+      onOutput: () => () => undefined,
+      closeSession: vi.fn(async () => undefined)
+    };
+
+    const terminalRegistry = createTerminalRegistryStub();
+
+    const tunnelProvider: TunnelProvider = {
+      start: vi.fn(async (_url: string, _options?: unknown) => ({ publicUrl: "https://tunnel" })),
+      stop: vi.fn(async () => undefined)
+    };
+
+    await expect(
+      startCommand(
+        {
+          killOnExit: false,
+          noQr: true,
+          tunnel: "cloudflare",
+          tunnelToken: "token",
+          tunnelUrl: "https://example.com"
+        },
+        {
+          createServer,
+          createAuth: () => auth,
+          createTerminalBackend: () => terminalBackend,
+          createTerminalRegistry: () => terminalRegistry,
+          createTunnelProvider: () => tunnelProvider,
+          logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+        }
+      )
+    ).rejects.toThrow("port required when using tunnel token");
+  });
+
+  it("requires a tunnel url when using a tunnel token", async () => {
+    const listen = vi.fn(async (): Promise<StartedServer> => ({
+      port: 5052,
+      close: vi.fn(async () => undefined)
+    }));
+    const createServer = vi.fn(() => ({ listen }));
+
+    const auth: Auth = {
+      issueToken: () => ({ token: "token" }),
+      redeemToken: () => null,
+      getSession: () => null,
+      getSessionFromRequest: () => null,
+      createSessionCookie: () => "",
+      verifyCsrfToken: () => false
+    };
+
+    const terminalBackend: TerminalBackend = {
+      createSession: vi.fn(async (name) => ({ name, createdAt: new Date() })),
+      write: vi.fn(async () => undefined),
+      resize: vi.fn(async () => undefined),
+      sendControl: vi.fn(async () => undefined),
+      onOutput: () => () => undefined,
+      closeSession: vi.fn(async () => undefined)
+    };
+
+    const terminalRegistry = createTerminalRegistryStub();
+
+    const tunnelProvider: TunnelProvider = {
+      start: vi.fn(async (_url: string, _options?: unknown) => ({ publicUrl: "https://tunnel" })),
+      stop: vi.fn(async () => undefined)
+    };
+
+    await expect(
+      startCommand(
+        {
+          killOnExit: false,
+          noQr: true,
+          tunnel: "cloudflare",
+          port: 5052,
+          tunnelToken: "token"
+        },
+        {
+          createServer,
+          createAuth: () => auth,
+          createTerminalBackend: () => terminalBackend,
+          createTerminalRegistry: () => terminalRegistry,
+          createTunnelProvider: () => tunnelProvider,
+          logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+        }
+      )
+    ).rejects.toThrow("tunnel url required when using tunnel token");
+  });
+
+  it("rejects invalid tunnel url strings", async () => {
+    const listen = vi.fn(async (): Promise<StartedServer> => ({
+      port: 5054,
+      close: vi.fn(async () => undefined)
+    }));
+    const createServer = vi.fn(() => ({ listen }));
+
+    const auth: Auth = {
+      issueToken: () => ({ token: "token" }),
+      redeemToken: () => null,
+      getSession: () => null,
+      getSessionFromRequest: () => null,
+      createSessionCookie: () => "",
+      verifyCsrfToken: () => false
+    };
+
+    const terminalBackend: TerminalBackend = {
+      createSession: vi.fn(async (name) => ({ name, createdAt: new Date() })),
+      write: vi.fn(async () => undefined),
+      resize: vi.fn(async () => undefined),
+      sendControl: vi.fn(async () => undefined),
+      onOutput: () => () => undefined,
+      closeSession: vi.fn(async () => undefined)
+    };
+
+    const terminalRegistry = createTerminalRegistryStub();
+
+    const tunnelProvider: TunnelProvider = {
+      start: vi.fn(async (_url: string, _options?: unknown) => ({ publicUrl: "https://tunnel" })),
+      stop: vi.fn(async () => undefined)
+    };
+
+    await expect(
+      startCommand(
+        {
+          killOnExit: false,
+          noQr: true,
+          tunnel: "cloudflare",
+          port: 5054,
+          tunnelToken: "token",
+          tunnelUrl: "not-a-url"
+        },
+        {
+          createServer,
+          createAuth: () => auth,
+          createTerminalBackend: () => terminalBackend,
+          createTerminalRegistry: () => terminalRegistry,
+          createTunnelProvider: () => tunnelProvider,
+          logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+        }
+      )
+    ).rejects.toThrow("invalid tunnel url");
+  });
+
+  it("rejects non-http tunnel url protocols", async () => {
+    const listen = vi.fn(async (): Promise<StartedServer> => ({
+      port: 5055,
+      close: vi.fn(async () => undefined)
+    }));
+    const createServer = vi.fn(() => ({ listen }));
+
+    const auth: Auth = {
+      issueToken: () => ({ token: "token" }),
+      redeemToken: () => null,
+      getSession: () => null,
+      getSessionFromRequest: () => null,
+      createSessionCookie: () => "",
+      verifyCsrfToken: () => false
+    };
+
+    const terminalBackend: TerminalBackend = {
+      createSession: vi.fn(async (name) => ({ name, createdAt: new Date() })),
+      write: vi.fn(async () => undefined),
+      resize: vi.fn(async () => undefined),
+      sendControl: vi.fn(async () => undefined),
+      onOutput: () => () => undefined,
+      closeSession: vi.fn(async () => undefined)
+    };
+
+    const terminalRegistry = createTerminalRegistryStub();
+
+    const tunnelProvider: TunnelProvider = {
+      start: vi.fn(async (_url: string, _options?: unknown) => ({ publicUrl: "https://tunnel" })),
+      stop: vi.fn(async () => undefined)
+    };
+
+    await expect(
+      startCommand(
+        {
+          killOnExit: false,
+          noQr: true,
+          tunnel: "cloudflare",
+          port: 5055,
+          tunnelToken: "token",
+          tunnelUrl: "ftp://example.com"
+        },
+        {
+          createServer,
+          createAuth: () => auth,
+          createTerminalBackend: () => terminalBackend,
+          createTerminalRegistry: () => terminalRegistry,
+          createTunnelProvider: () => tunnelProvider,
+          logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+        }
+      )
+    ).rejects.toThrow("invalid tunnel url");
+  });
+
+  it("passes token and url to the tunnel provider", async () => {
+    const listen = vi.fn(async (): Promise<StartedServer> => ({
+      port: 5053,
+      close: vi.fn(async () => undefined)
+    }));
+    const createServer = vi.fn(() => ({ listen }));
+
+    const auth: Auth = {
+      issueToken: () => ({ token: "token" }),
+      redeemToken: () => null,
+      getSession: () => null,
+      getSessionFromRequest: () => null,
+      createSessionCookie: () => "",
+      verifyCsrfToken: () => false
+    };
+
+    const terminalBackend: TerminalBackend = {
+      createSession: vi.fn(async (name) => ({ name, createdAt: new Date() })),
+      write: vi.fn(async () => undefined),
+      resize: vi.fn(async () => undefined),
+      sendControl: vi.fn(async () => undefined),
+      onOutput: () => () => undefined,
+      closeSession: vi.fn(async () => undefined)
+    };
+
+    const terminalRegistry = createTerminalRegistryStub();
+
+    const tunnelProvider: TunnelProvider = {
+      start: vi.fn(async (_url: string, _options?: unknown) => ({ publicUrl: "https://example.com" })),
+      stop: vi.fn(async () => undefined)
+    };
+
+    await startCommand(
+      {
+        killOnExit: false,
+        noQr: true,
+        tunnel: "cloudflare",
+        port: 5053,
+        tunnelToken: "token",
+        tunnelUrl: "https://example.com/"
+      },
+      {
+        createServer,
+        createAuth: () => auth,
+        createTerminalBackend: () => terminalBackend,
+        createTerminalRegistry: () => terminalRegistry,
+        createTunnelProvider: () => tunnelProvider,
+        logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+      }
+    );
+
+    expect(tunnelProvider.start).toHaveBeenCalledWith("http://127.0.0.1:5053", {
+      token: "token",
+      publicUrl: "https://example.com"
+    });
   });
 
   it("creates multiple sessions when configured", async () => {
@@ -221,7 +492,7 @@ describe("startCommand", () => {
     const terminalRegistry = createTerminalRegistryStub();
 
     const tunnelProvider: TunnelProvider = {
-      start: vi.fn(async () => ({ publicUrl: "https://tunnel" })),
+      start: vi.fn(async (_url: string, _options?: unknown) => ({ publicUrl: "https://tunnel" })),
       stop: vi.fn(async () => undefined)
     };
 
@@ -278,7 +549,7 @@ describe("startCommand", () => {
     const terminalRegistry = createTerminalRegistryStub();
 
     const tunnelProvider: TunnelProvider = {
-      start: vi.fn(async () => ({ publicUrl: "https://tunnel" })),
+      start: vi.fn(async (_url: string, _options?: unknown) => ({ publicUrl: "https://tunnel" })),
       stop: vi.fn(async () => undefined)
     };
 
@@ -331,7 +602,7 @@ describe("startCommand", () => {
     const terminalRegistry = createTerminalRegistryStub();
 
     const tunnelProvider: TunnelProvider = {
-      start: vi.fn(async () => {
+      start: vi.fn(async (_url: string, _options?: unknown) => {
         throw new Error("tunnel failed");
       }),
       stop: vi.fn(async () => undefined)
@@ -372,7 +643,7 @@ describe("startCommand", () => {
     };
 
     const tunnelProvider: TunnelProvider = {
-      start: vi.fn(async () => ({ publicUrl: "https://tunnel" })),
+      start: vi.fn(async (_url: string, _options?: unknown) => ({ publicUrl: "https://tunnel" })),
       stop: vi.fn(async () => undefined)
     };
 

@@ -104,7 +104,7 @@ const buildSessionName = (options: StartOptions, localUrl: string) => {
   }
 };
 
-const buildRedeemUrl = (result: StartResult) => `${result.publicUrl}/s/${result.token}`;
+const buildRedeemUrl = (result: StartResult) => `${result.publicUrl}/__tb/s/${result.token}`;
 
 const generateQr = async (text: string) =>
   new Promise<string>((resolve) => {

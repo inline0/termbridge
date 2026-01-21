@@ -103,6 +103,24 @@ Now you can:
 3. Switch between them with a tap
 4. Keep working from your phone
 
+## Named Cloudflare tunnels (avoid rate limits)
+
+Account-less `trycloudflare.com` tunnels can be rate-limited. If you have a Cloudflare account, use a named tunnel token instead.
+
+1. Create a tunnel in Cloudflare Zero Trust
+2. Add a public hostname that points to `http://localhost:<port>`
+3. Run Termbridge with a fixed port and your token
+
+```bash
+termbridge --port 8080 --tunnel-token <TOKEN> --tunnel-url https://term.example.com
+```
+
+You can also use environment variables:
+
+```bash
+TERMBRIDGE_TUNNEL_TOKEN=<TOKEN> TERMBRIDGE_TUNNEL_URL=https://term.example.com termbridge --port 8080
+```
+
 ## Running AI coding tools
 
 Termbridge works great for monitoring AI coding assistants like Claude Code, Codex, or OpenCode.

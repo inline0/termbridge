@@ -13,6 +13,10 @@ describe("parseArgs", () => {
       "start",
       "--port",
       "3000",
+      "--tunnel-token",
+      "token",
+      "--tunnel-url",
+      "https://example.com",
       "--session",
       "session",
       "--kill-on-exit",
@@ -22,6 +26,8 @@ describe("parseArgs", () => {
     ]);
 
     expect(parsed.options.port).toBe(3000);
+    expect(parsed.options.tunnelToken).toBe("token");
+    expect(parsed.options.tunnelUrl).toBe("https://example.com");
     expect(parsed.options.session).toBe("session");
     expect(parsed.options.killOnExit).toBe(true);
     expect(parsed.options.noQr).toBe(true);
@@ -58,6 +64,10 @@ describe("parseArgs", () => {
       .toThrow("missing dev proxy URL");
     expect(() => parseArgs(["--tunnel", "ngrok"]))
       .toThrow("unsupported tunnel provider");
+    expect(() => parseArgs(["--tunnel-token"]))
+      .toThrow("missing tunnel token");
+    expect(() => parseArgs(["--tunnel-url"]))
+      .toThrow("missing tunnel url");
     expect(() => parseArgs(["--unknown"])).toThrow("unknown option");
   });
 

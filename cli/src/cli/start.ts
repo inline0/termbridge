@@ -21,6 +21,8 @@ export type StartOptions = {
   killOnExit: boolean;
   noQr: boolean;
   tunnel: "cloudflare";
+  tunnelToken?: string;
+  tunnelUrl?: string;
 };
 
 export type StartDeps = {
@@ -88,6 +90,22 @@ const parseSessionCount = (value: string | undefined) => {
   return parsed;
 };
 
+const normalizePublicUrl = (value: string) => {
+  let parsed: URL;
+
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error("invalid tunnel url");
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error("invalid tunnel url");
+  }
+
+  return value.endsWith("/") ? value.slice(0, -1) : value;
+};
+
 export const startCommand = async (
   options: StartOptions,
   deps: StartDeps = {}
@@ -107,6 +125,18 @@ export const startCommand = async (
   const terminalBackend = (deps.createTerminalBackend ?? (() => createTmuxBackend()))();
   const terminalRegistry = (deps.createTerminalRegistry ?? (() => createTerminalRegistry()))();
   const tunnelProvider = (deps.createTunnelProvider ?? (() => createCloudflaredProvider()))();
+  const tunnelTokenRaw = options.tunnelToken ?? env.TERMBRIDGE_TUNNEL_TOKEN;
+  const tunnelToken = tunnelTokenRaw?.trim() || undefined;
+  const tunnelUrlRaw = options.tunnelUrl ?? env.TERMBRIDGE_TUNNEL_URL;
+  const tunnelUrl = tunnelToken && tunnelUrlRaw ? normalizePublicUrl(tunnelUrlRaw) : undefined;
+
+  if (tunnelToken && !options.port) {
+    throw new Error("port required when using tunnel token");
+  }
+
+  if (tunnelToken && !tunnelUrl) {
+    throw new Error("tunnel url required when using tunnel token");
+  }
 
   const wsLimiter = createRateLimiter({ limit: 30, windowMs: 60_000 });
   const serverFactory = deps.createServer ?? ((serverDeps) =>
@@ -144,7 +174,10 @@ export const startCommand = async (
 
   let publicUrl = "";
   try {
-    const result = await tunnelProvider.start(localUrl);
+    const result = await tunnelProvider.start(localUrl, {
+      token: tunnelToken,
+      publicUrl: tunnelUrl
+    });
     publicUrl = result.publicUrl;
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown error";

@@ -47,6 +47,7 @@ describe("runInkCli", () => {
   beforeEach(() => {
     renderMock.mockReset();
     vi.mocked(startCommand).mockReset();
+    vi.spyOn(qrcode, "generate").mockClear();
   });
 
   it("renders the running view with a QR", async () => {
@@ -54,6 +55,7 @@ describe("runInkCli", () => {
     const unmount = vi.fn();
     renderMock.mockReturnValue({ rerender, unmount } as never);
 
+    const qrSpy = vi.spyOn(qrcode, "generate");
     const startCommandMock = vi.fn().mockImplementation(async (_options, deps) => {
       deps?.logger?.info("info");
       deps?.logger?.warn("warn");
@@ -81,6 +83,11 @@ describe("runInkCli", () => {
     expect(logger.info).toHaveBeenCalled();
     expect(logger.warn).toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalled();
+    expect(qrSpy).toHaveBeenCalledWith(
+      "https://tunnel/__tb/s/token",
+      { small: true },
+      expect.any(Function)
+    );
   });
 
   it("covers ink view states", () => {

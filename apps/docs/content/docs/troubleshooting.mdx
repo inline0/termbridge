@@ -38,6 +38,14 @@ A few things to check:
 
 Even if the tunnel fails, Termbridge will still work locally - you'll see a local URL you can use on the same network.
 
+## "429 Too Many Requests" from trycloudflare
+
+Cloudflare rate limits account-less tunnels. If you see errors like `429 Too Many Requests`, try:
+
+1. Wait a few minutes and retry
+2. Make sure no old `cloudflared` processes are still running
+3. Use a named tunnel token (recommended for frequent use)
+
 ## Blank screen or "Unable to load terminals"
 
 This usually means the session expired or something went wrong with auth:

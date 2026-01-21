@@ -33,6 +33,8 @@ termbridge start --port 8080 --proxy 5173 --session dev --kill-on-exit --no-qr -
 | `--kill-on-exit` | Clean up tmux sessions when Termbridge exits | Off |
 | `--no-qr` | Don't print the QR code (useful for scripts) | Off |
 | `--tunnel cloudflare` | Tunnel provider (only cloudflare for now) | cloudflare |
+| `--tunnel-token <token>` | Use a named Cloudflare Tunnel token (requires `--port`) | - |
+| `--tunnel-url <url>` | Public URL for the named tunnel (required with `--tunnel-token`) | - |
 
 ## Examples
 
@@ -74,6 +76,14 @@ termbridge --proxy 5173
 
 The UI shows Terminal/Preview tabs. Preview loads your app through the proxy with HMR support.
 
+### Named Cloudflare tunnel (token-based)
+
+If you have a Cloudflare account and want to avoid trycloudflare rate limits:
+
+```bash
+termbridge --port 8080 --tunnel-token <TOKEN> --tunnel-url https://term.example.com
+```
+
 ## Environment variables
 
 For development and testing:
@@ -85,6 +95,8 @@ For development and testing:
 | `TERMBRIDGE_PROXY_PORT=5173` | Proxy port for dev:beam:proxy script |
 | `TERMBRIDGE_DEV_UI=http://127.0.0.1:5000` | Override Vite dev UI URL |
 | `TERMBRIDGE_DEV_PORT=3000` | Override Termbridge server port in dev |
+| `TERMBRIDGE_TUNNEL_TOKEN=<token>` | Named tunnel token (requires `TERMBRIDGE_TUNNEL_URL`) |
+| `TERMBRIDGE_TUNNEL_URL=https://term.example.com` | Public URL for the named tunnel |
 
 ## Stopping Termbridge
 

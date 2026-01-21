@@ -21,7 +21,7 @@ const terminalBackend: TerminalBackend = {
 };
 
 const tunnelProvider: TunnelProvider = {
-  start: vi.fn(async () => ({ publicUrl: "https://tunnel" })),
+  start: vi.fn(async (_url: string, _options?: unknown) => ({ publicUrl: "https://tunnel" })),
   stop: vi.fn(async () => undefined)
 };
 
@@ -37,7 +37,7 @@ import { startCommand } from "./start";
 
 describe("startCommand defaults", () => {
   beforeEach(() => {
-    tunnelProvider.start = vi.fn(async () => ({ publicUrl: "https://tunnel" }));
+    tunnelProvider.start = vi.fn(async (_url: string, _options?: unknown) => ({ publicUrl: "https://tunnel" }));
     tunnelProvider.stop = vi.fn(async () => undefined);
   });
 
@@ -100,7 +100,7 @@ describe("startCommand defaults", () => {
 
   it("logs tunnel failures with the default logger", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    tunnelProvider.start = vi.fn(async () => {
+    tunnelProvider.start = vi.fn(async (_url: string, _options?: unknown) => {
       throw new Error("boom");
     });
 
@@ -129,7 +129,7 @@ describe("startCommand defaults", () => {
 
   it("handles non-error tunnel failures", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    tunnelProvider.start = vi.fn(async () => {
+    tunnelProvider.start = vi.fn(async (_url: string, _options?: unknown) => {
       throw "bad";
     });
 
