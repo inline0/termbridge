@@ -3,7 +3,7 @@
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="./.github/logo-dark.svg">
       <source media="(prefers-color-scheme: light)" srcset="./.github/logo-light.svg">
-      <img alt="Termbridge" src="./.github/logo-light.svg" width="280">
+      <img alt="Termbridge" src="./.github/logo-light.svg" height="50">
     </picture>
   </a>
 </p>
@@ -12,18 +12,24 @@
   Local-first terminal beaming with tmux + Cloudflare tunnel and a mobile-friendly UI
 </p>
 
+<p align="center">
+  <a href="https://www.npmjs.com/package/termbridge"><img src="https://img.shields.io/npm/v/termbridge.svg" alt="npm version"></a>
+  <a href="https://github.com/inline0/termbridge/actions/workflows/ci.yml"><img src="https://github.com/inline0/termbridge/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/inline0/termbridge/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/termbridge.svg" alt="license"></a>
+</p>
+
 ---
 
-Beam your local terminal to your phone in seconds.
+Beam your local terminal to your phone in seconds. Run one command, scan the QR code, and access your terminal from anywhere.
 
 ## Features
 
 - **One Command** - `npx termbridge` spins up the server and tunnel
-- **Multi-Terminal** - one server, multiple tmux sessions
-- **Mobile-First UI** - single terminal viewport with quick actions
-- **Cloudflare Tunnels** - secure public URL without router config
-- **Local by Default** - no remote server required
-- **Open Source** - MIT licensed
+- **Multi-Terminal** - One server, multiple tmux sessions
+- **Mobile-First UI** - Single terminal viewport with quick actions
+- **Proxy Mode** - Preview your local dev server alongside the terminal
+- **Cloudflare Tunnels** - Secure public URL without router config
+- **Local by Default** - No remote server required
 
 ## Quick Start
 
@@ -60,22 +66,15 @@ Flags:
 
 ## Documentation
 
-Visit `https://termbridge.dev` for full docs, architecture notes, and troubleshooting.
+For full documentation, visit [termbridge.dev](https://termbridge.dev).
 
 ## Development
 
 ```bash
 bun install
 bun run dev:beam
-bun run dev:beam:multi
 bun run test
 ```
-
-## Troubleshooting
-
-- `tmux` not found: install `tmux` and ensure it is on your PATH.
-- `cloudflared` not found: install Cloudflare's tunnel client and ensure it is on your PATH.
-- `node-pty` issues: ensure the spawn-helper binary is executable (Termbridge attempts to fix this automatically).
 
 ## License
 
