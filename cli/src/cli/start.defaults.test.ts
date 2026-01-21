@@ -71,7 +71,7 @@ describe("startCommand defaults", () => {
   });
 
   it("finds existing ui dist path", async () => {
-    existsSync.mockImplementation((path: string) => path.includes("ui/dist"));
+    existsSync.mockImplementation(((path: string) => path.includes("ui/dist")) as () => boolean);
     const consoleInfo = vi.spyOn(console, "log").mockImplementation(() => undefined);
     const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const listen = vi.fn(async (): Promise<StartedServer> => ({
