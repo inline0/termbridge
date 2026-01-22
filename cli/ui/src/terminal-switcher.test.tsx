@@ -113,4 +113,27 @@ describe("TerminalSwitcher", () => {
     expect(await screen.findByText("Closed - Mock")).toBeInTheDocument();
     expect(await screen.findByLabelText("Open term-closed")).toBeInTheDocument();
   });
+
+  it("labels daytona sources", async () => {
+    render(
+      <TerminalSwitcher
+        terminals={[
+          {
+            id: "term-daytona",
+            label: "Sandbox",
+            status: "running",
+            createdAt: "2024-01-01T00:00:00.000Z",
+            source: "daytona"
+          }
+        ]}
+        activeTerminalId={null}
+        listState="ready"
+        onSelectTerminal={vi.fn()}
+      />
+    );
+
+    openSheet();
+
+    expect(await screen.findByText("Running - Daytona")).toBeInTheDocument();
+  });
 });

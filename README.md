@@ -31,6 +31,7 @@ Beam your local terminal to your phone in seconds. Run one command, scan the QR 
 - **Proxy Mode** - Preview your local dev server alongside the terminal
 - **Cloudflare Tunnels** - Secure public URL without router config
 - **Local by Default** - No remote server required
+- **Daytona Sandbox** - Run terminals in a Daytona sandbox (preview support coming next)
 
 ## Quick Start
 
@@ -58,12 +59,29 @@ Flags:
 - `--kill-on-exit`: kill tmux sessions on exit
 - `--no-qr`: disable QR output
 - `--tunnel cloudflare`: tunnel provider (default)
+- `--backend <tmux|daytona>`: terminal backend (defaults to tmux)
 
 ## Environment variables
 
 - `TERMBRIDGE_SESSIONS=2`: create multiple tmux sessions on start
 - `TERMBRIDGE_INSECURE_COOKIE=1`: allow HTTP cookies for local dev
 - `TERMBRIDGE_PROXY_PORT=5174`: proxy port for dev:beam:proxy script
+
+### Daytona sandbox mode
+
+Set the backend to Daytona and provide sandbox + repo configuration:
+
+```bash
+TERMBRIDGE_BACKEND=daytona
+DAYTONA_API_KEY=your_key
+DAYTONA_API_URL=https://app.daytona.io/api
+TERMBRIDGE_DAYTONA_REPO=https://github.com/inline0/termbridge-test-app.git
+TERMBRIDGE_DAYTONA_BRANCH=main
+TERMBRIDGE_DAYTONA_PATH=termbridge-test-app
+TERMBRIDGE_DAYTONA_NAME=termbridge-sandbox
+TERMBRIDGE_DAYTONA_GIT_USERNAME=your_github_username
+TERMBRIDGE_DAYTONA_GIT_TOKEN=your_github_token
+```
 
 ## Documentation
 

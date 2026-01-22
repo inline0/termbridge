@@ -34,12 +34,27 @@ Flags:
 - `--kill-on-exit`: kill tmux sessions on exit
 - `--no-qr`: disable QR output
 - `--tunnel cloudflare`: tunnel provider (default)
+- `--backend <tmux|daytona>`: terminal backend (defaults to tmux)
 
 ## Environment variables
 
 - `TERMBRIDGE_SESSIONS=2`: create multiple tmux sessions on start
 - `TERMBRIDGE_INSECURE_COOKIE=1`: allow HTTP cookies for local dev
 - `TERMBRIDGE_DEV_UI=http://127.0.0.1:5173`: override Vite dev UI URL
+
+### Daytona sandbox mode
+
+```bash
+TERMBRIDGE_BACKEND=daytona
+DAYTONA_API_KEY=your_key
+DAYTONA_API_URL=https://app.daytona.io/api
+TERMBRIDGE_DAYTONA_REPO=https://github.com/inline0/termbridge-test-app.git
+TERMBRIDGE_DAYTONA_BRANCH=main
+TERMBRIDGE_DAYTONA_PATH=termbridge-test-app
+TERMBRIDGE_DAYTONA_NAME=termbridge-sandbox
+TERMBRIDGE_DAYTONA_GIT_USERNAME=your_github_username
+TERMBRIDGE_DAYTONA_GIT_TOKEN=your_github_token
+```
 
 ## Development
 

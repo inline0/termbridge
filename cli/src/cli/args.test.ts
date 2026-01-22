@@ -22,7 +22,17 @@ describe("parseArgs", () => {
       "--kill-on-exit",
       "--no-qr",
       "--tunnel",
-      "cloudflare"
+      "cloudflare",
+      "--backend",
+      "daytona",
+      "--daytona-repo",
+      "https://github.com/inline0/termbridge-test-app.git",
+      "--daytona-branch",
+      "main",
+      "--daytona-path",
+      "termbridge-test-app",
+      "--daytona-name",
+      "termbridge-sandbox"
     ]);
 
     expect(parsed.options.port).toBe(3000);
@@ -32,6 +42,11 @@ describe("parseArgs", () => {
     expect(parsed.options.killOnExit).toBe(true);
     expect(parsed.options.noQr).toBe(true);
     expect(parsed.options.tunnel).toBe("cloudflare");
+    expect(parsed.options.backend).toBe("daytona");
+    expect(parsed.options.daytonaRepo).toBe("https://github.com/inline0/termbridge-test-app.git");
+    expect(parsed.options.daytonaBranch).toBe("main");
+    expect(parsed.options.daytonaPath).toBe("termbridge-test-app");
+    expect(parsed.options.daytonaSandboxName).toBe("termbridge-sandbox");
   });
 
   it("supports help", () => {
@@ -68,6 +83,18 @@ describe("parseArgs", () => {
       .toThrow("missing tunnel token");
     expect(() => parseArgs(["--tunnel-url"]))
       .toThrow("missing tunnel url");
+    expect(() => parseArgs(["--backend"]))
+      .toThrow("missing backend");
+    expect(() => parseArgs(["--backend", "invalid"]))
+      .toThrow("invalid backend");
+    expect(() => parseArgs(["--daytona-repo"]))
+      .toThrow("missing daytona repo");
+    expect(() => parseArgs(["--daytona-branch"]))
+      .toThrow("missing daytona branch");
+    expect(() => parseArgs(["--daytona-path"]))
+      .toThrow("missing daytona path");
+    expect(() => parseArgs(["--daytona-name"]))
+      .toThrow("missing daytona name");
     expect(() => parseArgs(["--unknown"])).toThrow("unknown option");
   });
 

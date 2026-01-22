@@ -11,6 +11,11 @@ Options:
   --session <name>    Use a specific tmux session name
   --kill-on-exit      Kill the tmux session when the CLI exits
   --no-qr             Disable QR code output
+  --backend <name>    Terminal backend (tmux | daytona)
+  --daytona-repo <u>  Git repo to clone into Daytona
+  --daytona-branch <b> Git branch to checkout in Daytona
+  --daytona-path <p>  Repo directory inside the sandbox
+  --daytona-name <n>  Daytona sandbox name
   --tunnel <provider> Tunnel provider (cloudflare)
   -h, --help          Show this help message
 `;

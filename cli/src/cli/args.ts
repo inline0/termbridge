@@ -8,6 +8,11 @@ export type CliOptions = {
   tunnel: "cloudflare";
   tunnelToken?: string;
   tunnelUrl?: string;
+  backend?: "tmux" | "daytona";
+  daytonaRepo?: string;
+  daytonaBranch?: string;
+  daytonaPath?: string;
+  daytonaSandboxName?: string;
 };
 
 export type ParsedArgs = {
@@ -134,6 +139,65 @@ export const parseArgs = (argv: string[]): ParsedArgs => {
       }
 
       options.tunnelUrl = url;
+      continue;
+    }
+
+    if (current === "--backend") {
+      const backend = args.shift();
+
+      if (!backend) {
+        throw new Error("missing backend");
+      }
+
+      if (backend !== "tmux" && backend !== "daytona") {
+        throw new Error("invalid backend");
+      }
+
+      options.backend = backend;
+      continue;
+    }
+
+    if (current === "--daytona-repo") {
+      const repo = args.shift();
+
+      if (!repo) {
+        throw new Error("missing daytona repo");
+      }
+
+      options.daytonaRepo = repo;
+      continue;
+    }
+
+    if (current === "--daytona-branch") {
+      const branch = args.shift();
+
+      if (!branch) {
+        throw new Error("missing daytona branch");
+      }
+
+      options.daytonaBranch = branch;
+      continue;
+    }
+
+    if (current === "--daytona-path") {
+      const path = args.shift();
+
+      if (!path) {
+        throw new Error("missing daytona path");
+      }
+
+      options.daytonaPath = path;
+      continue;
+    }
+
+    if (current === "--daytona-name") {
+      const name = args.shift();
+
+      if (!name) {
+        throw new Error("missing daytona name");
+      }
+
+      options.daytonaSandboxName = name;
       continue;
     }
 

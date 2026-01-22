@@ -24,6 +24,7 @@ export type TerminalBackend = {
   scroll: (sessionName: string, mode: "lines" | "pages", amount: number) => Promise<void>;
   onOutput: (sessionName: string, callback: (data: string) => void) => () => void;
   closeSession: (sessionName: string) => Promise<void>;
+  shutdown?: () => Promise<void>;
 };
 
 export type TmuxBackendDeps = {

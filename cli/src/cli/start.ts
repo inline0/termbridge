@@ -5,6 +5,7 @@ import type { TerminalBackend } from "@termbridge/terminal";
 import { createTmuxBackend } from "@termbridge/terminal";
 import type { TunnelProvider } from "@termbridge/tunnel";
 import { createCloudflaredProvider } from "@termbridge/tunnel";
+import type { TerminalListItem } from "@termbridge/shared";
 import type { Auth } from "../server/auth";
 import { createAuth } from "../server/auth";
 import { createRateLimiter } from "../server/rate-limit";
@@ -12,6 +13,7 @@ import type { TerminalRegistry } from "../server/terminal-registry";
 import { createTerminalRegistry } from "../server/terminal-registry";
 import type { Logger, StartedServer } from "../server/server";
 import { createAppServer } from "../server/server";
+import { createDaytonaBackend, type DaytonaBackendOptions } from "../daytona/daytona-backend";
 
 export type StartOptions = {
   port?: number;
@@ -23,6 +25,11 @@ export type StartOptions = {
   tunnel: "cloudflare";
   tunnelToken?: string;
   tunnelUrl?: string;
+  backend?: "tmux" | "daytona";
+  daytonaRepo?: string;
+  daytonaBranch?: string;
+  daytonaPath?: string;
+  daytonaSandboxName?: string;
 };
 
 export type StartDeps = {
@@ -30,6 +37,7 @@ export type StartDeps = {
   process?: NodeJS.Process;
   createAuth?: () => Auth;
   createTerminalBackend?: () => TerminalBackend;
+  createDaytonaBackend?: (options: DaytonaBackendOptions) => TerminalBackend;
   createTerminalRegistry?: () => TerminalRegistry;
   createTunnelProvider?: () => TunnelProvider;
   createServer?: (deps: {
@@ -90,6 +98,27 @@ const parseSessionCount = (value: string | undefined) => {
   return parsed;
 };
 
+const resolveBackendMode = (value: string | undefined): "tmux" | "daytona" => {
+  if (!value) {
+    return "tmux";
+  }
+
+  if (value === "tmux" || value === "daytona") {
+    return value;
+  }
+
+  throw new Error("invalid backend");
+};
+
+const deriveRepoPath = (repoUrl: string) => {
+  const trimmed = repoUrl.replace(/\/$/, "");
+  const last = trimmed.split("/").pop();
+  if (!last) {
+    return "repo";
+  }
+  return last.endsWith(".git") ? last.slice(0, -4) : last;
+};
+
 const normalizePublicUrl = (value: string) => {
   let parsed: URL;
 
@@ -122,7 +151,28 @@ export const startCommand = async (
       sessionMaxMs: 8 * 60 * 60_000,
       cookieSecure: !insecureCookie
     })))();
-  const terminalBackend = (deps.createTerminalBackend ?? (() => createTmuxBackend()))();
+  const backendMode = resolveBackendMode(options.backend ?? env.TERMBRIDGE_BACKEND);
+  const daytonaRepo =
+    options.daytonaRepo ??
+    env.TERMBRIDGE_DAYTONA_REPO ??
+    "https://github.com/inline0/termbridge-test-app.git";
+  const daytonaConfig: DaytonaBackendOptions = {
+    apiKey: env.DAYTONA_API_KEY,
+    apiUrl: env.DAYTONA_API_URL,
+    target: env.DAYTONA_TARGET,
+    repoUrl: daytonaRepo,
+    repoBranch: options.daytonaBranch ?? env.TERMBRIDGE_DAYTONA_BRANCH,
+    repoPath: options.daytonaPath ?? env.TERMBRIDGE_DAYTONA_PATH ?? deriveRepoPath(daytonaRepo),
+    sandboxName: options.daytonaSandboxName ?? env.TERMBRIDGE_DAYTONA_NAME,
+    gitUsername: env.TERMBRIDGE_DAYTONA_GIT_USERNAME,
+    gitPassword: env.TERMBRIDGE_DAYTONA_GIT_PASSWORD ?? env.TERMBRIDGE_DAYTONA_GIT_TOKEN,
+    logger
+  };
+
+  const terminalBackend =
+    backendMode === "daytona"
+      ? (deps.createDaytonaBackend ?? createDaytonaBackend)(daytonaConfig)
+      : (deps.createTerminalBackend ?? (() => createTmuxBackend()))();
   const terminalRegistry = (deps.createTerminalRegistry ?? (() => createTerminalRegistry()))();
   const tunnelProvider = (deps.createTunnelProvider ?? (() => createCloudflaredProvider()))();
   const tunnelTokenRaw = options.tunnelToken ?? env.TERMBRIDGE_TUNNEL_TOKEN;
@@ -161,12 +211,14 @@ export const startCommand = async (
   const sessionName = options.session ?? `termbridge-${started.port}`;
   const sessionCount = parseSessionCount(env.TERMBRIDGE_SESSIONS);
   const createdSessions: string[] = [];
+  const terminalSource: TerminalListItem["source"] =
+    backendMode === "daytona" ? "daytona" : "tmux";
 
   for (let index = 0; index < sessionCount; index += 1) {
     const suffix = index === 0 ? "" : `-${index + 1}`;
     const nextName = `${sessionName}${suffix}`;
     const session = await terminalBackend.createSession(nextName);
-    terminalRegistry.add(session.name, session.name, "tmux");
+    terminalRegistry.add(session.name, session.name, terminalSource);
     createdSessions.push(session.name);
   }
 
@@ -205,6 +257,10 @@ export const startCommand = async (
       for (const name of createdSessions) {
         await terminalBackend.closeSession(name);
       }
+    }
+
+    if (terminalBackend.shutdown) {
+      await terminalBackend.shutdown();
     }
   };
 
