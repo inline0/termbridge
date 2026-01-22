@@ -22,6 +22,7 @@ const createTestBackend = () => {
     write: vi.fn(async () => undefined),
     resize: vi.fn(async () => undefined),
     sendControl: vi.fn(async () => undefined),
+    scroll: vi.fn(async () => undefined),
     onOutput: (sessionName, callback) => {
       callbacks.set(sessionName, callback);
       return () => callbacks.delete(sessionName);
@@ -359,6 +360,7 @@ describe("createAppServer", () => {
     ws.send(Buffer.from(JSON.stringify({ type: "input", data: "buf" })));
     ws.send(JSON.stringify({ type: "resize", cols: 80, rows: 24 }));
     ws.send(JSON.stringify({ type: "control", key: "ctrl_c" }));
+    ws.send(JSON.stringify({ type: "scroll", mode: "pages", amount: -1 }));
     ws.send(JSON.stringify({ type: "control", key: "nope" }));
 
     fixture.backend.emitOutput(session.name, "output");
@@ -372,6 +374,7 @@ describe("createAppServer", () => {
     expect(fixture.backend.write).toHaveBeenCalled();
     expect(fixture.backend.resize).toHaveBeenCalled();
     expect(fixture.backend.sendControl).toHaveBeenCalled();
+    expect(fixture.backend.scroll).toHaveBeenCalled();
 
     ws.close();
     await fixture.close();

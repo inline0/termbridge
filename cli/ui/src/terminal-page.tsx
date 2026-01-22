@@ -3,11 +3,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   type ConnectionState,
   type TerminalClient,
+  type ScrollInfo,
   createTerminalClient
 } from "./terminal-client";
 import { TerminalControls } from "./terminal-controls";
 import type { TerminalListState } from "./terminal-list-state";
-import { ViewTabs } from "./view-tabs";
+import { TerminalStatusBar } from "./terminal-status-bar";
 
 type CsrfResponse = { csrfToken: string };
 type ConfigResponse = { proxyPort: number | null; devProxyUrl: string | null };
@@ -27,6 +28,7 @@ export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps
   const [proxyPort, setProxyPort] = useState<number | null>(null);
   const [devProxyUrl, setDevProxyUrl] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<"terminal" | "preview">("terminal");
+  const [scrollInfo, setScrollInfo] = useState<ScrollInfo>({ viewportY: 0, baseY: 0, maxY: 0 });
 
   useEffect(() => {
     let active = true;
@@ -88,6 +90,14 @@ export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps
     return terminals.some((terminal) => terminal.id === terminalId) ? terminalId : null;
   }, [state, terminalId, terminals]);
 
+  const activeTerminalSource = useMemo(() => {
+    if (state !== "ready" || !activeTerminalId) {
+      return null;
+    }
+
+    return terminals.find((terminal) => terminal.id === activeTerminalId)?.source ?? null;
+  }, [state, activeTerminalId, terminals]);
+
   useEffect(() => {
     if (state !== "ready" || terminals.length === 0) {
       return;
@@ -116,14 +126,21 @@ export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps
     const client = createTerminalClient(hostRef.current, activeTerminalId, csrfToken);
     clientRef.current = client;
 
-    const unsubscribe = client.onConnectionStateChange((nextState) => {
+    setScrollInfo(client.getScrollInfo());
+
+    const unsubscribeConnection = client.onConnectionStateChange((nextState) => {
       setConnectionState(nextState);
+    });
+    const unsubscribeScroll = client.onScroll((info) => {
+      setScrollInfo(info);
     });
 
     return () => {
-      unsubscribe();
+      unsubscribeConnection();
+      unsubscribeScroll();
       clientRef.current = null;
       client.destroy();
+      setScrollInfo({ viewportY: 0, baseY: 0, maxY: 0 });
     };
   }, [state, activeTerminalId, csrfToken]);
 
@@ -140,65 +157,53 @@ export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps
 
   const handleSelectTerminal = onSelectTerminal ?? (() => undefined);
 
-  const connectionIndicator = activeTerminalId ? (
-    <span
-      role="status"
-      className={`absolute right-2 top-2 z-10 inline-block h-2 w-2 rounded-full ${
-        connectionState === "connected"
-          ? "bg-green-500"
-          : connectionState === "reconnecting"
-            ? "animate-pulse bg-yellow-500"
-            : connectionState === "connecting"
-              ? "animate-pulse bg-blue-400"
-              : "bg-red-500"
-      }`}
-      data-testid="connection-indicator"
-      data-state={connectionState}
-      aria-label={connectionState}
-    />
-  ) : null;
-
-  const showTabs = proxyPort !== null;
+  const showPreview = proxyPort !== null;
+  const resolvedView = showPreview ? activeView : "terminal";
 
   return (
-    <div
-      className={`relative grid h-full w-full grid-cols-1 bg-background text-foreground ${
-        showTabs ? "grid-rows-[auto_minmax(0,1fr)_auto]" : "grid-rows-[minmax(0,1fr)_auto]"
-      }`}
-    >
-      {showTabs ? <ViewTabs activeView={activeView} onViewChange={setActiveView} /> : null}
-      {statusLabel && activeView === "terminal" ? (
-        <div
-          className="terminal-status absolute inset-0 z-20 flex items-center justify-center bg-background/85 text-xs font-medium text-muted-foreground"
-          role="status"
-        >
-          {statusLabel}
-        </div>
-      ) : null}
-      {activeView === "terminal" ? connectionIndicator : null}
-      <div className="min-h-0 min-w-0 relative">
-        {showTabs ? (
-          <iframe
-            src={devProxyUrl ?? "/"}
-            title="Preview"
-            className={`h-full w-full border-0 ${activeView === "preview" ? "" : "invisible absolute inset-0"}`}
-            sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
-            data-testid="preview-iframe"
+    <div className="relative h-full w-full bg-background text-foreground">
+      <TerminalStatusBar
+        connectionState={connectionState}
+        scrollInfo={scrollInfo}
+        hasTerminal={Boolean(activeTerminalId)}
+      />
+      <div className="grid h-full w-full grid-rows-[minmax(0,1fr)_auto]">
+        <div className="relative min-h-0 min-w-0">
+          {statusLabel && resolvedView === "terminal" ? (
+            <div
+              className="terminal-status absolute inset-0 z-20 flex items-center justify-center bg-background/85 text-xs font-medium text-muted-foreground"
+              role="status"
+            >
+              {statusLabel}
+            </div>
+          ) : null}
+          {showPreview ? (
+            <iframe
+              src={devProxyUrl ?? "/"}
+              title="Preview"
+              className={`h-full w-full border-0 ${resolvedView === "preview" ? "" : "invisible absolute inset-0"}`}
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+              data-testid="preview-iframe"
+            />
+          ) : null}
+          <div
+            ref={hostRef}
+            className={`terminal-host h-full w-full ${resolvedView === "preview" ? "invisible absolute inset-0" : ""}`}
+            data-testid="terminal-host"
           />
-        ) : null}
-        <div
-          ref={hostRef}
-          className={`terminal-host h-full w-full ${activeView === "preview" ? "invisible absolute inset-0" : ""}`}
-          data-testid="terminal-host"
+        </div>
+        <TerminalControls
+          clientRef={clientRef}
+          terminals={terminals}
+          activeTerminalId={activeTerminalId}
+          activeTerminalSource={activeTerminalSource}
+          activeView={resolvedView}
+          onViewChange={setActiveView}
+          showViewToggle={showPreview}
+          listState={state}
+          onSelectTerminal={handleSelectTerminal}
         />
       </div>
-      <TerminalControls
-        clientRef={clientRef}
-        terminals={terminals}
-        activeTerminalId={activeTerminalId}
-        listState={state}
-        onSelectTerminal={handleSelectTerminal}
-      />
     </div>
   );
 };

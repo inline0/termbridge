@@ -21,6 +21,7 @@ export type TerminalBackend = {
   write: (sessionName: string, data: string) => Promise<void>;
   resize: (sessionName: string, cols: number, rows: number) => Promise<void>;
   sendControl: (sessionName: string, key: TerminalControlKey) => Promise<void>;
+  scroll: (sessionName: string, mode: "lines" | "pages", amount: number) => Promise<void>;
   onOutput: (sessionName: string, callback: (data: string) => void) => () => void;
   closeSession: (sessionName: string) => Promise<void>;
 };
@@ -207,6 +208,34 @@ export const createTmuxBackend = (deps: TmuxBackendDeps = {}): TerminalBackend =
     ensurePty(entry).write(controlSequence);
   };
 
+  const scroll = async (sessionName: string, mode: "lines" | "pages", amount: number) => {
+    if (!Number.isFinite(amount) || amount === 0) {
+      return;
+    }
+
+    if (!sessions.has(sessionName)) {
+      return;
+    }
+
+    const direction = amount < 0 ? "up" : "down";
+    const command = mode === "pages" ? `page-${direction}` : `scroll-${direction}`;
+    const steps = Math.min(50, Math.abs(Math.trunc(amount)));
+
+    try {
+      await runTmux(["copy-mode", "-e", "-t", sessionName]);
+    } catch {
+      return;
+    }
+
+    for (let index = 0; index < steps; index += 1) {
+      try {
+        await runTmux(["send-keys", "-t", sessionName, "-X", command]);
+      } catch {
+        break;
+      }
+    }
+  };
+
   const resize = async (sessionName: string, cols: number, rows: number) => {
     const entry = sessions.get(sessionName);
     if (!entry) {
@@ -256,6 +285,7 @@ export const createTmuxBackend = (deps: TmuxBackendDeps = {}): TerminalBackend =
     write,
     resize,
     sendControl,
+    scroll,
     onOutput,
     closeSession
   };
@@ -311,6 +341,10 @@ export const createMemoryBackend = (): MemoryTerminalBackend => {
     return;
   };
 
+  const scroll = async () => {
+    return;
+  };
+
   const onOutput = (sessionName: string, callback: (data: string) => void) => {
     const emitter = getEmitter(sessionName);
     const handler = (data: string) => callback(data);
@@ -336,6 +370,7 @@ export const createMemoryBackend = (): MemoryTerminalBackend => {
     write,
     resize,
     sendControl,
+    scroll,
     onOutput,
     closeSession,
     emitOutput

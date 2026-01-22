@@ -46,6 +46,7 @@ describe("startCommand", () => {
       write: vi.fn(async () => undefined),
       resize: vi.fn(async () => undefined),
       sendControl: vi.fn(async () => undefined),
+      scroll: vi.fn(async () => undefined),
       onOutput: () => () => undefined,
       closeSession: vi.fn(async () => undefined)
     };
@@ -113,6 +114,7 @@ describe("startCommand", () => {
       write: vi.fn(async () => undefined),
       resize: vi.fn(async () => undefined),
       sendControl: vi.fn(async () => undefined),
+      scroll: vi.fn(async () => undefined),
       onOutput: () => () => undefined,
       closeSession: vi.fn(async () => undefined)
     };
@@ -164,6 +166,7 @@ describe("startCommand", () => {
       write: vi.fn(async () => undefined),
       resize: vi.fn(async () => undefined),
       sendControl: vi.fn(async () => undefined),
+      scroll: vi.fn(async () => undefined),
       onOutput: () => () => undefined,
       closeSession: vi.fn(async () => undefined)
     };
@@ -214,6 +217,7 @@ describe("startCommand", () => {
       write: vi.fn(async () => undefined),
       resize: vi.fn(async () => undefined),
       sendControl: vi.fn(async () => undefined),
+      scroll: vi.fn(async () => undefined),
       onOutput: () => () => undefined,
       closeSession: vi.fn(async () => undefined)
     };
@@ -267,6 +271,7 @@ describe("startCommand", () => {
       write: vi.fn(async () => undefined),
       resize: vi.fn(async () => undefined),
       sendControl: vi.fn(async () => undefined),
+      scroll: vi.fn(async () => undefined),
       onOutput: () => () => undefined,
       closeSession: vi.fn(async () => undefined)
     };
@@ -320,6 +325,7 @@ describe("startCommand", () => {
       write: vi.fn(async () => undefined),
       resize: vi.fn(async () => undefined),
       sendControl: vi.fn(async () => undefined),
+      scroll: vi.fn(async () => undefined),
       onOutput: () => () => undefined,
       closeSession: vi.fn(async () => undefined)
     };
@@ -374,6 +380,7 @@ describe("startCommand", () => {
       write: vi.fn(async () => undefined),
       resize: vi.fn(async () => undefined),
       sendControl: vi.fn(async () => undefined),
+      scroll: vi.fn(async () => undefined),
       onOutput: () => () => undefined,
       closeSession: vi.fn(async () => undefined)
     };
@@ -428,6 +435,7 @@ describe("startCommand", () => {
       write: vi.fn(async () => undefined),
       resize: vi.fn(async () => undefined),
       sendControl: vi.fn(async () => undefined),
+      scroll: vi.fn(async () => undefined),
       onOutput: () => () => undefined,
       closeSession: vi.fn(async () => undefined)
     };
@@ -485,6 +493,7 @@ describe("startCommand", () => {
       write: vi.fn(async () => undefined),
       resize: vi.fn(async () => undefined),
       sendControl: vi.fn(async () => undefined),
+      scroll: vi.fn(async () => undefined),
       onOutput: () => () => undefined,
       closeSession: vi.fn(async () => undefined)
     };
@@ -542,6 +551,7 @@ describe("startCommand", () => {
       write: vi.fn(async () => undefined),
       resize: vi.fn(async () => undefined),
       sendControl: vi.fn(async () => undefined),
+      scroll: vi.fn(async () => undefined),
       onOutput: () => () => undefined,
       closeSession: vi.fn(async () => undefined)
     };
@@ -595,6 +605,7 @@ describe("startCommand", () => {
       write: vi.fn(async () => undefined),
       resize: vi.fn(async () => undefined),
       sendControl: vi.fn(async () => undefined),
+      scroll: vi.fn(async () => undefined),
       onOutput: () => () => undefined,
       closeSession: vi.fn(async () => undefined)
     };
@@ -638,6 +649,7 @@ describe("startCommand", () => {
       write: vi.fn(async () => undefined),
       resize: vi.fn(async () => undefined),
       sendControl: vi.fn(async () => undefined),
+      scroll: vi.fn(async () => undefined),
       onOutput: () => () => undefined,
       closeSession: vi.fn(async () => undefined)
     };

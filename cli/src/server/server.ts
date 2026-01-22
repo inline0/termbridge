@@ -137,6 +137,15 @@ export const parseClientMessage = (payload: WebSocket.Data): ParseResult => {
       return { ok: true, message: parsed };
     }
 
+    if (
+      parsed.type === "scroll" &&
+      (parsed.mode === "lines" || parsed.mode === "pages") &&
+      typeof parsed.amount === "number" &&
+      Number.isFinite(parsed.amount)
+    ) {
+      return { ok: true, message: parsed };
+    }
+
     return { ok: false, error: "invalid" };
   } catch {
     return { ok: false, error: "invalid" };
@@ -419,6 +428,11 @@ export const createAppServer = (deps: ServerDeps) => {
 
       if (message.type === "resize") {
         void deps.terminalBackend.resize(info.sessionName, message.cols, message.rows);
+        return;
+      }
+
+      if (message.type === "scroll") {
+        void deps.terminalBackend.scroll(info.sessionName, message.mode, message.amount);
         return;
       }
 

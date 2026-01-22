@@ -8,6 +8,14 @@ vi.mock("./terminal-client", () => ({
     destroy: vi.fn(),
     sendControl: vi.fn(),
     sendInput: vi.fn(),
+    sendScroll: vi.fn(),
+    scrollLines: vi.fn(),
+    scrollPages: vi.fn(),
+    scrollToTop: vi.fn(),
+    scrollToBottom: vi.fn(),
+    scrollToLine: vi.fn(),
+    getScrollInfo: vi.fn(() => ({ viewportY: 0, baseY: 0, maxY: 0 })),
+    onScroll: vi.fn(() => () => undefined),
     getConnectionState: vi.fn(() => "connected"),
     onConnectionStateChange: vi.fn(() => () => undefined)
   }))

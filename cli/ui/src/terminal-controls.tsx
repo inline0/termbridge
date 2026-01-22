@@ -6,6 +6,10 @@ import {
   ArrowRight,
   ArrowRightToLine,
   ArrowUp,
+  ChevronDown,
+  ChevronUp,
+  ChevronsDown,
+  ChevronsUp,
   Command,
   CornerDownLeft,
   PlusIcon,
@@ -16,6 +20,7 @@ import { type MutableRefObject, useEffect, useMemo, useRef, useState } from "rea
 import type { TerminalClient } from "./terminal-client";
 import type { TerminalListState } from "./terminal-list-state";
 import { TerminalSwitcher } from "./terminal-switcher";
+import { ViewSwitcher } from "./view-switcher";
 
 type ActionIcon = typeof ArrowUp;
 type Action =
@@ -32,12 +37,24 @@ type Action =
       icon: ActionIcon;
       kind: "control";
       key: TerminalControlKey;
+    }
+  | {
+      id: string;
+      label: string;
+      icon: ActionIcon;
+      kind: "scroll";
+      mode: "lines" | "pages";
+      amount: number;
     };
 
 type TerminalControlsProps = {
   clientRef: MutableRefObject<TerminalClient | null>;
   terminals: TerminalListItem[];
   activeTerminalId: string | null;
+  activeTerminalSource?: TerminalListItem["source"] | null;
+  activeView: "terminal" | "preview";
+  onViewChange: (view: "terminal" | "preview") => void;
+  showViewToggle?: boolean;
   listState: TerminalListState;
   onSelectTerminal: (terminalId: string) => void;
 };
@@ -46,6 +63,10 @@ export const TerminalControls = ({
   clientRef,
   terminals,
   activeTerminalId,
+  activeTerminalSource = null,
+  activeView,
+  onViewChange,
+  showViewToggle = false,
   listState,
   onSelectTerminal
 }: TerminalControlsProps) => {
@@ -95,6 +116,10 @@ export const TerminalControls = ({
   const actions = useMemo<Action[]>(
     () => [
       { id: "enter", label: "Enter", kind: "input", data: "\r", icon: CornerDownLeft },
+      { id: "page-up", label: "Page Up", kind: "scroll", mode: "pages", amount: -1, icon: ChevronsUp },
+      { id: "page-down", label: "Page Down", kind: "scroll", mode: "pages", amount: 1, icon: ChevronsDown },
+      { id: "line-up", label: "Line Up", kind: "scroll", mode: "lines", amount: -1, icon: ChevronUp },
+      { id: "line-down", label: "Line Down", kind: "scroll", mode: "lines", amount: 1, icon: ChevronDown },
       { id: "up", label: "Up", kind: "control", key: "up", icon: ArrowUp },
       { id: "down", label: "Down", kind: "control", key: "down", icon: ArrowDown },
       { id: "left", label: "Left", kind: "control", key: "left", icon: ArrowLeft },
@@ -130,7 +155,27 @@ export const TerminalControls = ({
       return;
     }
 
-    client.sendControl(action.key);
+    if (action.kind === "control") {
+      client.sendControl(action.key);
+      return;
+    }
+
+    if (activeTerminalSource === "tmux") {
+      client.sendScroll(action.mode, action.amount);
+      return;
+    }
+
+    const scrollInfo = client.getScrollInfo();
+    if (scrollInfo.maxY > 0) {
+      if (action.mode === "lines") {
+        client.scrollLines(action.amount);
+        return;
+      }
+      client.scrollPages(action.amount);
+      return;
+    }
+
+    client.sendScroll(action.mode, action.amount);
   };
 
   return (
@@ -220,13 +265,16 @@ export const TerminalControls = ({
               <SendIcon className="size-4" />
             </Button>
           </div>
-          <div className="-ml-1 flex-shrink-0">
+          <div className="-ml-1 flex flex-shrink-0 items-center gap-2">
             <TerminalSwitcher
               terminals={terminals}
               activeTerminalId={activeTerminalId}
               listState={listState}
               onSelectTerminal={onSelectTerminal}
             />
+            {showViewToggle ? (
+              <ViewSwitcher activeView={activeView} onViewChange={onViewChange} />
+            ) : null}
           </div>
         </div>
       </div>

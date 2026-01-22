@@ -22,6 +22,12 @@ describe("parseClientMessage", () => {
     expect(result).toEqual({ ok: true, message: { type: "control", key: "ctrl_c" } });
   });
 
+  it("parses scroll messages", () => {
+    const payload = JSON.stringify({ type: "scroll", mode: "pages", amount: -1 }) as unknown as WebSocket.RawData;
+    const result = parseClientMessage(payload);
+    expect(result).toEqual({ ok: true, message: { type: "scroll", mode: "pages", amount: -1 } });
+  });
+
   it("rejects invalid payloads", () => {
     expect(parseClientMessage("{bad" as unknown as WebSocket.RawData)).toEqual({
       ok: false,

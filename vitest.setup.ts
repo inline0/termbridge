@@ -60,12 +60,30 @@ vi.mock("@silk-hq/components", () => {
 
 vi.mock("@xterm/xterm", () => ({
   Terminal: class {
+    buffer = {
+      active: {
+        viewportY: 0,
+        baseY: 0
+      }
+    };
+    element: HTMLElement | null = null;
     loadAddon() {}
-    open() {}
-    onData() {}
+    open(container: HTMLElement) {
+      this.element = container;
+    }
+    onData() {
+      return () => {};
+    }
+    onScroll() {
+      return () => {};
+    }
     write() {}
     resize() {}
+    scrollLines() {}
+    scrollPages() {}
+    scrollToTop() {}
     scrollToBottom() {}
+    scrollToLine() {}
     dispose() {}
   }
 }));

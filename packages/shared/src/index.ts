@@ -26,10 +26,19 @@ export type TerminalControlMessage = {
   key: TerminalControlKey;
 };
 
+export type TerminalScrollMode = "lines" | "pages";
+
+export type TerminalScrollMessage = {
+  type: "scroll";
+  mode: TerminalScrollMode;
+  amount: number;
+};
+
 export type TerminalClientMessage =
   | TerminalInputMessage
   | TerminalResizeMessage
-  | TerminalControlMessage;
+  | TerminalControlMessage
+  | TerminalScrollMessage;
 
 export type TerminalOutputMessage = {
   type: "output";

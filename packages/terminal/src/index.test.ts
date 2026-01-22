@@ -64,11 +64,14 @@ describe("createTmuxBackend", () => {
     await backend.write("session", "");
     await backend.write("session", "ls");
     await backend.sendControl("session", "ctrl_c");
+    await backend.scroll("session", "pages", -1);
     await backend.resize("session", 120, 30);
     unsubscribe();
 
     expect(execFile).toHaveBeenCalledWith("tmux", ["new-session", "-d", "-s", "session"]);
     expect(execFile).toHaveBeenCalledWith("tmux", ["set-option", "-t", "session", "status", "off"]);
+    expect(execFile).toHaveBeenCalledWith("tmux", ["copy-mode", "-e", "-t", "session"]);
+    expect(execFile).toHaveBeenCalledWith("tmux", ["send-keys", "-t", "session", "-X", "page-up"]);
     expect(spawnPty).toHaveBeenCalledWith(
       "tmux",
       ["attach-session", "-t", "session"],
@@ -123,6 +126,61 @@ describe("createTmuxBackend", () => {
       ["attach-session", "-t", "session"],
       expect.objectContaining({ cols: 120, rows: 40 })
     );
+  });
+
+  it("bails when copy-mode fails", async () => {
+    const execFile = vi.fn(async (_file: string, args: string[]) => {
+      if (args[0] === "copy-mode") {
+        throw new Error("copy-mode failed");
+      }
+      return { stdout: "" };
+    });
+    const backend = createTmuxBackend({ execFile, _skipSpawnHelperCheck: true, spawnPty: vi.fn() });
+
+    await backend.createSession("session");
+    await backend.scroll("session", "pages", -1);
+
+    const sendKeysCalls = execFile.mock.calls.filter(([_file, args]) => args[0] === "send-keys");
+    expect(sendKeysCalls).toHaveLength(0);
+  });
+
+  it("stops scrolling when send-keys fails", async () => {
+    const execFile = vi.fn(async (_file: string, args: string[]) => {
+      if (args[0] === "send-keys") {
+        throw new Error("send-keys failed");
+      }
+      return { stdout: "" };
+    });
+    const backend = createTmuxBackend({ execFile, _skipSpawnHelperCheck: true, spawnPty: vi.fn() });
+
+    await backend.createSession("session");
+    await backend.scroll("session", "lines", -2);
+
+    const sendKeysCalls = execFile.mock.calls.filter(([_file, args]) => args[0] === "send-keys");
+    expect(sendKeysCalls).toHaveLength(1);
+  });
+
+  it("ignores scroll requests with invalid amounts", async () => {
+    const execFile = vi.fn(async () => ({ stdout: "" }));
+    const backend = createTmuxBackend({ execFile, _skipSpawnHelperCheck: true, spawnPty: vi.fn() });
+
+    await backend.createSession("session");
+    await backend.scroll("session", "pages", 0);
+    await backend.scroll("session", "pages", Number.NaN);
+
+    expect(execFile).not.toHaveBeenCalledWith("tmux", expect.arrayContaining(["copy-mode"]));
+    expect(execFile).not.toHaveBeenCalledWith("tmux", expect.arrayContaining(["send-keys"]));
+  });
+
+  it("scrolls down when the amount is positive", async () => {
+    const execFile = vi.fn(async () => ({ stdout: "" }));
+    const spawnPty = vi.fn(() => new FakePty() as unknown as IPty);
+    const backend = createTmuxBackend({ execFile, _skipSpawnHelperCheck: true, spawnPty });
+
+    await backend.createSession("session");
+    await backend.scroll("session", "pages", 1);
+
+    expect(execFile).toHaveBeenCalledWith("tmux", ["send-keys", "-t", "session", "-X", "page-down"]);
   });
 
   it("accepts existing tmux sessions", async () => {
@@ -184,6 +242,7 @@ describe("createTmuxBackend", () => {
     await backend.write("missing", "hi");
     await backend.sendControl("missing", "esc");
     await backend.resize("missing", 10, 5);
+    await backend.scroll("missing", "lines", 1);
     await backend.closeSession("missing");
 
     expect(true).toBe(true);
@@ -287,6 +346,7 @@ describe("createMemoryBackend", () => {
     unsubscribe();
     await backend.sendControl("session", "esc");
     await backend.resize("session", 80, 24);
+    await backend.scroll("session", "lines", 1);
     await backend.closeSession("session");
 
     expect(outputs).toEqual(["hello", "world"]);

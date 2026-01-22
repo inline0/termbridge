@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { TerminalListItem } from "@termbridge/shared";
 import { TerminalPage } from "./terminal-page";
 import type { TerminalClient } from "./terminal-client";
@@ -25,12 +25,25 @@ describe("TerminalPage", () => {
     destroy?: ReturnType<typeof vi.fn>;
     sendControl?: ReturnType<typeof vi.fn>;
     sendInput?: ReturnType<typeof vi.fn>;
+    sendScroll?: ReturnType<typeof vi.fn>;
+    scrollLines?: ReturnType<typeof vi.fn>;
+    scrollPages?: ReturnType<typeof vi.fn>;
     getConnectionState?: ReturnType<typeof vi.fn>;
     onConnectionStateChange?: ReturnType<typeof vi.fn>;
+    getScrollInfo?: ReturnType<typeof vi.fn>;
+    onScroll?: ReturnType<typeof vi.fn>;
   } = {}): TerminalClient => ({
     destroy: overrides.destroy ?? vi.fn(),
     sendControl: overrides.sendControl ?? vi.fn(),
     sendInput: overrides.sendInput ?? vi.fn(),
+    sendScroll: overrides.sendScroll ?? vi.fn(),
+    scrollLines: overrides.scrollLines ?? vi.fn(),
+    scrollPages: overrides.scrollPages ?? vi.fn(),
+    scrollToTop: vi.fn(),
+    scrollToBottom: vi.fn(),
+    scrollToLine: vi.fn(),
+    getScrollInfo: overrides.getScrollInfo ?? vi.fn(() => ({ viewportY: 0, baseY: 0, maxY: 0 })),
+    onScroll: overrides.onScroll ?? vi.fn(() => () => undefined),
     getConnectionState: overrides.getConnectionState ?? vi.fn(() => "connected"),
     onConnectionStateChange: overrides.onConnectionStateChange ?? vi.fn(() => () => undefined)
   }) as TerminalClient;
@@ -422,25 +435,25 @@ describe("TerminalPage", () => {
       expect(createTerminalClientMock).toHaveBeenCalled();
     });
 
-    expect(screen.getByTestId("connection-indicator")).toHaveAttribute("data-state", "connecting");
+    expect(screen.getByTestId("connection-status")).toHaveAttribute("data-state", "connecting");
 
     callbackRef.current?.("connected");
     await waitFor(() => {
-      expect(screen.getByTestId("connection-indicator")).toHaveAttribute("data-state", "connected");
+      expect(screen.getByTestId("connection-status")).toHaveAttribute("data-state", "connected");
     });
 
     callbackRef.current?.("reconnecting");
     await waitFor(() => {
-      expect(screen.getByTestId("connection-indicator")).toHaveAttribute("data-state", "reconnecting");
+      expect(screen.getByTestId("connection-status")).toHaveAttribute("data-state", "reconnecting");
     });
 
     callbackRef.current?.("disconnected");
     await waitFor(() => {
-      expect(screen.getByTestId("connection-indicator")).toHaveAttribute("data-state", "disconnected");
+      expect(screen.getByTestId("connection-status")).toHaveAttribute("data-state", "disconnected");
     });
   });
 
-  it("does not show tabs when proxyPort is null", async () => {
+  it("does not show view switcher when proxyPort is null", async () => {
     const destroy = vi.fn();
     createTerminalClientMock.mockReturnValue(createMockClient({ destroy }));
 
@@ -452,11 +465,11 @@ describe("TerminalPage", () => {
       expect(createTerminalClientMock).toHaveBeenCalled();
     });
 
-    expect(screen.queryByRole("tablist")).toBeNull();
+    expect(screen.queryByLabelText("Views")).toBeNull();
     expect(screen.getByTestId("terminal-host")).toBeInTheDocument();
   });
 
-  it("shows tabs when proxyPort is configured", async () => {
+  it("shows view switcher when proxyPort is configured", async () => {
     const destroy = vi.fn();
     createTerminalClientMock.mockReturnValue(createMockClient({ destroy }));
 
@@ -468,12 +481,11 @@ describe("TerminalPage", () => {
       expect(createTerminalClientMock).toHaveBeenCalled();
     });
 
-    expect(screen.getByRole("tablist")).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Terminal" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tab", { name: "Preview" })).toHaveAttribute("aria-selected", "false");
+    expect(screen.getByLabelText("Views")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Switch to Terminal" })).toHaveAttribute("aria-current", "page");
   });
 
-  it("switches to preview view when Preview tab is clicked", async () => {
+  it("switches to preview view when Preview is selected", async () => {
     const destroy = vi.fn();
     createTerminalClientMock.mockReturnValue(createMockClient({ destroy }));
 
@@ -485,11 +497,10 @@ describe("TerminalPage", () => {
       expect(createTerminalClientMock).toHaveBeenCalled();
     });
 
-    fireEvent.click(screen.getByRole("tab", { name: "Preview" }));
+    fireEvent.click(screen.getByRole("button", { name: "Switch to Preview" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("tab", { name: "Preview" })).toHaveAttribute("aria-selected", "true");
-      expect(screen.getByRole("tab", { name: "Terminal" })).toHaveAttribute("aria-selected", "false");
+      expect(screen.getByRole("button", { name: "Switch to Preview" })).toHaveAttribute("aria-current", "page");
     });
 
     expect(screen.getByTestId("preview-iframe")).toBeInTheDocument();
@@ -511,12 +522,68 @@ describe("TerminalPage", () => {
 
     expect(screen.getByLabelText("Message")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("tab", { name: "Preview" }));
+    fireEvent.click(screen.getByRole("button", { name: "Switch to Preview" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("tab", { name: "Preview" })).toHaveAttribute("aria-selected", "true");
+      expect(screen.getByRole("button", { name: "Switch to Preview" })).toHaveAttribute("aria-current", "page");
     });
 
     expect(screen.getByLabelText("Message")).toBeInTheDocument();
+  });
+
+  it("uses local scroll helpers when the terminal source is missing", async () => {
+    const destroy = vi.fn();
+    const sendScroll = vi.fn();
+    const scrollPages = vi.fn();
+    const getScrollInfo = vi.fn(() => ({ viewportY: 0, baseY: 10, maxY: 10 }));
+    createTerminalClientMock.mockReturnValue(
+      createMockClient({ destroy, sendScroll, scrollPages, getScrollInfo })
+    );
+
+    const terminal = {
+      ...makeTerminal("term-1"),
+      source: undefined as unknown as TerminalListItem["source"]
+    };
+    global.fetch = createMockFetch([terminal]);
+
+    render(<TerminalPage terminalId="term-1" />);
+
+    await waitFor(() => {
+      expect(createTerminalClientMock).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+    fireEvent.click(screen.getByRole("button", { name: "Page Down" }));
+
+    expect(scrollPages).toHaveBeenCalledWith(1);
+    expect(sendScroll).not.toHaveBeenCalled();
+  });
+
+  it("shows scroll status when scrollback is available", async () => {
+    const destroy = vi.fn();
+    let scrollCallback: ((info: { viewportY: number; baseY: number; maxY: number }) => void) | null = null;
+    const onScroll = vi.fn((callback: typeof scrollCallback) => {
+      scrollCallback = callback;
+      return () => {
+        scrollCallback = null;
+      };
+    });
+    createTerminalClientMock.mockReturnValue(
+      createMockClient({ destroy, onScroll })
+    );
+
+    global.fetch = createMockFetch([makeTerminal("term-1")]);
+
+    render(<TerminalPage terminalId="term-1" />);
+
+    await waitFor(() => {
+      expect(createTerminalClientMock).toHaveBeenCalled();
+    });
+
+    act(() => {
+      scrollCallback?.({ viewportY: 5, baseY: 10, maxY: 10 });
+    });
+
+    expect(screen.getByTestId("scroll-status")).toHaveTextContent("5 / 10");
   });
 });

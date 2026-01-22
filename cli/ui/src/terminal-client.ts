@@ -10,12 +10,26 @@ import type {
 
 export type ConnectionState = "connecting" | "connected" | "disconnected" | "reconnecting";
 
+export type ScrollInfo = {
+  viewportY: number;
+  baseY: number;
+  maxY: number;
+};
+
 export type TerminalClient = {
   sendControl: (key: TerminalControlKey) => void;
   sendInput: (data: string) => void;
+  sendScroll: (mode: "lines" | "pages", amount: number) => void;
   destroy: () => void;
   getConnectionState: () => ConnectionState;
   onConnectionStateChange: (callback: (state: ConnectionState) => void) => () => void;
+  scrollLines: (amount: number) => void;
+  scrollPages: (amount: number) => void;
+  scrollToTop: () => void;
+  scrollToBottom: () => void;
+  scrollToLine: (line: number) => void;
+  getScrollInfo: () => ScrollInfo;
+  onScroll: (callback: (info: ScrollInfo) => void) => () => void;
 };
 
 export type TerminalClientDeps = {
@@ -96,6 +110,7 @@ export const createTerminalClient = (
         fontFamily: "Menlo, Monaco, 'Courier New', monospace",
         fontSize: 12,
         lineHeight: 1.2,
+        scrollback: 5000,
         theme: terminalTheme
       }));
   const createFitAddon = deps.createFitAddon ?? (() => new FitAddon());
@@ -340,6 +355,14 @@ export const createTerminalClient = (
     sendMessage({ type: "input", data });
   };
 
+  const sendScroll = (mode: "lines" | "pages", amount: number) => {
+    if (!Number.isFinite(amount) || amount === 0) {
+      return;
+    }
+
+    sendMessage({ type: "scroll", mode, amount });
+  };
+
   const destroy = () => {
     destroyed = true;
     windowRef.removeEventListener("resize", scheduleResize);
@@ -370,5 +393,68 @@ export const createTerminalClient = (
     };
   };
 
-  return { sendControl, sendInput, destroy, getConnectionState, onConnectionStateChange };
+  const scrollCallbacks = new Set<(info: ScrollInfo) => void>();
+
+  const getScrollInfo = (): ScrollInfo => {
+    const buffer = terminal.buffer.active;
+    return {
+      viewportY: buffer.viewportY,
+      baseY: buffer.baseY,
+      maxY: buffer.baseY
+    };
+  };
+
+  const notifyScrollCallbacks = () => {
+    const info = getScrollInfo();
+    for (const callback of scrollCallbacks) {
+      callback(info);
+    }
+  };
+
+  terminal.onScroll(() => {
+    notifyScrollCallbacks();
+  });
+
+  const scrollLines = (amount: number) => {
+    terminal.scrollLines(amount);
+  };
+
+  const scrollPages = (amount: number) => {
+    terminal.scrollPages(amount);
+  };
+
+  const scrollToTop = () => {
+    terminal.scrollToTop();
+  };
+
+  const scrollToBottom = () => {
+    terminal.scrollToBottom();
+  };
+
+  const scrollToLine = (line: number) => {
+    terminal.scrollToLine(line);
+  };
+
+  const onScroll = (callback: (info: ScrollInfo) => void) => {
+    scrollCallbacks.add(callback);
+    return () => {
+      scrollCallbacks.delete(callback);
+    };
+  };
+
+  return {
+    sendControl,
+    sendInput,
+    sendScroll,
+    destroy,
+    getConnectionState,
+    onConnectionStateChange,
+    scrollLines,
+    scrollPages,
+    scrollToTop,
+    scrollToBottom,
+    scrollToLine,
+    getScrollInfo,
+    onScroll
+  };
 };

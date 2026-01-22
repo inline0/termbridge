@@ -12,13 +12,24 @@ let lastWebglAddon: WebglAddonStub | null = null;
 vi.mock("@xterm/xterm", () => {
   class Terminal {
     element: HTMLElement | null = null;
+    buffer = {
+      active: {
+        viewportY: 0,
+        baseY: 0
+      }
+    };
     loadAddon = vi.fn();
     open = vi.fn();
     resize = vi.fn();
+    scrollLines = vi.fn();
+    scrollPages = vi.fn();
+    scrollToTop = vi.fn();
     scrollToBottom = vi.fn();
+    scrollToLine = vi.fn();
     write = vi.fn();
     dispose = vi.fn();
-    onData = vi.fn();
+    onData = vi.fn(() => () => {});
+    onScroll = vi.fn(() => () => {});
   }
 
   return { Terminal };
@@ -106,16 +117,33 @@ const createWebSocketCtor = (socket: FakeWebSocket) =>
 
 class FakeTerminal {
   dataHandler: ((data: string) => void) | null = null;
+  scrollHandler: (() => void) | null = null;
   element?: HTMLElement | null;
+  buffer = {
+    active: {
+      viewportY: 0,
+      baseY: 0
+    }
+  };
   loadAddon = vi.fn();
   open = vi.fn();
   resize = vi.fn();
+  scrollLines = vi.fn();
+  scrollPages = vi.fn();
+  scrollToTop = vi.fn();
   scrollToBottom = vi.fn();
+  scrollToLine = vi.fn();
   write = vi.fn();
   dispose = vi.fn();
 
   onData(handler: (data: string) => void) {
     this.dataHandler = handler;
+    return () => {};
+  }
+
+  onScroll(handler: () => void) {
+    this.scrollHandler = handler;
+    return () => {};
   }
 }
 
@@ -167,6 +195,7 @@ describe("terminal-client", () => {
     socket.emit("message", 10);
     client.sendControl("ctrl_c");
     client.sendInput("echo hi");
+    client.sendScroll("pages", -1);
 
     windowListeners.resize?.();
 
@@ -208,6 +237,43 @@ describe("terminal-client", () => {
     client.sendInput("ls");
     const sendCount = socket.send.mock.calls.length;
     client.sendInput("");
+
+    expect(socket.send.mock.calls.length).toBe(sendCount);
+
+    client.destroy();
+  });
+
+  it("does not send empty scroll payloads", () => {
+    const terminal = new FakeTerminal();
+    const fitAddon = new FakeFitAddon();
+    fitAddon.proposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
+
+    const windowRef = {
+      location: { protocol: "http:", host: "localhost" },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callback(0);
+        return 1;
+      },
+      cancelAnimationFrame: vi.fn()
+    } as unknown as Window;
+
+    const socket = new FakeWebSocket("ws://localhost");
+    const WebSocketImpl = createWebSocketCtor(socket);
+
+    const client = createTerminalClient(document.body, "terminal-scroll-empty", "csrf-test", {
+      createTerminal: () => terminal as unknown as Terminal,
+      createFitAddon: () => fitAddon as unknown as FitAddon,
+      WebSocketImpl,
+      windowRef
+    });
+
+    socket.emit("open");
+    client.sendScroll("lines", 1);
+    const sendCount = socket.send.mock.calls.length;
+    client.sendScroll("lines", 0);
+    client.sendScroll("lines", Number.NaN);
 
     expect(socket.send.mock.calls.length).toBe(sendCount);
 
@@ -1116,6 +1182,63 @@ describe("terminal-client", () => {
 
     socket.emit("error");
     expect(client.getConnectionState()).toBe("connected");
+
+    client.destroy();
+  });
+
+  it("provides scroll methods", () => {
+    const terminal = new FakeTerminal();
+    const fitAddon = new FakeFitAddon();
+    fitAddon.proposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
+
+    const windowRef = {
+      location: { protocol: "http:", host: "localhost" },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callback(0);
+        return 1;
+      },
+      cancelAnimationFrame: vi.fn()
+    } as unknown as Window;
+
+    const socket = new FakeWebSocket("ws://localhost");
+    const WebSocketImpl = createWebSocketCtor(socket);
+
+    const client = createTerminalClient(document.body, "terminal-scroll", "csrf-test", {
+      createTerminal: () => terminal as unknown as Terminal,
+      createFitAddon: () => fitAddon as unknown as FitAddon,
+      WebSocketImpl,
+      windowRef
+    });
+
+    client.scrollLines(5);
+    expect(terminal.scrollLines).toHaveBeenCalledWith(5);
+
+    client.scrollPages(2);
+    expect(terminal.scrollPages).toHaveBeenCalledWith(2);
+
+    client.scrollToTop();
+    expect(terminal.scrollToTop).toHaveBeenCalled();
+
+    const scrollToBottomCalls = vi.mocked(terminal.scrollToBottom).mock.calls.length;
+    client.scrollToBottom();
+    expect(terminal.scrollToBottom).toHaveBeenCalledTimes(scrollToBottomCalls + 1);
+
+    client.scrollToLine(100);
+    expect(terminal.scrollToLine).toHaveBeenCalledWith(100);
+
+    const scrollInfo = client.getScrollInfo();
+    expect(scrollInfo).toEqual({ viewportY: 0, baseY: 0, maxY: 0 });
+
+    const scrollCallback = vi.fn();
+    const unsubscribe = client.onScroll(scrollCallback);
+    terminal.scrollHandler?.();
+    expect(scrollCallback).toHaveBeenCalled();
+
+    unsubscribe();
+    terminal.scrollHandler?.();
+    expect(scrollCallback).toHaveBeenCalledTimes(1);
 
     client.destroy();
   });
