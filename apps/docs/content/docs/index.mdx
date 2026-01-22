@@ -26,15 +26,15 @@ That's it. Your terminal is now accessible from your phone.
 ## How it works
 
 1. You run `npx termbridge` on your computer
-2. Termbridge creates a secure tunnel to your terminal
+2. Termbridge creates a secure tunnel to your terminal (or uses a sandbox link in direct mode)
 3. You scan the QR code (or copy the URL)
 4. Your terminal appears in your browser, fully interactive
 
-Everything runs locally on your machine. The tunnel just makes it accessible - no data is stored anywhere else.
+By default, everything runs locally on your machine. Optional sandbox mode runs in your Daytona account, and there is no Termbridge-operated backend.
 
 ## Core design
 
-**Local-first.** The server, WebSocket, and terminal registry live on your machine. There is no Termbridge-operated backend, and no data is stored externally.
+**Local-first.** The server, WebSocket, and terminal registry live on your machine by default. Sandbox mode runs in your Daytona account, but Termbridge still doesn't operate a backend or store your data.
 
 **Secure handoff.** Termbridge issues a one-time token and redeems it into a cookie session. The token URL is what you scan on mobile.
 
@@ -49,13 +49,13 @@ Everything runs locally on your machine. The tunnel just makes it accessible - n
 
 ## Quick start
 
-Make sure you have [Node.js](https://nodejs.org), [tmux](https://github.com/tmux/tmux), and [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/) installed, then:
+For the default local tunnel flow, install [Node.js](https://nodejs.org), [tmux](https://github.com/tmux/tmux), and [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/), then:
 
 ```bash
 npx termbridge
 ```
 
-Scan the QR code with your phone and you're in.
+Scan the QR code with your phone and you're in. For sandbox mode, see the Sandboxes guide.
 
 <Cards>
   <Card title="Getting Started" href="/docs/getting-started">

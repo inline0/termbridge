@@ -7,6 +7,8 @@ description: How the local server, tunnel, and terminal streaming fit together.
 
 ## High-level flow
 
+Default (local tmux + tunnel):
+
 ```
 Browser (phone)
   |
@@ -23,21 +25,43 @@ Local Termbridge server
 Tmux session
 ```
 
+Direct sandbox mode (Daytona, no tunnel):
+
+```
+Browser (phone)
+  |
+  | HTTPS
+  v
+Daytona preview link
+  |
+  | HTTP/WS
+  v
+Termbridge server (sandbox)
+  |
+  | PTY
+  v
+Tmux session (sandbox)
+```
+
+When `--no-tunnel` is set, Termbridge skips Cloudflare and uses your provided public URL.
+
 ## Components
 
 ### CLI process
 
 - Starts the HTTP server that serves the UI assets.
 - Starts the WebSocket server for terminal I/O.
-- Creates one or more tmux sessions.
+- Creates one or more tmux sessions (or Daytona PTYs).
 - Issues one-time redemption tokens.
-- Starts and monitors the Cloudflare tunnel.
+- Starts and monitors the tunnel when enabled (Cloudflare today).
+- In direct sandbox mode, launches Termbridge inside the sandbox and waits for the share URL.
 
 ### Terminal backend
 
-- Uses `node-pty` to attach to tmux for real keystrokes and output.
+- **tmux backend**: Uses `node-pty` to attach to tmux for real keystrokes and output.
+- **Daytona backend**: Uses Daytona PTYs inside a sandbox.
 - Sets `TERM=xterm-256color` and `COLORTERM=truecolor` for full color support.
-- Disables the tmux status bar to keep the UI clean.
+- For tmux, disables the tmux status bar to keep the UI clean.
 
 ### Terminal registry
 
@@ -56,8 +80,8 @@ Tmux session
 When `--proxy <port>` is passed:
 - All termbridge routes live under `/__tb/` prefix
 - Non-`/__tb/` requests are proxied to the target app
-- UI shows Terminal/Preview tabs
-- Preview tab loads an iframe pointing to `/`
+- UI exposes Terminal/Preview views via the Views switcher
+- Preview view loads an iframe pointing to `/`
 - WebSocket connections for HMR are forwarded to the target
 
 ### Security

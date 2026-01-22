@@ -19,7 +19,7 @@ sudo apt install tmux
 
 ## "cloudflared not found"
 
-Cloudflare's tunnel client isn't installed.
+Cloudflare's tunnel client isn't installed. This is only required for tunnel mode; `--no-tunnel` and Daytona direct mode do not need cloudflared.
 
 ```bash
 # macOS
@@ -30,7 +30,7 @@ For Linux, download from [cloudflare.com/downloads](https://developers.cloudflar
 
 ## Tunnel won't start
 
-A few things to check:
+A few things to check (skip this if you're using direct sandbox mode):
 
 1. Verify cloudflared works: `cloudflared --version`
 2. Make sure you can reach `https://trycloudflare.com`

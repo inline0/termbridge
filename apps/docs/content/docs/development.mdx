@@ -10,6 +10,7 @@ description: Local development, test suites, and docs.
 - **Bun** for workspace installs and scripts
 - **Node.js 18+**
 - **tmux** and **cloudflared** for end-to-end tests
+- **Daytona API key + git credentials** for the sandbox integration test (optional)
 - **Playwright** for UI e2e tests
 
 ## Install
@@ -53,7 +54,7 @@ bun run test
 ```
 
 - `test:mocked` runs unit/integration tests with 100% coverage.
-- `test:cli` runs real CLI + UI e2e tests (tmux + cloudflared + Playwright).
+- `test:cli` runs real CLI + UI e2e tests (tmux + cloudflared + Playwright). It also runs the Daytona sandbox test when `TERMBRIDGE_E2E_DAYTONA=1` and the Daytona env vars are set in `termbridge-test-app/.env`.
 
 ## Docs site
 

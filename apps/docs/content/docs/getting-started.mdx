@@ -7,7 +7,7 @@ description: Get Termbridge running in under 5 minutes.
 
 ## Install the prerequisites
 
-Termbridge needs three tools installed on your computer:
+For the default local tunnel setup, install these tools on your computer:
 
 <Steps>
   <Step>
@@ -36,7 +36,7 @@ Termbridge needs three tools installed on your computer:
   <Step>
     ### cloudflared
 
-    Creates the secure tunnel to your terminal.
+    Creates the secure tunnel to your terminal (not needed for sandbox direct mode).
 
     ```bash
     # macOS
@@ -135,5 +135,8 @@ If you pass `--session <name>` and that session already exists, Termbridge will 
   </Card>
   <Card title="CLI Reference" href="/docs/cli">
     See all available flags and options
+  </Card>
+  <Card title="Sandboxes" href="/docs/sandboxes">
+    Run Termbridge in a Daytona sandbox
   </Card>
 </Cards>

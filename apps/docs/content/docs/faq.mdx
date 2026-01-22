@@ -7,7 +7,7 @@ description: Quick answers to common questions.
 
 ## Is my data going through someone else's server?
 
-No. Everything runs on your machine. Cloudflare creates a tunnel, but your terminal data goes directly from your browser to your computer - nothing is stored anywhere else.
+By default, everything runs on your machine. Cloudflare creates a tunnel, but your terminal data goes directly from your browser to your computer - nothing is stored anywhere else. If you use Daytona sandbox mode, the server runs in your sandbox and data stays inside your Daytona account.
 
 ## How secure is the connection?
 
@@ -32,11 +32,11 @@ Not officially. Termbridge is built for macOS and Linux. It might work with WSL,
 
 ## Can I use a different tunnel provider?
 
-Not yet - Cloudflare is the only option right now. More providers are planned.
+Not yet - Cloudflare is the only tunnel provider right now. You can also disable the tunnel entirely or use Daytona direct mode.
 
 ## What happens if I close my laptop?
 
-The tunnel stays active as long as Termbridge is running. If your computer sleeps or Termbridge exits, the connection closes. Your tmux sessions stay alive though, so you can restart Termbridge and reconnect.
+In local mode, the tunnel stays active as long as Termbridge is running. If your computer sleeps or Termbridge exits, the connection closes. Your tmux sessions stay alive though, so you can restart Termbridge and reconnect. In Daytona direct mode, the server runs inside the sandbox, so you can close your laptop and reconnect later.
 
 ## Can multiple people connect at once?
 

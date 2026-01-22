@@ -25,7 +25,7 @@ The bar scrolls horizontally - swipe to see more options.
 
 ## Multiple terminals
 
-Need more than one terminal? Termbridge can run several at once. One server can host multiple tmux sessions, and the UI includes a terminal switcher for selecting between them.
+Need more than one terminal? Termbridge can run several at once. One server can host multiple sessions (tmux or Daytona), and the UI includes a terminal switcher for selecting between them.
 
 Termbridge only lists sessions it created or attached to in the current run.
 
@@ -77,13 +77,13 @@ cd my-app && npm run dev  # runs on port 5173
 termbridge --proxy 5173
 ```
 
-The UI shows **Terminal** and **Preview** tabs at the top:
-- **Terminal tab**: Your tmux session, same as always
-- **Preview tab**: An iframe loading your app through the proxy
+Use the **Views** button to switch between **Terminal** and **Preview**:
+- **Terminal view**: Your session, same as always
+- **Preview view**: An iframe loading your app through the proxy
 
 ### HMR support
 
-Vite's Hot Module Replacement works through the proxy - WebSocket connections to `/_vite/ws` are forwarded to your dev server. Edit your code and see changes in the Preview tab instantly.
+Vite's Hot Module Replacement works through the proxy - WebSocket connections to `/_vite/ws` are forwarded to your dev server. Edit your code and see changes in the Preview view instantly.
 
 ### Use case: Full-stack development
 
@@ -98,8 +98,8 @@ termbridge --proxy 5173
 ```
 
 Now you can:
-1. Watch build output in the Terminal tab
-2. See your app in the Preview tab
+1. Watch build output in the Terminal view
+2. See your app in the Preview view
 3. Switch between them with a tap
 4. Keep working from your phone
 
@@ -191,8 +191,6 @@ Share the public URL with someone - they can watch (and type) in real-time. Just
 
 ## Tips
 
-- **Fonts matter**: The terminal looks best when your system has a monospace font loaded
-- **Resize works**: Rotate your device or resize the browser to adjust the terminal size. For TUIs that rely on size (like `htop`), this will trigger a terminal fit.
 - **tmux commands work**: `Ctrl+B` shortcuts work as normal (though you might need to type them in the input field)
 - **tmux panes/windows**: Use tmux panes and windows as you normally would - Termbridge streams the active tmux session
 - **Reconnect automatically**: If you lose connection, just refresh the page
@@ -200,5 +198,5 @@ Share the public URL with someone - they can watch (and type) in real-time. Just
 ## Limitations
 
 - **One user at a time**: The terminal is a single PTY - multiple viewers see the same thing and can all type
-- **Session persistence**: If Termbridge exits, the tunnel closes (but tmux sessions stay unless you used `--kill-on-exit`)
-- **Cloudflare only**: Currently only supports Cloudflare tunnels (more providers planned)
+- **Session persistence**: If Termbridge exits, the tunnel or sandbox server closes (but tmux sessions stay unless you used `--kill-on-exit`)
+- **Tunnel providers**: Cloudflare is the only tunnel provider today (or disable the tunnel / use direct sandbox mode)

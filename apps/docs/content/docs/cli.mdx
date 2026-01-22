@@ -28,7 +28,7 @@ termbridge start --port 8080 --proxy 5173 --session dev --kill-on-exit --no-qr -
 | Flag | What it does | Default |
 |------|--------------|---------|
 | `--port <port>` | Use a specific port instead of a random one | Random |
-| `--proxy <port>` | Proxy a local dev server (enables Terminal/Preview tabs) | - |
+| `--proxy <port>` | Proxy a local dev server (enables Terminal/Preview views) | - |
 | `--session <name>` | Name your tmux session | Auto-generated |
 | `--kill-on-exit` | Clean up tmux sessions when Termbridge exits | Off |
 | `--no-qr` | Don't print the QR code (useful for scripts) | Off |
@@ -84,7 +84,7 @@ cd my-app && npm run dev  # runs on port 5173
 termbridge --proxy 5173
 ```
 
-The UI shows Terminal/Preview tabs. Preview loads your app through the proxy with HMR support.
+Use the **Views** button to switch between Terminal and Preview. Preview loads your app through the proxy with HMR support.
 
 ### Named Cloudflare tunnel (token-based)
 
@@ -124,7 +124,7 @@ For full Daytona configuration, see the Sandboxes guide.
 
 Press `Ctrl+C` in the terminal where Termbridge is running. This:
 
-- Closes the Cloudflare tunnel
+- Closes the tunnel (if enabled)
 - Stops the local server
 - Keeps tmux sessions alive (unless you used `--kill-on-exit`)
 
