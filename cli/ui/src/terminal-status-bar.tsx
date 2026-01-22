@@ -56,7 +56,7 @@ export const TerminalStatusBar = ({
 
   return (
     <div
-      className={`pointer-events-none flex items-center gap-3 bg-background/80 px-3 py-2 backdrop-blur-[2px] ${positionClasses} ${className ?? ""}`.trim()}
+      className={`pointer-events-none flex items-center gap-3 bg-background/80 p-2 backdrop-blur-[2px] ${positionClasses} ${className ?? ""}`.trim()}
     >
       <div
         data-testid="session-status"

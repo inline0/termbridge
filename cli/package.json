@@ -1,6 +1,6 @@
 {
   "name": "termbridge",
-  "version": "0.3.3",
+  "version": "0.3.5",
   "type": "module",
   "description": "Local-first terminal beaming with tmux + Cloudflare tunnel and a mobile-friendly UI.",
   "license": "MIT",

@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { TerminalListItem } from "@termbridge/shared";
 import { TerminalPage } from "./terminal-page";
-import type { TerminalClient } from "./terminal-client";
+import type { ConnectionState, TerminalClient } from "./terminal-client";
 
 vi.mock("./terminal-client", () => ({
   createTerminalClient: vi.fn()
@@ -44,7 +44,8 @@ describe("TerminalPage", () => {
     scrollToLine: vi.fn(),
     getScrollInfo: overrides.getScrollInfo ?? vi.fn(() => ({ viewportY: 0, baseY: 0, maxY: 0 })),
     onScroll: overrides.onScroll ?? vi.fn(() => () => undefined),
-    getConnectionState: overrides.getConnectionState ?? vi.fn(() => "connected"),
+    getConnectionState:
+      overrides.getConnectionState ?? vi.fn<() => ConnectionState>(() => "connected"),
     onConnectionStateChange: overrides.onConnectionStateChange ?? vi.fn(() => () => undefined)
   }) as TerminalClient;
 

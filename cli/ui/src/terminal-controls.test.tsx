@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { MutableRefObject } from "react";
-import type { TerminalClient } from "./terminal-client";
+import type { ConnectionState, TerminalClient } from "./terminal-client";
 import { TerminalControls } from "./terminal-controls";
 
 describe("TerminalControls", () => {
@@ -18,7 +18,7 @@ describe("TerminalControls", () => {
     sendInput: vi.fn(),
     sendScroll: vi.fn(),
     destroy: vi.fn(),
-    getConnectionState: vi.fn(() => "connected"),
+    getConnectionState: vi.fn<() => ConnectionState>(() => "connected"),
     onConnectionStateChange: vi.fn(() => () => undefined),
     scrollLines: vi.fn(),
     scrollPages: vi.fn(),
