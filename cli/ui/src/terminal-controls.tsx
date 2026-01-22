@@ -185,7 +185,7 @@ export const TerminalControls = ({
   return (
     <div className="min-w-0">
       {showActions ? (
-        <div className="pt-3">
+        <div className="pt-4">
           <div className="relative">
             <div className="h-auto">
               <div
