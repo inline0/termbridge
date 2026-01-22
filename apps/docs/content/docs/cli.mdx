@@ -35,7 +35,7 @@ termbridge start --port 8080 --proxy 5173 --session dev --kill-on-exit --no-qr -
 | `--no-tunnel` | Disable the tunnel (requires `--public-url`) | Off |
 | `--public-url <url>` | Public URL when tunnel is disabled | - |
 | `--tunnel cloudflare` | Tunnel provider (cloudflare or none) | cloudflare |
-| `--backend <tmux|daytona>` | Terminal backend | tmux |
+| `--backend <backend>` | Terminal backend (tmux or daytona) | tmux |
 | `--tunnel-token <token>` | Use a named Cloudflare Tunnel token (requires `--port`) | - |
 | `--tunnel-url <url>` | Public URL for the named tunnel (required with `--tunnel-token`) | - |
 | `--daytona-repo <url>` | Repo URL for Daytona | - |
