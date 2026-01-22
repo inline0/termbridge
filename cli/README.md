@@ -16,6 +16,7 @@ npx termbridge
 ```
 
 Scan the QR code and open the URL on your phone. The CLI stays running while the tunnel is active.
+Use the action tray in the UI for quick navigation, including line + page scroll jumps.
 
 ## Documentation
 

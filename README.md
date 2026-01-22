@@ -27,6 +27,7 @@ Beam your local terminal to your phone in seconds. Run one command, scan the QR 
 - **One Command** - `npx termbridge` spins up the server and tunnel
 - **Multi-Terminal** - One server, multiple tmux sessions
 - **Mobile-First UI** - Single terminal viewport with quick actions
+- **Scroll Controls** - Line + page jump actions in the control tray
 - **Proxy Mode** - Preview your local dev server alongside the terminal
 - **Cloudflare Tunnels** - Secure public URL without router config
 - **Local by Default** - No remote server required
