@@ -11,7 +11,11 @@ import type { TerminalListState } from "./terminal-list-state";
 import { TerminalStatusBar } from "./terminal-status-bar";
 
 type CsrfResponse = { csrfToken: string };
-type ConfigResponse = { proxyPort: number | null; devProxyUrl: string | null };
+type ConfigResponse = {
+  proxyPort: number | null;
+  devProxyUrl: string | null;
+  hideTerminalSwitcher?: boolean;
+};
 
 type TerminalPageProps = {
   terminalId?: string | null;
@@ -27,6 +31,7 @@ export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps
   const [connectionState, setConnectionState] = useState<ConnectionState>("connecting");
   const [proxyPort, setProxyPort] = useState<number | null>(null);
   const [devProxyUrl, setDevProxyUrl] = useState<string | null>(null);
+  const [hideTerminalSwitcher, setHideTerminalSwitcher] = useState(false);
   const [activeView, setActiveView] = useState<"terminal" | "preview">("terminal");
   const [scrollInfo, setScrollInfo] = useState<ScrollInfo>({ viewportY: 0, baseY: 0, maxY: 0 });
   const [tmuxScroll, setTmuxScroll] = useState<{ offset: number; mode: "lines" | "pages" } | null>(
@@ -64,6 +69,7 @@ export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps
         setCsrfToken(csrfPayload.csrfToken);
         setProxyPort(configPayload.proxyPort);
         setDevProxyUrl(configPayload.devProxyUrl);
+        setHideTerminalSwitcher(Boolean(configPayload.hideTerminalSwitcher));
 
         if (nextTerminals.length === 0) {
           setState("empty");
@@ -247,6 +253,7 @@ export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps
           onScrollAction={handleScrollAction}
           listState={state}
           onSelectTerminal={handleSelectTerminal}
+          hideTerminalSwitcher={hideTerminalSwitcher}
         />
       </div>
     </div>

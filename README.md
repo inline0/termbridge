@@ -30,6 +30,7 @@ Beam your local terminal to your phone in seconds. Run one command, scan the QR 
 - **Scroll Controls** - Line + page jump actions in the control tray
 - **Proxy Mode** - Preview your local dev server alongside the terminal
 - **Cloudflare Tunnels** - Secure public URL without router config
+- **Direct Sandbox Mode** - Run the server inside a Daytona sandbox (no tunnel)
 - **Local by Default** - No remote server required
 - **Daytona Sandbox** - Run terminals in a Daytona sandbox (optional preview support)
 
@@ -58,14 +59,19 @@ Flags:
 - `--session <name>`: tmux session name override
 - `--kill-on-exit`: kill tmux sessions on exit
 - `--no-qr`: disable QR output
+- `--no-tunnel`: disable the tunnel (requires `--public-url`)
+- `--public-url <url>`: public URL when no tunnel is used
 - `--tunnel cloudflare`: tunnel provider (default)
 - `--backend <tmux|daytona>`: terminal backend (defaults to tmux)
+- `--daytona-direct`: run the server inside the Daytona sandbox (no tunnel)
 
 ## Environment variables
 
 - `TERMBRIDGE_SESSIONS=2`: create multiple tmux sessions on start
 - `TERMBRIDGE_INSECURE_COOKIE=1`: allow HTTP cookies for local dev
 - `TERMBRIDGE_PROXY_PORT=5174`: proxy port for dev:beam:proxy script
+- `TERMBRIDGE_PUBLIC_URL=https://example.com`: public URL when tunnel disabled
+- `TERMBRIDGE_TUNNEL=none`: disable the tunnel
 
 ### Daytona sandbox mode
 
@@ -84,6 +90,16 @@ TERMBRIDGE_DAYTONA_GIT_TOKEN=your_github_token
 TERMBRIDGE_DAYTONA_PUBLIC=true
 TERMBRIDGE_DAYTONA_PREVIEW_PORT=5173
 TERMBRIDGE_DAYTONA_DELETE_ON_EXIT=true
+```
+
+### Daytona direct mode (no tunnel)
+
+Run the Termbridge server inside the sandbox and skip Cloudflare entirely:
+
+```bash
+TERMBRIDGE_BACKEND=daytona
+TERMBRIDGE_DAYTONA_DIRECT=true
+TERMBRIDGE_DAYTONA_SERVER_PORT=8080
 ```
 
 ### Sandboxes

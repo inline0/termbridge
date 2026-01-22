@@ -44,6 +44,18 @@ Then run Termbridge as usual:
 npx termbridge
 ```
 
+## Direct sandbox mode (no tunnel)
+
+Direct mode runs the Termbridge server inside the sandbox and skips Cloudflare entirely. The share URL is the Daytona preview link to the sandboxed server.
+
+```bash
+TERMBRIDGE_BACKEND=daytona
+TERMBRIDGE_DAYTONA_DIRECT=true
+TERMBRIDGE_DAYTONA_SERVER_PORT=8080
+```
+
+You can still enable preview by setting `TERMBRIDGE_DAYTONA_PREVIEW_PORT`; in direct mode it is forwarded as the server `--proxy` port.
+
 ## Repository cloning
 
 Termbridge will create a sandbox and clone your repo into the sandbox working directory.
@@ -121,6 +133,7 @@ You can also configure Daytona via flags:
 | `--daytona-name <name>` | Sandbox name |
 | `--daytona-preview-port <port>` | Preview port |
 | `--daytona-public` | Create a public sandbox |
+| `--daytona-direct` | Run the server inside the sandbox (no tunnel) |
 
 ## Troubleshooting
 

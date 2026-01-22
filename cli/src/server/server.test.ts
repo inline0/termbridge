@@ -44,6 +44,7 @@ const createServerFixture = async (
     proxyPort?: number;
     devProxyUrl?: string;
     devProxyHeaders?: Record<string, string>;
+    hideTerminalSwitcher?: boolean;
   } = {}
 ) => {
   const uiDir = await mkdtemp(join(tmpdir(), "termbridge-ui-"));
@@ -84,7 +85,8 @@ const createServerFixture = async (
     },
     proxyPort: options.proxyPort,
     devProxyUrl: options.devProxyUrl,
-    devProxyHeaders: options.devProxyHeaders
+    devProxyHeaders: options.devProxyHeaders,
+    hideTerminalSwitcher: options.hideTerminalSwitcher
   });
 
   const started = await server.listen(0);
@@ -613,11 +615,16 @@ describe("createAppServer", () => {
     const cookie = getCookie(redeem.headers.get("set-cookie"));
 
     const configResponse = await fetch(`${fixture.baseUrl}/__tb/api/config`, { headers: { cookie } });
-    const payload = await configResponse.json() as { proxyPort: number | null; devProxyUrl: string | null };
+    const payload = await configResponse.json() as {
+      proxyPort: number | null;
+      devProxyUrl: string | null;
+      hideTerminalSwitcher: boolean;
+    };
 
     expect(configResponse.status).toBe(200);
     expect(payload.proxyPort).toBe(null);
     expect(payload.devProxyUrl).toBe(null);
+    expect(payload.hideTerminalSwitcher).toBe(false);
 
     await fixture.close();
   });
@@ -629,11 +636,16 @@ describe("createAppServer", () => {
     const cookie = getCookie(redeem.headers.get("set-cookie"));
 
     const configResponse = await fetch(`${fixture.baseUrl}/__tb/api/config`, { headers: { cookie } });
-    const payload = await configResponse.json() as { proxyPort: number | null; devProxyUrl: string | null };
+    const payload = await configResponse.json() as {
+      proxyPort: number | null;
+      devProxyUrl: string | null;
+      hideTerminalSwitcher: boolean;
+    };
 
     expect(configResponse.status).toBe(200);
     expect(payload.proxyPort).toBe(5173);
     expect(payload.devProxyUrl).toBe(null);
+    expect(payload.hideTerminalSwitcher).toBe(false);
 
     await fixture.close();
   });
@@ -645,11 +657,35 @@ describe("createAppServer", () => {
     const cookie = getCookie(redeem.headers.get("set-cookie"));
 
     const configResponse = await fetch(`${fixture.baseUrl}/__tb/api/config`, { headers: { cookie } });
-    const payload = await configResponse.json() as { proxyPort: number | null; devProxyUrl: string | null };
+    const payload = await configResponse.json() as {
+      proxyPort: number | null;
+      devProxyUrl: string | null;
+      hideTerminalSwitcher: boolean;
+    };
 
     expect(configResponse.status).toBe(200);
     expect(payload.proxyPort).toBe(null);
     expect(payload.devProxyUrl).toBe("https://preview.example");
+    expect(payload.hideTerminalSwitcher).toBe(false);
+
+    await fixture.close();
+  });
+
+  it("returns config with terminal switcher hidden when configured", async () => {
+    const fixture = await createServerFixture({ hideTerminalSwitcher: true });
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+
+    const configResponse = await fetch(`${fixture.baseUrl}/__tb/api/config`, { headers: { cookie } });
+    const payload = await configResponse.json() as {
+      proxyPort: number | null;
+      devProxyUrl: string | null;
+      hideTerminalSwitcher: boolean;
+    };
+
+    expect(configResponse.status).toBe(200);
+    expect(payload.hideTerminalSwitcher).toBe(true);
 
     await fixture.close();
   });

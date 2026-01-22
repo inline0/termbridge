@@ -5,10 +5,12 @@ export type CliOptions = {
   session?: string;
   killOnExit: boolean;
   noQr: boolean;
-  tunnel: "cloudflare";
+  tunnel: "cloudflare" | "none";
   tunnelToken?: string;
   tunnelUrl?: string;
+  publicUrl?: string;
   backend?: "tmux" | "daytona";
+  daytonaDirect?: boolean;
   daytonaRepo?: string;
   daytonaBranch?: string;
   daytonaPath?: string;
@@ -111,14 +113,19 @@ export const parseArgs = (argv: string[]): ParsedArgs => {
       continue;
     }
 
+    if (current === "--no-tunnel") {
+      options.tunnel = "none";
+      continue;
+    }
+
     if (current === "--tunnel") {
       const tunnel = args.shift();
 
-      if (tunnel !== "cloudflare") {
+      if (tunnel !== "cloudflare" && tunnel !== "none") {
         throw new Error("unsupported tunnel provider");
       }
 
-      options.tunnel = "cloudflare";
+      options.tunnel = tunnel;
       continue;
     }
 
@@ -141,6 +148,17 @@ export const parseArgs = (argv: string[]): ParsedArgs => {
       }
 
       options.tunnelUrl = url;
+      continue;
+    }
+
+    if (current === "--public-url") {
+      const url = args.shift();
+
+      if (!url) {
+        throw new Error("missing public url");
+      }
+
+      options.publicUrl = url;
       continue;
     }
 
@@ -216,6 +234,12 @@ export const parseArgs = (argv: string[]): ParsedArgs => {
 
     if (current === "--daytona-public") {
       options.daytonaPublic = true;
+      continue;
+    }
+
+    if (current === "--daytona-direct") {
+      options.daytonaDirect = true;
+      options.tunnel = "none";
       continue;
     }
 

@@ -34,6 +34,7 @@ export type ServerDeps = {
   proxyPort?: number;
   devProxyUrl?: string; // Remote proxy target URL (preview iframe points to /)
   devProxyHeaders?: Record<string, string>;
+  hideTerminalSwitcher?: boolean;
 };
 
 export type StartedServer = {
@@ -327,7 +328,8 @@ export const createAppServer = (deps: ServerDeps) => {
 
       jsonResponse(response, 200, {
         proxyPort: deps.proxyPort ?? null,
-        devProxyUrl: deps.devProxyUrl ?? null
+        devProxyUrl: deps.devProxyUrl ?? null,
+        hideTerminalSwitcher: Boolean(deps.hideTerminalSwitcher)
       });
       return;
     }

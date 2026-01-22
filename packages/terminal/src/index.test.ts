@@ -93,6 +93,27 @@ describe("createTmuxBackend", () => {
     expect(ptyInstance.kill).toHaveBeenCalled();
   });
 
+  it("uses the default cwd when creating a session", async () => {
+    const execFile = vi.fn(async () => ({ stdout: "" }));
+    const backend = createTmuxBackend({
+      execFile,
+      spawnPty: vi.fn(() => new FakePty() as unknown as IPty),
+      defaultCwd: "/workspace/project",
+      _skipSpawnHelperCheck: true
+    });
+
+    await backend.createSession("session");
+
+    expect(execFile).toHaveBeenCalledWith("tmux", [
+      "new-session",
+      "-d",
+      "-s",
+      "session",
+      "-c",
+      "/workspace/project"
+    ]);
+  });
+
   it("reuses an existing session entry", async () => {
     const execFile = vi.fn(async () => ({ stdout: "" }));
     const backend = createTmuxBackend({

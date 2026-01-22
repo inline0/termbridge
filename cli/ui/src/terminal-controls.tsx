@@ -58,6 +58,7 @@ type TerminalControlsProps = {
   onScrollAction?: (mode: "lines" | "pages", amount: number) => void;
   listState: TerminalListState;
   onSelectTerminal: (terminalId: string) => void;
+  hideTerminalSwitcher?: boolean;
 };
 
 export const TerminalControls = ({
@@ -70,7 +71,8 @@ export const TerminalControls = ({
   showViewToggle = false,
   onScrollAction,
   listState,
-  onSelectTerminal
+  onSelectTerminal,
+  hideTerminalSwitcher = false
 }: TerminalControlsProps) => {
   const actionScrollRef = useRef<HTMLDivElement | null>(null);
   const [message, setMessage] = useState("");
@@ -270,12 +272,14 @@ export const TerminalControls = ({
             </Button>
           </div>
           <div className="-ml-1 flex flex-shrink-0 items-center gap-2">
-            <TerminalSwitcher
-              terminals={terminals}
-              activeTerminalId={activeTerminalId}
-              listState={listState}
-              onSelectTerminal={onSelectTerminal}
-            />
+            {hideTerminalSwitcher ? null : (
+              <TerminalSwitcher
+                terminals={terminals}
+                activeTerminalId={activeTerminalId}
+                listState={listState}
+                onSelectTerminal={onSelectTerminal}
+              />
+            )}
             {showViewToggle ? (
               <ViewSwitcher activeView={activeView} onViewChange={onViewChange} />
             ) : null}

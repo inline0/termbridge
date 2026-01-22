@@ -23,8 +23,12 @@ describe("parseArgs", () => {
       "--no-qr",
       "--tunnel",
       "cloudflare",
+      "--no-tunnel",
+      "--public-url",
+      "https://public.example",
       "--backend",
       "daytona",
+      "--daytona-direct",
       "--daytona-repo",
       "https://github.com/inline0/termbridge-test-app.git",
       "--daytona-branch",
@@ -44,8 +48,10 @@ describe("parseArgs", () => {
     expect(parsed.options.session).toBe("session");
     expect(parsed.options.killOnExit).toBe(true);
     expect(parsed.options.noQr).toBe(true);
-    expect(parsed.options.tunnel).toBe("cloudflare");
+    expect(parsed.options.tunnel).toBe("none");
+    expect(parsed.options.publicUrl).toBe("https://public.example");
     expect(parsed.options.backend).toBe("daytona");
+    expect(parsed.options.daytonaDirect).toBe(true);
     expect(parsed.options.daytonaRepo).toBe("https://github.com/inline0/termbridge-test-app.git");
     expect(parsed.options.daytonaBranch).toBe("main");
     expect(parsed.options.daytonaPath).toBe("termbridge-test-app");
@@ -62,6 +68,11 @@ describe("parseArgs", () => {
   it("parses proxy flag", () => {
     const parsed = parseArgs(["--proxy", "5173"]);
     expect(parsed.options.proxy).toBe(5173);
+  });
+
+  it("accepts the none tunnel provider", () => {
+    const parsed = parseArgs(["--tunnel", "none"]);
+    expect(parsed.options.tunnel).toBe("none");
   });
 
   it("parses dev-proxy-url flag", () => {
@@ -88,6 +99,8 @@ describe("parseArgs", () => {
       .toThrow("missing tunnel token");
     expect(() => parseArgs(["--tunnel-url"]))
       .toThrow("missing tunnel url");
+    expect(() => parseArgs(["--public-url"]))
+      .toThrow("missing public url");
     expect(() => parseArgs(["--backend"]))
       .toThrow("missing backend");
     expect(() => parseArgs(["--backend", "invalid"]))

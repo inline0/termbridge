@@ -13,7 +13,7 @@ Just run the command - no arguments needed:
 npx termbridge
 ```
 
-This starts everything: local server, tmux session, and Cloudflare tunnel.
+This starts everything: local server, tmux session, and the default Cloudflare tunnel.
 
 Running `termbridge` without a subcommand is equivalent to `termbridge start`.
 
@@ -32,7 +32,9 @@ termbridge start --port 8080 --proxy 5173 --session dev --kill-on-exit --no-qr -
 | `--session <name>` | Name your tmux session | Auto-generated |
 | `--kill-on-exit` | Clean up tmux sessions when Termbridge exits | Off |
 | `--no-qr` | Don't print the QR code (useful for scripts) | Off |
-| `--tunnel cloudflare` | Tunnel provider (only cloudflare for now) | cloudflare |
+| `--no-tunnel` | Disable the tunnel (requires `--public-url`) | Off |
+| `--public-url <url>` | Public URL when tunnel is disabled | - |
+| `--tunnel cloudflare` | Tunnel provider (cloudflare or none) | cloudflare |
 | `--backend <tmux|daytona>` | Terminal backend | tmux |
 | `--tunnel-token <token>` | Use a named Cloudflare Tunnel token (requires `--port`) | - |
 | `--tunnel-url <url>` | Public URL for the named tunnel (required with `--tunnel-token`) | - |
@@ -42,6 +44,7 @@ termbridge start --port 8080 --proxy 5173 --session dev --kill-on-exit --no-qr -
 | `--daytona-name <name>` | Sandbox name | - |
 | `--daytona-preview-port <port>` | Preview port in the sandbox | - |
 | `--daytona-public` | Create a public sandbox | Off |
+| `--daytona-direct` | Run the server inside the Daytona sandbox (no tunnel) | Off |
 
 ## Examples
 
@@ -91,6 +94,12 @@ If you have a Cloudflare account and want to avoid trycloudflare rate limits:
 termbridge --port 8080 --tunnel-token <TOKEN> --tunnel-url https://term.example.com
 ```
 
+### Disable the tunnel (bring your own public URL)
+
+```bash
+termbridge --no-tunnel --public-url https://example.com
+```
+
 ## Environment variables
 
 For development and testing:
@@ -102,8 +111,12 @@ For development and testing:
 | `TERMBRIDGE_PROXY_PORT=5173` | Proxy port for dev:beam:proxy script |
 | `TERMBRIDGE_DEV_UI=http://127.0.0.1:5000` | Override Vite dev UI URL |
 | `TERMBRIDGE_DEV_PORT=3000` | Override Termbridge server port in dev |
+| `TERMBRIDGE_PUBLIC_URL=https://example.com` | Public URL when tunnel is disabled |
+| `TERMBRIDGE_TUNNEL=none` | Disable the tunnel |
 | `TERMBRIDGE_TUNNEL_TOKEN=<token>` | Named tunnel token (requires `TERMBRIDGE_TUNNEL_URL`) |
 | `TERMBRIDGE_TUNNEL_URL=https://term.example.com` | Public URL for the named tunnel |
+| `TERMBRIDGE_DAYTONA_DIRECT=true` | Run Termbridge inside the Daytona sandbox |
+| `TERMBRIDGE_DAYTONA_SERVER_PORT=8080` | Port for the sandboxed Termbridge server |
 
 For full Daytona configuration, see the Sandboxes guide.
 

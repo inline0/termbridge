@@ -33,14 +33,19 @@ Flags:
 - `--session <name>`: tmux session name override
 - `--kill-on-exit`: kill tmux sessions on exit
 - `--no-qr`: disable QR output
+- `--no-tunnel`: disable the tunnel (requires `--public-url`)
+- `--public-url <url>`: public URL when no tunnel is used
 - `--tunnel cloudflare`: tunnel provider (default)
 - `--backend <tmux|daytona>`: terminal backend (defaults to tmux)
+- `--daytona-direct`: run the server inside the Daytona sandbox (no tunnel)
 
 ## Environment variables
 
 - `TERMBRIDGE_SESSIONS=2`: create multiple tmux sessions on start
 - `TERMBRIDGE_INSECURE_COOKIE=1`: allow HTTP cookies for local dev
 - `TERMBRIDGE_DEV_UI=http://127.0.0.1:5173`: override Vite dev UI URL
+- `TERMBRIDGE_PUBLIC_URL=https://example.com`: public URL when tunnel disabled
+- `TERMBRIDGE_TUNNEL=none`: disable the tunnel
 
 ### Daytona sandbox mode
 
@@ -57,6 +62,14 @@ TERMBRIDGE_DAYTONA_GIT_TOKEN=your_github_token
 TERMBRIDGE_DAYTONA_PUBLIC=true
 TERMBRIDGE_DAYTONA_PREVIEW_PORT=5173
 TERMBRIDGE_DAYTONA_DELETE_ON_EXIT=true
+```
+
+### Daytona direct mode (no tunnel)
+
+```bash
+TERMBRIDGE_BACKEND=daytona
+TERMBRIDGE_DAYTONA_DIRECT=true
+TERMBRIDGE_DAYTONA_SERVER_PORT=8080
 ```
 
 ### Sandboxes

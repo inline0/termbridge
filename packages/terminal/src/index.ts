@@ -39,6 +39,7 @@ export type TmuxBackendDeps = {
   env?: NodeJS.ProcessEnv;
   defaultCols?: number;
   defaultRows?: number;
+  defaultCwd?: string;
   /** @internal Skip spawn-helper check when using mock spawnPty in tests */
   _skipSpawnHelperCheck?: boolean;
 };
@@ -53,12 +54,13 @@ const controlKeyMap: Record<TerminalControlKey, string> = {
   right: "\x1b[C"
 };
 
-const defaultDeps: Required<TmuxBackendDeps> = {
+const defaultDeps: Required<Omit<TmuxBackendDeps, "defaultCwd">> & { defaultCwd?: string } = {
   execFile: async (file, args) => execFile(file, args),
   spawnPty: pty.spawn,
   env: process.env,
   defaultCols: 80,
   defaultRows: 24,
+  defaultCwd: undefined,
   _skipSpawnHelperCheck: false
 };
 
@@ -115,8 +117,13 @@ export const createTmuxBackend = (deps: TmuxBackendDeps = {}): TerminalBackend =
       return existing.session;
     }
 
+    const newSessionArgs = ["new-session", "-d", "-s", name];
+    if (runtime.defaultCwd) {
+      newSessionArgs.push("-c", runtime.defaultCwd);
+    }
+
     try {
-      await runTmux(["new-session", "-d", "-s", name]);
+      await runTmux(newSessionArgs);
     } catch (error) {
       try {
         await runTmux(["has-session", "-t", name]);

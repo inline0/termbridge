@@ -51,11 +51,17 @@ describe("TerminalPage", () => {
 
   const createMockFetch = (
     terminals: TerminalListItem[],
-    options: { status?: number; proxyPort?: number | null; devProxyUrl?: string | null } = {}
+    options: {
+      status?: number;
+      proxyPort?: number | null;
+      devProxyUrl?: string | null;
+      hideTerminalSwitcher?: boolean;
+    } = {}
   ) => {
     const status = options.status ?? 200;
     const proxyPort = options.proxyPort ?? null;
     const devProxyUrl = options.devProxyUrl ?? null;
+    const hideTerminalSwitcher = options.hideTerminalSwitcher ?? false;
     return vi.fn(async (url: string) => {
       if (url.includes("/__tb/api/csrf")) {
         return new Response(JSON.stringify({ csrfToken: "test-csrf-token" }), {
@@ -64,7 +70,7 @@ describe("TerminalPage", () => {
         });
       }
       if (url.includes("/__tb/api/config")) {
-        return new Response(JSON.stringify({ proxyPort, devProxyUrl }), {
+        return new Response(JSON.stringify({ proxyPort, devProxyUrl, hideTerminalSwitcher }), {
           status: 200,
           headers: { "Content-Type": "application/json" }
         });
@@ -673,5 +679,20 @@ describe("TerminalPage", () => {
     });
 
     expect(screen.queryByTestId("scroll-status")).toBeNull();
+  });
+
+  it("hides the terminal switcher when config disables it", async () => {
+    const destroy = vi.fn();
+    createTerminalClientMock.mockReturnValue(createMockClient({ destroy }));
+
+    global.fetch = createMockFetch([makeTerminal("term-1")], { hideTerminalSwitcher: true });
+
+    render(<TerminalPage terminalId="term-1" />);
+
+    await waitFor(() => {
+      expect(createTerminalClientMock).toHaveBeenCalled();
+    });
+
+    expect(screen.queryByRole("button", { name: "Terminals" })).toBeNull();
   });
 });
