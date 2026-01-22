@@ -16,6 +16,8 @@ Options:
   --daytona-branch <b> Git branch to checkout in Daytona
   --daytona-path <p>  Repo directory inside the sandbox
   --daytona-name <n>  Daytona sandbox name
+  --daytona-preview-port <p> Preview port to expose from Daytona
+  --daytona-public    Make the Daytona sandbox preview public
   --tunnel <provider> Tunnel provider (cloudflare)
   -h, --help          Show this help message
 `;

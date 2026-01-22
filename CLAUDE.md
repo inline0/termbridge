@@ -4,7 +4,7 @@ Local terminal beaming CLI. Exposes your terminal via a public HTTPS URL for mob
 
 ## Project Overview
 
-Termbridge is an open-source CLI that runs entirely on the user's machine. It starts a local web server with a browser UI and WebSocket endpoint, backed by tmux PTY streaming. A Cloudflare tunnel exposes the local server on a public HTTPS URL with QR code for easy mobile access.
+Termbridge is an open-source CLI that runs entirely on the user's machine. It starts a local web server with a browser UI and WebSocket endpoint, backed by tmux PTY streaming or a Daytona sandbox. A Cloudflare tunnel exposes the local server on a public HTTPS URL with QR code for easy mobile access.
 
 **Package name:** `termbridge`
 **Version:** 0.3.0
@@ -131,6 +131,7 @@ termbridge help               # Show help
 | `--kill-on-exit` | Kill tmux on exit | false |
 | `--no-qr` | Disable QR code | false |
 | `--tunnel cloudflare` | Tunnel provider | cloudflare |
+| `--backend <tmux|daytona>` | Terminal backend | tmux |
 
 ---
 
@@ -179,6 +180,28 @@ All termbridge routes are under the `/__tb/` prefix to avoid conflicts with prox
 ### Rate Limiting
 - Per-IP limits on token redemption
 - Per-IP limits on WebSocket connects
+
+---
+
+## Daytona sandboxes
+
+Set the backend to Daytona via `TERMBRIDGE_BACKEND=daytona`, then configure repo + access:
+
+```bash
+DAYTONA_API_KEY=your_key
+DAYTONA_API_URL=https://app.daytona.io/api
+TERMBRIDGE_DAYTONA_REPO=https://github.com/inline0/termbridge-test-app.git
+TERMBRIDGE_DAYTONA_BRANCH=main
+TERMBRIDGE_DAYTONA_PATH=termbridge-test-app
+TERMBRIDGE_DAYTONA_NAME=termbridge-sandbox
+TERMBRIDGE_DAYTONA_GIT_USERNAME=your_github_username
+TERMBRIDGE_DAYTONA_GIT_TOKEN=your_github_token
+TERMBRIDGE_DAYTONA_PUBLIC=true
+TERMBRIDGE_DAYTONA_PREVIEW_PORT=5173
+TERMBRIDGE_DAYTONA_DELETE_ON_EXIT=true
+```
+
+For E2E runs, prefer a `termbridge-test-*` name and enable delete-on-exit so sandboxes are cleaned up automatically.
 
 ---
 

@@ -303,6 +303,417 @@ describe("startCommand", () => {
     expect(terminalBackend.shutdown).toHaveBeenCalled();
   });
 
+  it("uses daytona preview URL when configured", async () => {
+    const listen = vi.fn(async (): Promise<StartedServer> => ({
+      port: 4020,
+      close: vi.fn(async () => undefined)
+    }));
+    const createServer = vi.fn(() => ({ listen }));
+
+    const auth: Auth = {
+      issueToken: () => ({ token: "token" }),
+      redeemToken: () => null,
+      getSession: () => null,
+      getSessionFromRequest: () => null,
+      createSessionCookie: () => "",
+      verifyCsrfToken: () => false
+    };
+
+    const terminalBackend: TerminalBackend = {
+      createSession: vi.fn(async (name) => ({ name, createdAt: new Date() })),
+      write: vi.fn(async () => undefined),
+      resize: vi.fn(async () => undefined),
+      sendControl: vi.fn(async () => undefined),
+      scroll: vi.fn(async () => undefined),
+      onOutput: () => () => undefined,
+      closeSession: vi.fn(async () => undefined),
+      getPreviewUrl: vi.fn(async () => ({
+        url: "https://preview.example",
+        headers: { "x-daytona-preview-token": "token", "x-daytona-skip-preview-warning": "true" }
+      }))
+    };
+
+    const terminalRegistry = createTerminalRegistryStub();
+
+    const tunnelProvider: TunnelProvider = {
+      start: vi.fn(async (_url: string, _options?: unknown) => ({ publicUrl: "https://tunnel" })),
+      stop: vi.fn(async () => undefined)
+    };
+
+    const processRef = {
+      on: vi.fn()
+    } as unknown as NodeJS.Process;
+
+    const createDaytonaBackend = vi.fn(() => terminalBackend);
+
+    const result = await startCommand(
+      {
+        killOnExit: false,
+        noQr: true,
+        tunnel: "cloudflare",
+        backend: "daytona",
+        daytonaRepo: "https://github.com/inline0/termbridge-test-app.git",
+        daytonaPreviewPort: 5173
+      },
+      {
+        createServer,
+        createAuth: () => auth,
+        createDaytonaBackend,
+        createTerminalRegistry: () => terminalRegistry,
+        createTunnelProvider: () => tunnelProvider,
+        process: processRef,
+        logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+      }
+    );
+
+    await result.stop();
+
+    expect(createServer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        devProxyUrl: "https://preview.example",
+        devProxyHeaders: {
+          "x-daytona-preview-token": "token",
+          "x-daytona-skip-preview-warning": "true"
+        }
+      })
+    );
+    expect(terminalBackend.getPreviewUrl).toHaveBeenCalledWith(5173);
+  });
+
+  it("supports legacy preview url strings", async () => {
+    const listen = vi.fn(async (): Promise<StartedServer> => ({
+      port: 4024,
+      close: vi.fn(async () => undefined)
+    }));
+    const createServer = vi.fn(() => ({ listen }));
+
+    const auth: Auth = {
+      issueToken: () => ({ token: "token" }),
+      redeemToken: () => null,
+      getSession: () => null,
+      getSessionFromRequest: () => null,
+      createSessionCookie: () => "",
+      verifyCsrfToken: () => false
+    };
+
+    const terminalBackend: TerminalBackend = {
+      createSession: vi.fn(async (name) => ({ name, createdAt: new Date() })),
+      write: vi.fn(async () => undefined),
+      resize: vi.fn(async () => undefined),
+      sendControl: vi.fn(async () => undefined),
+      scroll: vi.fn(async () => undefined),
+      onOutput: () => () => undefined,
+      closeSession: vi.fn(async () => undefined),
+      getPreviewUrl: vi.fn(async () => "https://legacy-preview.example")
+    };
+
+    const terminalRegistry = createTerminalRegistryStub();
+
+    const tunnelProvider: TunnelProvider = {
+      start: vi.fn(async (_url: string, _options?: unknown) => ({ publicUrl: "https://tunnel" })),
+      stop: vi.fn(async () => undefined)
+    };
+
+    const processRef = {
+      on: vi.fn()
+    } as unknown as NodeJS.Process;
+
+    const createDaytonaBackend = vi.fn(() => terminalBackend);
+
+    const result = await startCommand(
+      {
+        killOnExit: false,
+        noQr: true,
+        tunnel: "cloudflare",
+        backend: "daytona",
+        daytonaRepo: "https://github.com/inline0/termbridge-test-app.git",
+        daytonaPreviewPort: 5173
+      },
+      {
+        createServer,
+        createAuth: () => auth,
+        createDaytonaBackend,
+        createTerminalRegistry: () => terminalRegistry,
+        createTunnelProvider: () => tunnelProvider,
+        process: processRef,
+        logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+      }
+    );
+
+    await result.stop();
+
+    expect(createServer).toHaveBeenCalledWith(
+      expect.objectContaining({ devProxyUrl: "https://legacy-preview.example" })
+    );
+  });
+
+  it("warns when the daytona preview URL cannot be resolved", async () => {
+    const listen = vi.fn(async (): Promise<StartedServer> => ({
+      port: 4021,
+      close: vi.fn(async () => undefined)
+    }));
+    const createServer = vi.fn(() => ({ listen }));
+
+    const auth: Auth = {
+      issueToken: () => ({ token: "token" }),
+      redeemToken: () => null,
+      getSession: () => null,
+      getSessionFromRequest: () => null,
+      createSessionCookie: () => "",
+      verifyCsrfToken: () => false
+    };
+
+    const terminalBackend: TerminalBackend = {
+      createSession: vi.fn(async (name) => ({ name, createdAt: new Date() })),
+      write: vi.fn(async () => undefined),
+      resize: vi.fn(async () => undefined),
+      sendControl: vi.fn(async () => undefined),
+      scroll: vi.fn(async () => undefined),
+      onOutput: () => () => undefined,
+      closeSession: vi.fn(async () => undefined),
+      getPreviewUrl: vi.fn(async () => null)
+    };
+
+    const terminalRegistry = createTerminalRegistryStub();
+
+    const tunnelProvider: TunnelProvider = {
+      start: vi.fn(async (_url: string, _options?: unknown) => ({ publicUrl: "https://tunnel" })),
+      stop: vi.fn(async () => undefined)
+    };
+
+    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+
+    const processRef = {
+      env: { TERMBRIDGE_DAYTONA_PREVIEW_PORT: "5173" },
+      on: vi.fn()
+    } as unknown as NodeJS.Process;
+
+    const createDaytonaBackend = vi.fn(() => terminalBackend);
+
+    const result = await startCommand(
+      {
+        killOnExit: false,
+        noQr: true,
+        tunnel: "cloudflare",
+        backend: "daytona",
+        daytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+      },
+      {
+        createServer,
+        createAuth: () => auth,
+        createDaytonaBackend,
+        createTerminalRegistry: () => terminalRegistry,
+        createTunnelProvider: () => tunnelProvider,
+        process: processRef,
+        logger
+      }
+    );
+
+    await result.stop();
+
+    expect(logger.warn).toHaveBeenCalledWith("Daytona: preview URL unavailable");
+  });
+
+  it("ignores invalid preview port values from env", async () => {
+    const listen = vi.fn(async (): Promise<StartedServer> => ({
+      port: 4023,
+      close: vi.fn(async () => undefined)
+    }));
+    const createServer = vi.fn(() => ({ listen }));
+
+    const auth: Auth = {
+      issueToken: () => ({ token: "token" }),
+      redeemToken: () => null,
+      getSession: () => null,
+      getSessionFromRequest: () => null,
+      createSessionCookie: () => "",
+      verifyCsrfToken: () => false
+    };
+
+    const terminalBackend: TerminalBackend = {
+      createSession: vi.fn(async (name) => ({ name, createdAt: new Date() })),
+      write: vi.fn(async () => undefined),
+      resize: vi.fn(async () => undefined),
+      sendControl: vi.fn(async () => undefined),
+      scroll: vi.fn(async () => undefined),
+      onOutput: () => () => undefined,
+      closeSession: vi.fn(async () => undefined),
+      getPreviewUrl: vi.fn(async () => "https://preview.example")
+    };
+
+    const terminalRegistry = createTerminalRegistryStub();
+
+    const tunnelProvider: TunnelProvider = {
+      start: vi.fn(async (_url: string, _options?: unknown) => ({ publicUrl: "https://tunnel" })),
+      stop: vi.fn(async () => undefined)
+    };
+
+    const processRef = {
+      env: { TERMBRIDGE_DAYTONA_PREVIEW_PORT: "not-a-number" },
+      on: vi.fn()
+    } as unknown as NodeJS.Process;
+
+    const createDaytonaBackend = vi.fn(() => terminalBackend);
+
+    const result = await startCommand(
+      {
+        killOnExit: false,
+        noQr: true,
+        tunnel: "cloudflare",
+        backend: "daytona",
+        daytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+      },
+      {
+        createServer,
+        createAuth: () => auth,
+        createDaytonaBackend,
+        createTerminalRegistry: () => terminalRegistry,
+        createTunnelProvider: () => tunnelProvider,
+        process: processRef,
+        logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+      }
+    );
+
+    await result.stop();
+
+    expect(terminalBackend.getPreviewUrl).not.toHaveBeenCalled();
+  });
+
+  it("passes public env variants to the daytona backend", async () => {
+    const listen = vi.fn(async (): Promise<StartedServer> => ({
+      port: 4022,
+      close: vi.fn(async () => undefined)
+    }));
+    const createServer = vi.fn(() => ({ listen }));
+
+    const auth: Auth = {
+      issueToken: () => ({ token: "token" }),
+      redeemToken: () => null,
+      getSession: () => null,
+      getSessionFromRequest: () => null,
+      createSessionCookie: () => "",
+      verifyCsrfToken: () => false
+    };
+
+    const terminalBackend: TerminalBackend = {
+      createSession: vi.fn(async (name) => ({ name, createdAt: new Date() })),
+      write: vi.fn(async () => undefined),
+      resize: vi.fn(async () => undefined),
+      sendControl: vi.fn(async () => undefined),
+      scroll: vi.fn(async () => undefined),
+      onOutput: () => () => undefined,
+      closeSession: vi.fn(async () => undefined)
+    };
+
+    const terminalRegistry = createTerminalRegistryStub();
+
+    const tunnelProvider: TunnelProvider = {
+      start: vi.fn(async (_url: string, _options?: unknown) => ({ publicUrl: "https://tunnel" })),
+      stop: vi.fn(async () => undefined)
+    };
+
+    const createDaytonaBackend = vi.fn(() => terminalBackend);
+
+    for (const value of ["1", "true", "yes"]) {
+      createDaytonaBackend.mockClear();
+      const processRef = {
+        env: { TERMBRIDGE_DAYTONA_PUBLIC: value },
+        on: vi.fn()
+      } as unknown as NodeJS.Process;
+
+      const result = await startCommand(
+        {
+          killOnExit: false,
+          noQr: true,
+          tunnel: "cloudflare",
+          backend: "daytona",
+          daytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+        },
+        {
+          createServer,
+          createAuth: () => auth,
+          createDaytonaBackend,
+          createTerminalRegistry: () => terminalRegistry,
+          createTunnelProvider: () => tunnelProvider,
+          process: processRef,
+          logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+        }
+      );
+
+      await result.stop();
+
+      expect(createDaytonaBackend).toHaveBeenCalledWith(
+        expect.objectContaining({ public: true })
+      );
+    }
+  });
+
+  it("passes delete-on-exit env flag to the daytona backend", async () => {
+    const listen = vi.fn(async (): Promise<StartedServer> => ({
+      port: 4025,
+      close: vi.fn(async () => undefined)
+    }));
+    const createServer = vi.fn(() => ({ listen }));
+
+    const auth: Auth = {
+      issueToken: () => ({ token: "token" }),
+      redeemToken: () => null,
+      getSession: () => null,
+      getSessionFromRequest: () => null,
+      createSessionCookie: () => "",
+      verifyCsrfToken: () => false
+    };
+
+    const terminalBackend: TerminalBackend = {
+      createSession: vi.fn(async (name) => ({ name, createdAt: new Date() })),
+      write: vi.fn(async () => undefined),
+      resize: vi.fn(async () => undefined),
+      sendControl: vi.fn(async () => undefined),
+      scroll: vi.fn(async () => undefined),
+      onOutput: () => () => undefined,
+      closeSession: vi.fn(async () => undefined)
+    };
+
+    const terminalRegistry = createTerminalRegistryStub();
+
+    const tunnelProvider: TunnelProvider = {
+      start: vi.fn(async (_url: string, _options?: unknown) => ({ publicUrl: "https://tunnel" })),
+      stop: vi.fn(async () => undefined)
+    };
+
+    const processRef = {
+      env: { TERMBRIDGE_DAYTONA_DELETE_ON_EXIT: "true" },
+      on: vi.fn()
+    } as unknown as NodeJS.Process;
+
+    const createDaytonaBackend = vi.fn(() => terminalBackend);
+
+    const result = await startCommand(
+      {
+        killOnExit: false,
+        noQr: true,
+        tunnel: "cloudflare",
+        backend: "daytona",
+        daytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+      },
+      {
+        createServer,
+        createAuth: () => auth,
+        createDaytonaBackend,
+        createTerminalRegistry: () => terminalRegistry,
+        createTunnelProvider: () => tunnelProvider,
+        process: processRef,
+        logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+      }
+    );
+
+    await result.stop();
+
+    expect(createDaytonaBackend).toHaveBeenCalledWith(
+      expect.objectContaining({ deleteOnExit: true })
+    );
+  });
+
   it("rejects invalid backend values", async () => {
     const createServer = vi.fn(() => ({
       listen: vi.fn(async (): Promise<StartedServer> => ({

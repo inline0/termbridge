@@ -3,7 +3,9 @@ import type { Logger } from "../server/server";
 
 const mocks = vi.hoisted(() => {
   const daytonaCreate = vi.fn();
+  const daytonaDelete = vi.fn();
   const createPty = vi.fn();
+  const getPreviewLink = vi.fn();
   const sandbox = {
     start: vi.fn(async () => undefined),
     git: {
@@ -12,11 +14,13 @@ const mocks = vi.hoisted(() => {
     process: {
       createPty
     },
+    getPreviewLink,
     stop: vi.fn(async () => undefined)
   };
 
   return {
     daytonaCreate,
+    daytonaDelete,
     createPty,
     sandbox
   };
@@ -27,6 +31,10 @@ const DaytonaMock = vi.hoisted(
     class DaytonaMock {
       create(...args: Parameters<typeof mocks.daytonaCreate>) {
         return mocks.daytonaCreate(...args);
+      }
+
+      delete(...args: Parameters<typeof mocks.daytonaDelete>) {
+        return mocks.daytonaDelete(...args);
       }
     }
 );
@@ -63,9 +71,13 @@ describe("createDaytonaBackend", () => {
       kill: vi.fn(async () => undefined)
     };
 
+    mocks.daytonaCreate.mockReset();
     mocks.daytonaCreate.mockResolvedValue(mocks.sandbox);
+    mocks.daytonaDelete.mockReset();
+    mocks.daytonaDelete.mockResolvedValue(undefined);
     mocks.sandbox.start.mockClear();
     mocks.sandbox.git.clone.mockClear();
+    mocks.sandbox.getPreviewLink.mockReset();
     mocks.sandbox.stop.mockClear();
     mocks.createPty.mockReset();
     mocks.createPty.mockImplementation(async (options) => {
@@ -139,7 +151,7 @@ describe("createDaytonaBackend", () => {
 
     await backend.shutdown?.();
 
-    let resolvePty: ((value: typeof ptyHandle) => void) | null = null;
+    let resolvePty!: (value: typeof ptyHandle) => void;
     const deferred = new Promise<typeof ptyHandle>((resolve) => {
       resolvePty = resolve;
     });
@@ -152,7 +164,7 @@ describe("createDaytonaBackend", () => {
     const createPromise = backend.createSession("session-deferred");
     await backend.resize("session-deferred", 90, 30);
     await backend.closeSession("session-deferred");
-    resolvePty?.(ptyHandle);
+    resolvePty(ptyHandle);
     await createPromise;
 
     await backend.createSession("session-deferred");
@@ -161,6 +173,12 @@ describe("createDaytonaBackend", () => {
     await backend.closeSession("session-deferred");
     onData?.(Buffer.from("ignored"));
 
+    mocks.sandbox.getPreviewLink.mockResolvedValueOnce({
+      url: "https://preview",
+      token: "t",
+      sandboxId: "id"
+    });
+    const previewInfo = await backend.getPreviewUrl?.(3000);
     mocks.sandbox.stop.mockRejectedValueOnce("boom");
     await backend.shutdown?.();
 
@@ -172,6 +190,13 @@ describe("createDaytonaBackend", () => {
       undefined,
       undefined
     );
+    expect(previewInfo).toEqual({
+      url: "https://preview",
+      headers: {
+        "x-daytona-preview-token": "t",
+        "x-daytona-skip-preview-warning": "true"
+      }
+    });
     expect(logger.warn).toHaveBeenCalled();
   });
 
@@ -201,6 +226,173 @@ describe("createDaytonaBackend", () => {
     );
   });
 
+  it("deletes the sandbox when deleteOnExit is enabled", async () => {
+    const logger = createLogger();
+    const backend = createDaytonaBackend({
+      repoUrl: "https://github.com/inline0/termbridge-test-app.git",
+      deleteOnExit: true,
+      logger
+    });
+
+    await backend.createSession("session-delete");
+
+    await backend.shutdown?.();
+
+    expect(mocks.daytonaDelete).toHaveBeenCalledWith(mocks.sandbox);
+  });
+
+  it("logs when sandbox delete fails", async () => {
+    const logger = createLogger();
+    const backend = createDaytonaBackend({
+      repoUrl: "https://github.com/inline0/termbridge-test-app.git",
+      deleteOnExit: true,
+      logger
+    });
+
+    await backend.createSession("session-delete-fail");
+
+    mocks.daytonaDelete.mockRejectedValueOnce(new Error("delete fail"));
+    await backend.shutdown?.();
+
+    expect(logger.warn).toHaveBeenCalledWith("Daytona: delete failed (delete fail)");
+  });
+
+  it("logs non-error sandbox delete failures", async () => {
+    const logger = createLogger();
+    const backend = createDaytonaBackend({
+      repoUrl: "https://github.com/inline0/termbridge-test-app.git",
+      deleteOnExit: true,
+      logger
+    });
+
+    await backend.createSession("session-delete-nonerror");
+
+    mocks.daytonaDelete.mockRejectedValueOnce("delete boom");
+    await backend.shutdown?.();
+
+    expect(logger.warn).toHaveBeenCalledWith("Daytona: delete failed (unknown error)");
+  });
+
+  it("returns null and logs when preview URL fails", async () => {
+    const logger = createLogger();
+    const backend = createDaytonaBackend({
+      repoUrl: "https://github.com/inline0/termbridge-test-app.git",
+      logger
+    });
+
+    await backend.createSession("session-preview");
+
+    mocks.sandbox.getPreviewLink.mockRejectedValueOnce(new Error("preview fail"));
+    const previewUrl = await backend.getPreviewUrl?.(8080);
+
+    expect(previewUrl).toBe(null);
+    expect(logger.warn).toHaveBeenCalled();
+  });
+
+  it("returns null when the preview response has no url", async () => {
+    const logger = createLogger();
+    const backend = createDaytonaBackend({
+      repoUrl: "https://github.com/inline0/termbridge-test-app.git",
+      logger
+    });
+
+    await backend.createSession("session-preview-null");
+    mocks.sandbox.getPreviewLink.mockResolvedValueOnce({
+      url: undefined,
+      token: "token",
+      sandboxId: "id"
+    });
+
+    const previewUrl = await backend.getPreviewUrl?.(3000);
+
+    expect(previewUrl).toBe(null);
+  });
+
+  it("attaches the preview token header when present", async () => {
+    const backend = createDaytonaBackend({
+      repoUrl: "https://github.com/inline0/termbridge-test-app.git",
+      logger: createLogger()
+    });
+
+    await backend.createSession("session-preview-token");
+    mocks.sandbox.getPreviewLink.mockResolvedValueOnce({
+      url: "https://preview.example",
+      token: "token-123",
+      sandboxId: "id"
+    });
+
+    const previewInfo = await backend.getPreviewUrl?.(4000);
+
+    expect(previewInfo).toEqual({
+      url: "https://preview.example",
+      headers: {
+        "x-daytona-preview-token": "token-123",
+        "x-daytona-skip-preview-warning": "true"
+      }
+    });
+  });
+
+  it("returns preview info even when the url is not parseable", async () => {
+    const backend = createDaytonaBackend({
+      repoUrl: "https://github.com/inline0/termbridge-test-app.git",
+      logger: createLogger()
+    });
+
+    await backend.createSession("session-preview-invalid");
+    mocks.sandbox.getPreviewLink.mockResolvedValueOnce({
+      url: "not a url",
+      token: "token-123",
+      sandboxId: "id"
+    });
+
+    const previewInfo = await backend.getPreviewUrl?.(4000);
+
+    expect(previewInfo).toEqual({
+      url: "not a url",
+      headers: {
+        "x-daytona-preview-token": "token-123",
+        "x-daytona-skip-preview-warning": "true"
+      }
+    });
+  });
+
+  it("returns the preview url when no token is provided", async () => {
+    const backend = createDaytonaBackend({
+      repoUrl: "https://github.com/inline0/termbridge-test-app.git",
+      logger: createLogger()
+    });
+
+    await backend.createSession("session-preview-notoken");
+    mocks.sandbox.getPreviewLink.mockResolvedValueOnce({
+      url: "https://preview.example",
+      token: undefined,
+      sandboxId: "id"
+    });
+
+    const previewInfo = await backend.getPreviewUrl?.(4000);
+
+    expect(previewInfo).toEqual({
+      url: "https://preview.example",
+      headers: { "x-daytona-skip-preview-warning": "true" }
+    });
+  });
+
+  it("logs non-error preview failures", async () => {
+    const logger = createLogger();
+    const backend = createDaytonaBackend({
+      repoUrl: "https://github.com/inline0/termbridge-test-app.git",
+      logger
+    });
+
+    await backend.createSession("session-preview-nonerror");
+    mocks.sandbox.getPreviewLink.mockRejectedValueOnce("preview boom");
+
+    const previewUrl = await backend.getPreviewUrl?.(4000);
+
+    expect(previewUrl).toBe(null);
+    expect(logger.warn).toHaveBeenCalledWith("Daytona: preview failed (unknown error)");
+  });
+
   it("derives repo names without .git suffix", async () => {
     const backend = createDaytonaBackend({
       repoUrl: "https://example.com/repo",
@@ -216,6 +408,20 @@ describe("createDaytonaBackend", () => {
       undefined,
       undefined,
       undefined
+    );
+  });
+
+  it("passes the public flag to sandbox creation", async () => {
+    const backend = createDaytonaBackend({
+      repoUrl: "https://github.com/inline0/termbridge-test-app.git",
+      public: true,
+      logger: createLogger()
+    });
+
+    await backend.createSession("session-public");
+
+    expect(mocks.daytonaCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ public: true })
     );
   });
 });

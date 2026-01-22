@@ -48,6 +48,7 @@
   },
   "dependencies": {
     "@daytonaio/sdk": "^0.134.0",
+    "dotenv": "^16.6.1",
     "ink": "^6.6.0",
     "node-pty": "^1.1.0",
     "qrcode-terminal": "^0.12.0",

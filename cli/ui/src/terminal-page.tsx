@@ -170,7 +170,8 @@ export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps
 
   const handleSelectTerminal = onSelectTerminal ?? (() => undefined);
 
-  const showPreview = proxyPort !== null;
+  const showPreview = proxyPort !== null || devProxyUrl !== null;
+  const previewSrc = "/";
   const resolvedView = showPreview ? activeView : "terminal";
   const scrollOverride =
     activeTerminalSource === "tmux" && tmuxScroll
@@ -220,11 +221,11 @@ export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps
               {statusLabel}
             </div>
           ) : null}
-          {showPreview ? (
+          {showPreview && resolvedView === "preview" ? (
             <iframe
-              src={devProxyUrl ?? "/"}
+              src={previewSrc}
               title="Preview"
-              className={`h-full w-full border-0 ${resolvedView === "preview" ? "" : "invisible absolute inset-0"}`}
+              className="h-full w-full border-0"
               sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
               data-testid="preview-iframe"
             />

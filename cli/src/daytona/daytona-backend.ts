@@ -20,6 +20,8 @@ export type DaytonaBackendOptions = {
   repoBranch?: string;
   repoPath?: string;
   sandboxName?: string;
+  public?: boolean;
+  deleteOnExit?: boolean;
   gitUsername?: string;
   gitPassword?: string;
   logger?: Logger;
@@ -60,7 +62,6 @@ export const createDaytonaBackend = (options: DaytonaBackendOptions): TerminalBa
   });
 
   let sandboxRef: Sandbox | null = null;
-  let repoPathRef: string | null = null;
   let sandboxInit: Promise<{ sandbox: Sandbox; repoPath: string }> | null = null;
 
   const ensureSandbox = async () => {
@@ -69,7 +70,7 @@ export const createDaytonaBackend = (options: DaytonaBackendOptions): TerminalBa
         try {
           const name = options.sandboxName ?? `termbridge-${randomBytes(4).toString("hex")}`;
           logger.info(`Daytona: creating sandbox ${name}`);
-          const sandbox = await daytona.create({ name });
+          const sandbox = await daytona.create({ name, public: options.public });
           await sandbox.start();
           const repoPath = options.repoPath ?? deriveRepoPath(options.repoUrl);
           logger.info(`Daytona: cloning ${options.repoUrl}`);
@@ -82,7 +83,6 @@ export const createDaytonaBackend = (options: DaytonaBackendOptions): TerminalBa
             options.gitPassword
           );
           sandboxRef = sandbox;
-          repoPathRef = repoPath;
           logger.info(`Daytona: repo ready at ${repoPath}`);
           return { sandbox, repoPath };
         } catch (error) {
@@ -238,6 +238,15 @@ export const createDaytonaBackend = (options: DaytonaBackendOptions): TerminalBa
       const message = error instanceof Error ? error.message : "unknown error";
       logger.warn(`Daytona: stop failed (${message})`);
     }
+
+    if (options.deleteOnExit) {
+      try {
+        await daytona.delete(sandboxRef);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "unknown error";
+        logger.warn(`Daytona: delete failed (${message})`);
+      }
+    }
   };
 
   return {
@@ -248,6 +257,25 @@ export const createDaytonaBackend = (options: DaytonaBackendOptions): TerminalBa
     scroll,
     onOutput,
     closeSession,
-    shutdown
+    shutdown,
+    getPreviewUrl: async (port: number) => {
+      const { sandbox } = await ensureSandbox();
+      try {
+        const preview = await sandbox.getPreviewLink(port);
+        if (!preview.url) {
+          return null;
+        }
+        const headers: Record<string, string> = {};
+        if (preview.token) {
+          headers["x-daytona-preview-token"] = preview.token;
+        }
+        headers["x-daytona-skip-preview-warning"] = "true";
+        return { url: preview.url, headers };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "unknown error";
+        logger.warn(`Daytona: preview failed (${message})`);
+        return null;
+      }
+    }
   };
 };

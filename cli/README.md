@@ -54,6 +54,18 @@ TERMBRIDGE_DAYTONA_PATH=termbridge-test-app
 TERMBRIDGE_DAYTONA_NAME=termbridge-sandbox
 TERMBRIDGE_DAYTONA_GIT_USERNAME=your_github_username
 TERMBRIDGE_DAYTONA_GIT_TOKEN=your_github_token
+TERMBRIDGE_DAYTONA_PUBLIC=true
+TERMBRIDGE_DAYTONA_PREVIEW_PORT=5173
+TERMBRIDGE_DAYTONA_DELETE_ON_EXIT=true
+```
+
+### Sandboxes
+
+For short-lived sandboxes (tests, CI), use a dedicated prefix and enable cleanup:
+
+```bash
+TERMBRIDGE_DAYTONA_NAME=termbridge-test-$(date +%s)
+TERMBRIDGE_DAYTONA_DELETE_ON_EXIT=true
 ```
 
 ## Development

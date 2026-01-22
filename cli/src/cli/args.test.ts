@@ -32,7 +32,10 @@ describe("parseArgs", () => {
       "--daytona-path",
       "termbridge-test-app",
       "--daytona-name",
-      "termbridge-sandbox"
+      "termbridge-sandbox",
+      "--daytona-preview-port",
+      "5173",
+      "--daytona-public"
     ]);
 
     expect(parsed.options.port).toBe(3000);
@@ -47,6 +50,8 @@ describe("parseArgs", () => {
     expect(parsed.options.daytonaBranch).toBe("main");
     expect(parsed.options.daytonaPath).toBe("termbridge-test-app");
     expect(parsed.options.daytonaSandboxName).toBe("termbridge-sandbox");
+    expect(parsed.options.daytonaPreviewPort).toBe(5173);
+    expect(parsed.options.daytonaPublic).toBe(true);
   });
 
   it("supports help", () => {
@@ -95,6 +100,8 @@ describe("parseArgs", () => {
       .toThrow("missing daytona path");
     expect(() => parseArgs(["--daytona-name"]))
       .toThrow("missing daytona name");
+    expect(() => parseArgs(["--daytona-preview-port"]))
+      .toThrow("missing daytona preview port");
     expect(() => parseArgs(["--unknown"])).toThrow("unknown option");
   });
 

@@ -31,7 +31,7 @@ Beam your local terminal to your phone in seconds. Run one command, scan the QR 
 - **Proxy Mode** - Preview your local dev server alongside the terminal
 - **Cloudflare Tunnels** - Secure public URL without router config
 - **Local by Default** - No remote server required
-- **Daytona Sandbox** - Run terminals in a Daytona sandbox (preview support coming next)
+- **Daytona Sandbox** - Run terminals in a Daytona sandbox (optional preview support)
 
 ## Quick Start
 
@@ -81,6 +81,18 @@ TERMBRIDGE_DAYTONA_PATH=termbridge-test-app
 TERMBRIDGE_DAYTONA_NAME=termbridge-sandbox
 TERMBRIDGE_DAYTONA_GIT_USERNAME=your_github_username
 TERMBRIDGE_DAYTONA_GIT_TOKEN=your_github_token
+TERMBRIDGE_DAYTONA_PUBLIC=true
+TERMBRIDGE_DAYTONA_PREVIEW_PORT=5173
+TERMBRIDGE_DAYTONA_DELETE_ON_EXIT=true
+```
+
+### Sandboxes
+
+For ephemeral sandboxes (tests, CI, short-lived sessions), use a dedicated name prefix and enable automatic cleanup:
+
+```bash
+TERMBRIDGE_DAYTONA_NAME=termbridge-test-$(date +%s)
+TERMBRIDGE_DAYTONA_DELETE_ON_EXIT=true
 ```
 
 ## Documentation

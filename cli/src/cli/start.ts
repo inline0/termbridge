@@ -30,6 +30,8 @@ export type StartOptions = {
   daytonaBranch?: string;
   daytonaPath?: string;
   daytonaSandboxName?: string;
+  daytonaPreviewPort?: number;
+  daytonaPublic?: boolean;
 };
 
 export type StartDeps = {
@@ -47,6 +49,7 @@ export type StartDeps = {
     terminalBackend: TerminalBackend;
     proxyPort?: number;
     devProxyUrl?: string;
+    devProxyHeaders?: Record<string, string>;
   }) => { listen: (port: number) => Promise<StartedServer> };
   qr?: {
     generate: (text: string, options: { small: boolean }) => void;
@@ -96,6 +99,23 @@ const parseSessionCount = (value: string | undefined) => {
   }
 
   return parsed;
+};
+
+const parseBoolean = (value: string | undefined) => {
+  if (!value) {
+    return false;
+  }
+  const normalized = value.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes";
+};
+
+const parseOptionalNumber = (value: string | undefined) => {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : undefined;
 };
 
 const resolveBackendMode = (value: string | undefined): "tmux" | "daytona" => {
@@ -156,6 +176,10 @@ export const startCommand = async (
     options.daytonaRepo ??
     env.TERMBRIDGE_DAYTONA_REPO ??
     "https://github.com/inline0/termbridge-test-app.git";
+  const daytonaPreviewPort =
+    options.daytonaPreviewPort ?? parseOptionalNumber(env.TERMBRIDGE_DAYTONA_PREVIEW_PORT);
+  const daytonaPublic = options.daytonaPublic ?? parseBoolean(env.TERMBRIDGE_DAYTONA_PUBLIC);
+  const daytonaDeleteOnExit = parseBoolean(env.TERMBRIDGE_DAYTONA_DELETE_ON_EXIT);
   const daytonaConfig: DaytonaBackendOptions = {
     apiKey: env.DAYTONA_API_KEY,
     apiUrl: env.DAYTONA_API_URL,
@@ -164,6 +188,8 @@ export const startCommand = async (
     repoBranch: options.daytonaBranch ?? env.TERMBRIDGE_DAYTONA_BRANCH,
     repoPath: options.daytonaPath ?? env.TERMBRIDGE_DAYTONA_PATH ?? deriveRepoPath(daytonaRepo),
     sandboxName: options.daytonaSandboxName ?? env.TERMBRIDGE_DAYTONA_NAME,
+    public: daytonaPublic,
+    deleteOnExit: daytonaDeleteOnExit,
     gitUsername: env.TERMBRIDGE_DAYTONA_GIT_USERNAME,
     gitPassword: env.TERMBRIDGE_DAYTONA_GIT_PASSWORD ?? env.TERMBRIDGE_DAYTONA_GIT_TOKEN,
     logger
@@ -179,6 +205,22 @@ export const startCommand = async (
   const tunnelToken = tunnelTokenRaw?.trim() || undefined;
   const tunnelUrlRaw = options.tunnelUrl ?? env.TERMBRIDGE_TUNNEL_URL;
   const tunnelUrl = tunnelToken && tunnelUrlRaw ? normalizePublicUrl(tunnelUrlRaw) : undefined;
+  let devProxyUrl = options.devProxyUrl;
+  let devProxyHeaders: Record<string, string> | undefined;
+
+  if (!devProxyUrl && backendMode === "daytona" && daytonaPreviewPort) {
+    const previewInfo = await terminalBackend.getPreviewUrl?.(daytonaPreviewPort);
+    if (previewInfo) {
+      if (typeof previewInfo === "string") {
+        devProxyUrl = previewInfo;
+      } else {
+        devProxyUrl = previewInfo.url;
+        devProxyHeaders = previewInfo.headers;
+      }
+    } else {
+      logger.warn("Daytona: preview URL unavailable");
+    }
+  }
 
   if (tunnelToken && !options.port) {
     throw new Error("port required when using tunnel token");
@@ -203,7 +245,8 @@ export const startCommand = async (
     terminalRegistry,
     terminalBackend,
     proxyPort: options.proxy,
-    devProxyUrl: options.devProxyUrl
+    devProxyUrl,
+    devProxyHeaders
   });
 
   const started = await server.listen(options.port ?? 0);

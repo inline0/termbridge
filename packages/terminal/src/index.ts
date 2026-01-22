@@ -16,6 +16,11 @@ export type TerminalSession = {
   createdAt: Date;
 };
 
+export type TerminalPreviewInfo = {
+  url: string;
+  headers?: Record<string, string>;
+};
+
 export type TerminalBackend = {
   createSession: (name: string) => Promise<TerminalSession>;
   write: (sessionName: string, data: string) => Promise<void>;
@@ -25,6 +30,7 @@ export type TerminalBackend = {
   onOutput: (sessionName: string, callback: (data: string) => void) => () => void;
   closeSession: (sessionName: string) => Promise<void>;
   shutdown?: () => Promise<void>;
+  getPreviewUrl?: (port: number) => Promise<string | TerminalPreviewInfo | null>;
 };
 
 export type TmuxBackendDeps = {

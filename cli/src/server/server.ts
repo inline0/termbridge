@@ -1,4 +1,5 @@
 import { createServer as createHttpServer, request as httpRequest } from "node:http";
+import { request as httpsRequest } from "node:https";
 import { randomBytes } from "node:crypto";
 import { WebSocketServer, WebSocket as WsWebSocket } from "ws";
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -31,7 +32,8 @@ export type ServerDeps = {
   wsLimiter: RateLimiter;
   logger: Logger;
   proxyPort?: number;
-  devProxyUrl?: string; // Direct URL to proxy target for dev mode (enables HMR in iframe)
+  devProxyUrl?: string; // Remote proxy target URL (preview iframe points to /)
+  devProxyHeaders?: Record<string, string>;
 };
 
 export type StartedServer = {
@@ -162,6 +164,21 @@ export const createAppServer = (deps: ServerDeps) => {
   const staticHandler = createStaticHandler(deps.uiDistPath, "/__tb/app");
   const wss = new WebSocketServer({ noServer: true });
   const connectionInfo = new WeakMap<WebSocket, { sessionName: string }>();
+  const hasProxy = typeof deps.proxyPort === "number" || deps.devProxyUrl !== undefined;
+
+  const resolveProxyUrl = (targetPath: string, search: string) => {
+    if (typeof deps.proxyPort === "number") {
+      return new URL(`http://localhost:${deps.proxyPort}${targetPath}${search}`);
+    }
+    if (deps.devProxyUrl) {
+      try {
+        return new URL(`${targetPath}${search}`, deps.devProxyUrl);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  };
 
   const proxyRequest = (
     request: IncomingMessage,
@@ -169,13 +186,20 @@ export const createAppServer = (deps: ServerDeps) => {
     targetPath: string,
     search: string
   ) => {
-    const targetUrl = `http://localhost:${deps.proxyPort}${targetPath}${search}`;
-    const proxyHeaders = { ...request.headers };
+    const targetUrl = resolveProxyUrl(targetPath, search);
+    if (!targetUrl) {
+      response.statusCode = 502;
+      response.end("proxy error");
+      return;
+    }
+
+    const proxyHeaders = { ...request.headers, ...(deps.devProxyHeaders ?? {}) };
     delete proxyHeaders.cookie;
     delete proxyHeaders.host;
-    proxyHeaders.host = `localhost:${deps.proxyPort}`;
+    proxyHeaders.host = targetUrl.host;
 
-    const proxyReq = httpRequest(
+    const requestImpl = targetUrl.protocol === "https:" ? httpsRequest : httpRequest;
+    const proxyReq = requestImpl(
       targetUrl,
       { method: request.method, headers: proxyHeaders },
       (proxyRes) => {
@@ -199,7 +223,7 @@ export const createAppServer = (deps: ServerDeps) => {
       return;
     }
 
-    if (request.method === "GET" && url.pathname === "/" && !deps.proxyPort) {
+    if (request.method === "GET" && url.pathname === "/" && !hasProxy) {
       response.statusCode = 302;
       response.setHeader("Location", "/__tb/app");
       response.end();
@@ -312,7 +336,7 @@ export const createAppServer = (deps: ServerDeps) => {
 
     if (!handled) {
       // If proxy mode is enabled and user is authenticated, proxy to target app
-      if (deps.proxyPort && deps.auth.getSessionFromRequest(request)) {
+      if (hasProxy && deps.auth.getSessionFromRequest(request)) {
         proxyRequest(request, response, url.pathname, url.search);
         return;
       }
@@ -327,10 +351,25 @@ export const createAppServer = (deps: ServerDeps) => {
 
     if (!url.pathname.startsWith("/__tb/ws/terminal/")) {
       // Proxy WebSocket to target app if proxy mode enabled
-      if (deps.proxyPort && deps.auth.getSessionFromRequest(request)) {
-        const targetUrl = `ws://localhost:${deps.proxyPort}${url.pathname}${url.search}`;
+      if (hasProxy && deps.auth.getSessionFromRequest(request)) {
+        let baseUrl: URL | null = null;
+        try {
+          baseUrl = typeof deps.proxyPort === "number"
+            ? new URL(`http://localhost:${deps.proxyPort}`)
+            : new URL(deps.devProxyUrl as string);
+        } catch {
+          socket.destroy();
+          return;
+        }
+        const wsProtocol = baseUrl.protocol === "https:" ? "wss:" : "ws:";
+        const targetUrl = new URL(`${url.pathname}${url.search}`, baseUrl);
+        targetUrl.protocol = wsProtocol;
+        const proxyHeaders = { ...request.headers, ...(deps.devProxyHeaders ?? {}) };
+        delete proxyHeaders.cookie;
+        delete proxyHeaders.host;
+        proxyHeaders.host = targetUrl.host;
 
-        const proxyWs = new WsWebSocket(targetUrl);
+        const proxyWs = new WsWebSocket(targetUrl.toString(), { headers: proxyHeaders });
 
         proxyWs.on("open", () => {
           wss.handleUpgrade(request, socket, head, (clientWs) => {

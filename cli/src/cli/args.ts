@@ -13,6 +13,8 @@ export type CliOptions = {
   daytonaBranch?: string;
   daytonaPath?: string;
   daytonaSandboxName?: string;
+  daytonaPreviewPort?: number;
+  daytonaPublic?: boolean;
 };
 
 export type ParsedArgs = {
@@ -198,6 +200,22 @@ export const parseArgs = (argv: string[]): ParsedArgs => {
       }
 
       options.daytonaSandboxName = name;
+      continue;
+    }
+
+    if (current === "--daytona-preview-port") {
+      const port = parseNumber(args.shift());
+
+      if (!port || port <= 0) {
+        throw new Error("missing daytona preview port");
+      }
+
+      options.daytonaPreviewPort = port;
+      continue;
+    }
+
+    if (current === "--daytona-public") {
+      options.daytonaPublic = true;
       continue;
     }
 

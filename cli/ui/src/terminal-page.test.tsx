@@ -49,9 +49,13 @@ describe("TerminalPage", () => {
     onConnectionStateChange: overrides.onConnectionStateChange ?? vi.fn(() => () => undefined)
   }) as TerminalClient;
 
-  const createMockFetch = (terminals: TerminalListItem[], options: { status?: number; proxyPort?: number | null } = {}) => {
+  const createMockFetch = (
+    terminals: TerminalListItem[],
+    options: { status?: number; proxyPort?: number | null; devProxyUrl?: string | null } = {}
+  ) => {
     const status = options.status ?? 200;
     const proxyPort = options.proxyPort ?? null;
+    const devProxyUrl = options.devProxyUrl ?? null;
     return vi.fn(async (url: string) => {
       if (url.includes("/__tb/api/csrf")) {
         return new Response(JSON.stringify({ csrfToken: "test-csrf-token" }), {
@@ -60,7 +64,7 @@ describe("TerminalPage", () => {
         });
       }
       if (url.includes("/__tb/api/config")) {
-        return new Response(JSON.stringify({ proxyPort }), {
+        return new Response(JSON.stringify({ proxyPort, devProxyUrl }), {
           status: 200,
           headers: { "Content-Type": "application/json" }
         });
@@ -506,6 +510,24 @@ describe("TerminalPage", () => {
     expect(screen.getByRole("button", { name: "Switch to Terminal" })).toHaveAttribute("aria-current", "page");
   });
 
+  it("shows view switcher when devProxyUrl is configured", async () => {
+    const destroy = vi.fn();
+    createTerminalClientMock.mockReturnValue(createMockClient({ destroy }));
+
+    global.fetch = createMockFetch([makeTerminal("term-1")], {
+      proxyPort: null,
+      devProxyUrl: "https://preview.example"
+    });
+
+    render(<TerminalPage terminalId="term-1" />);
+
+    await waitFor(() => {
+      expect(createTerminalClientMock).toHaveBeenCalled();
+    });
+
+    expect(screen.getByLabelText("Views")).toBeInTheDocument();
+  });
+
   it("switches to preview view when Preview is selected", async () => {
     const destroy = vi.fn();
     createTerminalClientMock.mockReturnValue(createMockClient({ destroy }));
@@ -527,6 +549,30 @@ describe("TerminalPage", () => {
     expect(screen.getByTestId("preview-iframe")).toBeInTheDocument();
     expect(screen.getByTestId("preview-iframe")).toHaveAttribute("src", "/");
     expect(screen.getByTestId("terminal-host")).toHaveClass("invisible");
+  });
+
+  it("uses the proxied preview iframe when devProxyUrl is configured", async () => {
+    const destroy = vi.fn();
+    createTerminalClientMock.mockReturnValue(createMockClient({ destroy }));
+
+    global.fetch = createMockFetch([makeTerminal("term-1")], {
+      proxyPort: null,
+      devProxyUrl: "https://preview.example"
+    });
+
+    render(<TerminalPage terminalId="term-1" />);
+
+    await waitFor(() => {
+      expect(createTerminalClientMock).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Switch to Preview" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Switch to Preview" })).toHaveAttribute("aria-current", "page");
+    });
+
+    expect(screen.getByTestId("preview-iframe")).toHaveAttribute("src", "/");
   });
 
   it("keeps controls visible when in preview view", async () => {
