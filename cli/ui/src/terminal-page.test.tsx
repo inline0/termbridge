@@ -436,6 +436,7 @@ describe("TerminalPage", () => {
     });
 
     expect(screen.getByTestId("connection-status")).toHaveAttribute("data-state", "connecting");
+    expect(screen.getByTestId("session-status")).toHaveTextContent("Terminal term-1");
 
     callbackRef.current?.("connected");
     await waitFor(() => {
@@ -451,6 +452,25 @@ describe("TerminalPage", () => {
     await waitFor(() => {
       expect(screen.getByTestId("connection-status")).toHaveAttribute("data-state", "disconnected");
     });
+  });
+
+  it("falls back to the session id when the label is missing", async () => {
+    const destroy = vi.fn();
+    createTerminalClientMock.mockReturnValue(createMockClient({ destroy }));
+
+    const terminal = {
+      ...makeTerminal("term-1"),
+      label: undefined as unknown as string
+    };
+    global.fetch = createMockFetch([terminal]);
+
+    render(<TerminalPage terminalId="term-1" />);
+
+    await waitFor(() => {
+      expect(createTerminalClientMock).toHaveBeenCalled();
+    });
+
+    expect(screen.getByTestId("session-status")).toHaveTextContent("term-1");
   });
 
   it("does not show view switcher when proxyPort is null", async () => {
@@ -559,7 +579,28 @@ describe("TerminalPage", () => {
     expect(sendScroll).not.toHaveBeenCalled();
   });
 
-  it("shows scroll status when scrollback is available", async () => {
+  it("tracks tmux scroll actions for the status bar", async () => {
+    const destroy = vi.fn();
+    createTerminalClientMock.mockReturnValue(createMockClient({ destroy }));
+
+    global.fetch = createMockFetch([makeTerminal("term-1")]);
+
+    render(<TerminalPage terminalId="term-1" />);
+
+    await waitFor(() => {
+      expect(createTerminalClientMock).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+    fireEvent.click(screen.getByRole("button", { name: "Line Up" }));
+    fireEvent.click(screen.getByRole("button", { name: "Page Up" }));
+    fireEvent.click(screen.getByRole("button", { name: "Page Up" }));
+    fireEvent.click(screen.getByRole("button", { name: "Line Down" }));
+
+    expect(screen.queryByTestId("scroll-status")).toBeNull();
+  });
+
+  it("does not show scroll status when scrollback is available", async () => {
     const destroy = vi.fn();
     let scrollCallback: ((info: { viewportY: number; baseY: number; maxY: number }) => void) | null = null;
     const onScroll = vi.fn((callback: typeof scrollCallback) => {
@@ -584,6 +625,6 @@ describe("TerminalPage", () => {
       scrollCallback?.({ viewportY: 5, baseY: 10, maxY: 10 });
     });
 
-    expect(screen.getByTestId("scroll-status")).toHaveTextContent("5 / 10");
+    expect(screen.queryByTestId("scroll-status")).toBeNull();
   });
 });

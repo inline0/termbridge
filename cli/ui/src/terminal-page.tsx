@@ -29,6 +29,9 @@ export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps
   const [devProxyUrl, setDevProxyUrl] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<"terminal" | "preview">("terminal");
   const [scrollInfo, setScrollInfo] = useState<ScrollInfo>({ viewportY: 0, baseY: 0, maxY: 0 });
+  const [tmuxScroll, setTmuxScroll] = useState<{ offset: number; mode: "lines" | "pages" } | null>(
+    null
+  );
 
   useEffect(() => {
     let active = true;
@@ -98,6 +101,15 @@ export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps
     return terminals.find((terminal) => terminal.id === activeTerminalId)?.source ?? null;
   }, [state, activeTerminalId, terminals]);
 
+  const activeTerminalLabel = useMemo(() => {
+    if (state !== "ready" || !activeTerminalId) {
+      return null;
+    }
+
+    const terminal = terminals.find((entry) => entry.id === activeTerminalId);
+    return terminal?.label ?? terminal?.id;
+  }, [state, activeTerminalId, terminals]);
+
   useEffect(() => {
     if (state !== "ready" || terminals.length === 0) {
       return;
@@ -141,6 +153,7 @@ export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps
       clientRef.current = null;
       client.destroy();
       setScrollInfo({ viewportY: 0, baseY: 0, maxY: 0 });
+      setTmuxScroll(null);
     };
   }, [state, activeTerminalId, csrfToken]);
 
@@ -159,16 +172,46 @@ export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps
 
   const showPreview = proxyPort !== null;
   const resolvedView = showPreview ? activeView : "terminal";
+  const scrollOverride =
+    activeTerminalSource === "tmux" && tmuxScroll
+      ? {
+          label: `${tmuxScroll.offset}${tmuxScroll.mode === "pages" ? "p" : "l"}`,
+          show: tmuxScroll.offset > 0
+        }
+      : undefined;
+  const handleScrollAction = (mode: "lines" | "pages", amount: number) => {
+    if (activeTerminalSource !== "tmux") {
+      return;
+    }
+
+    setTmuxScroll((prev) => {
+      const nextMode = mode;
+      const baseOffset = prev?.mode === nextMode ? prev.offset : 0;
+      const nextOffset = Math.max(0, baseOffset + -amount);
+
+      if (nextOffset === 0) {
+        return null;
+      }
+
+      return { offset: nextOffset, mode: nextMode };
+    });
+  };
+
+  const gridRows = "grid-rows-[auto_minmax(0,1fr)_auto]";
 
   return (
     <div className="relative h-full w-full bg-background text-foreground">
-      <TerminalStatusBar
-        connectionState={connectionState}
-        scrollInfo={scrollInfo}
-        hasTerminal={Boolean(activeTerminalId)}
-      />
-      <div className="grid h-full w-full grid-rows-[minmax(0,1fr)_auto]">
-        <div className="relative min-h-0 min-w-0">
+      <div className={`grid h-full w-full ${gridRows}`}>
+        <TerminalStatusBar
+          connectionState={connectionState}
+          scrollInfo={scrollInfo}
+          hasTerminal={Boolean(activeTerminalId)}
+          sessionLabel={activeTerminalLabel}
+          showScroll={false}
+          scrollOverride={scrollOverride}
+          position="static"
+        />
+        <div className={`relative min-h-0 min-w-0 ${resolvedView === "preview" ? "bg-black" : ""}`}>
           {statusLabel && resolvedView === "terminal" ? (
             <div
               className="terminal-status absolute inset-0 z-20 flex items-center justify-center bg-background/85 text-xs font-medium text-muted-foreground"
@@ -200,6 +243,7 @@ export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps
           activeView={resolvedView}
           onViewChange={setActiveView}
           showViewToggle={showPreview}
+          onScrollAction={handleScrollAction}
           listState={state}
           onSelectTerminal={handleSelectTerminal}
         />

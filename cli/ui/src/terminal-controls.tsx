@@ -55,6 +55,7 @@ type TerminalControlsProps = {
   activeView: "terminal" | "preview";
   onViewChange: (view: "terminal" | "preview") => void;
   showViewToggle?: boolean;
+  onScrollAction?: (mode: "lines" | "pages", amount: number) => void;
   listState: TerminalListState;
   onSelectTerminal: (terminalId: string) => void;
 };
@@ -67,6 +68,7 @@ export const TerminalControls = ({
   activeView,
   onViewChange,
   showViewToggle = false,
+  onScrollAction,
   listState,
   onSelectTerminal
 }: TerminalControlsProps) => {
@@ -159,6 +161,8 @@ export const TerminalControls = ({
       client.sendControl(action.key);
       return;
     }
+
+    onScrollAction?.(action.mode, action.amount);
 
     if (activeTerminalSource === "tmux") {
       client.sendScroll(action.mode, action.amount);

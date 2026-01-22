@@ -24,6 +24,8 @@ const runOnce = (command, args, options = {}) =>
     });
   });
 
+await runOnce("node", [resolve(rootDir, "scripts/clear-dev-cache.mjs")], { cwd: rootDir });
+
 if (process.env.TERMBRIDGE_SKIP_BUILD !== "1") {
   await runOnce("bun", ["run", "--cwd", cliDir, "build"], { cwd: rootDir });
 }

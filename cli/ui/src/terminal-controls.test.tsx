@@ -65,6 +65,7 @@ describe("TerminalControls", () => {
   it("routes scroll actions through tmux", () => {
     const client = createClient();
     const clientRef = { current: client } as MutableRefObject<TerminalClient | null>;
+    const onScrollAction = vi.fn();
 
     render(
       <TerminalControls
@@ -74,6 +75,7 @@ describe("TerminalControls", () => {
         activeTerminalSource="tmux"
         activeView="terminal"
         onViewChange={() => undefined}
+        onScrollAction={onScrollAction}
         listState="ready"
         onSelectTerminal={() => undefined}
       />
@@ -82,6 +84,7 @@ describe("TerminalControls", () => {
     fireEvent.click(screen.getByLabelText("Add"));
     fireEvent.click(screen.getByRole("button", { name: "Page Up" }));
 
+    expect(onScrollAction).toHaveBeenCalledWith("pages", -1);
     expect(client.sendScroll).toHaveBeenCalledWith("pages", -1);
   });
 

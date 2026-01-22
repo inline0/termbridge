@@ -94,6 +94,14 @@ export const createTmuxBackend = (deps: TmuxBackendDeps = {}): TerminalBackend =
 
   const runTmux = async (args: string[]) => runtime.execFile("tmux", args);
 
+  const setSessionOption = async (name: string, option: string, value: string) => {
+    try {
+      await runTmux(["set-option", "-t", name, option, value]);
+    } catch {
+      // Best-effort: sessions stay usable even when tmux refuses an option.
+    }
+  };
+
   const createSession = async (name: string) => {
     const existing = sessions.get(name);
     if (existing) {
@@ -110,11 +118,12 @@ export const createTmuxBackend = (deps: TmuxBackendDeps = {}): TerminalBackend =
       }
     }
 
-    try {
-      await runTmux(["set-option", "-t", name, "status", "off"]);
-    } catch {
-      // Best-effort: the session is usable even if tmux refuses the option.
-    }
+    await setSessionOption(name, "status", "off");
+    await setSessionOption(name, "status-left", "");
+    await setSessionOption(name, "status-right", "");
+    await setSessionOption(name, "status-style", "bg=default,fg=default");
+    await setSessionOption(name, "message-style", "bg=default,fg=default");
+    await setSessionOption(name, "message-command-style", "bg=default,fg=default");
 
     const session = { name, createdAt: new Date() };
     sessions.set(name, {

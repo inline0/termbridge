@@ -26,7 +26,7 @@
   },
   "scripts": {
     "build": "bun run ui:build && bunx tsup",
-    "dev": "bun run ui:dev",
+    "dev": "node ../scripts/clear-dev-cache.mjs && bun run ui:dev",
     "start": "node dist/bin.js",
     "lint": "biome lint .",
     "typecheck": "tsc -p tsconfig.json",

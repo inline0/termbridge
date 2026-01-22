@@ -104,7 +104,7 @@ describe("createTmuxBackend", () => {
     const second = await backend.createSession("session");
 
     expect(second).toBe(first);
-    expect(execFile).toHaveBeenCalledTimes(2);
+    expect(execFile).toHaveBeenCalledTimes(7);
   });
 
   it("stores resize requests before attach", async () => {
