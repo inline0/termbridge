@@ -1,0 +1,138 @@
+---
+title: Sandboxes
+description: Run Termbridge against Daytona sandboxes for cloud terminals and previews.
+---
+
+# Sandboxes
+
+Termbridge can use a Daytona sandbox instead of a local tmux session. This is useful when you want a terminal and preview that run in the cloud but keep the same Termbridge UI and sharing workflow.
+
+## When to use sandboxes
+
+- You want a terminal in a disposable cloud environment.
+- You need a preview that runs in a sandbox, not on your laptop.
+- You are running CI or integration tests against a remote environment.
+
+If you just need to share your local terminal, use the default tmux backend.
+
+## Requirements
+
+- A Daytona API key
+- A repository URL the sandbox can clone
+- Git credentials if the repo is private
+
+## Quick start
+
+Set the backend to Daytona and provide the repo configuration:
+
+```bash
+TERMBRIDGE_BACKEND=daytona
+DAYTONA_API_KEY=your_key
+DAYTONA_API_URL=https://app.daytona.io/api
+TERMBRIDGE_DAYTONA_REPO=https://github.com/inline0/termbridge-test-app.git
+TERMBRIDGE_DAYTONA_BRANCH=main
+TERMBRIDGE_DAYTONA_PATH=termbridge-test-app
+TERMBRIDGE_DAYTONA_NAME=termbridge-sandbox
+TERMBRIDGE_DAYTONA_PUBLIC=true
+TERMBRIDGE_DAYTONA_PREVIEW_PORT=5173
+TERMBRIDGE_DAYTONA_DELETE_ON_EXIT=true
+```
+
+Then run Termbridge as usual:
+
+```bash
+npx termbridge
+```
+
+## Repository cloning
+
+Termbridge will create a sandbox and clone your repo into the sandbox working directory.
+
+Use these settings:
+
+| Variable | Purpose |
+| --- | --- |
+| `TERMBRIDGE_DAYTONA_REPO` | Repo URL to clone (required) |
+| `TERMBRIDGE_DAYTONA_BRANCH` | Branch to check out (optional) |
+| `TERMBRIDGE_DAYTONA_PATH` | Path for the repo in the sandbox (optional) |
+| `TERMBRIDGE_DAYTONA_NAME` | Sandbox name (optional) |
+
+If `TERMBRIDGE_DAYTONA_PATH` is not set, Termbridge derives it from the repo name.
+
+## Private repositories
+
+Provide git credentials when cloning private repos:
+
+```bash
+TERMBRIDGE_DAYTONA_GIT_USERNAME=your_github_username
+TERMBRIDGE_DAYTONA_GIT_TOKEN=your_github_token
+```
+
+`TERMBRIDGE_DAYTONA_GIT_PASSWORD` is also supported and overrides the token if set.
+
+## Preview mode
+
+To show the preview tab, set `TERMBRIDGE_DAYTONA_PREVIEW_PORT` to the port your dev server uses inside the sandbox.
+
+For Vite, make sure you bind to all interfaces:
+
+```bash
+npm run dev -- --host 0.0.0.0 --port 5173
+```
+
+Termbridge fetches the Daytona preview link and proxies it through the Termbridge server so the preview loads inside the UI.
+
+## Public vs private sandboxes
+
+| Variable | What it does |
+| --- | --- |
+| `TERMBRIDGE_DAYTONA_PUBLIC=true` | Creates a public sandbox |
+| `TERMBRIDGE_DAYTONA_PUBLIC=false` | Creates a private sandbox |
+
+For private sandboxes, Termbridge forwards the preview token automatically when proxying the preview.
+
+## Cleanup and lifecycle
+
+To delete sandboxes when Termbridge exits:
+
+```bash
+TERMBRIDGE_DAYTONA_DELETE_ON_EXIT=true
+```
+
+For short-lived or test sandboxes, use a prefix:
+
+```bash
+TERMBRIDGE_DAYTONA_NAME=termbridge-test-$(date +%s)
+TERMBRIDGE_DAYTONA_DELETE_ON_EXIT=true
+```
+
+This keeps sandbox usage under control and avoids disk quota issues.
+
+## CLI flags
+
+You can also configure Daytona via flags:
+
+| Flag | Purpose |
+| --- | --- |
+| `--backend daytona` | Use the Daytona backend |
+| `--daytona-repo <url>` | Repo URL |
+| `--daytona-branch <branch>` | Branch |
+| `--daytona-path <path>` | Repo path in sandbox |
+| `--daytona-name <name>` | Sandbox name |
+| `--daytona-preview-port <port>` | Preview port |
+| `--daytona-public` | Create a public sandbox |
+
+## Troubleshooting
+
+**Preview tab is blank**
+- Ensure the dev server is running inside the sandbox.
+- Use `--host 0.0.0.0` so the preview port is reachable.
+- Confirm `TERMBRIDGE_DAYTONA_PREVIEW_PORT` matches the dev server port.
+
+**Sandbox creation fails with quota errors**
+- Delete old sandboxes in the Daytona dashboard.
+- Use `TERMBRIDGE_DAYTONA_DELETE_ON_EXIT=true` for short-lived sessions.
+
+**Repo clone fails**
+- Double-check repo URL, branch, and credentials.
+- Ensure the Git token has repo read access.

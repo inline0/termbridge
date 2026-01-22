@@ -33,8 +33,15 @@ termbridge start --port 8080 --proxy 5173 --session dev --kill-on-exit --no-qr -
 | `--kill-on-exit` | Clean up tmux sessions when Termbridge exits | Off |
 | `--no-qr` | Don't print the QR code (useful for scripts) | Off |
 | `--tunnel cloudflare` | Tunnel provider (only cloudflare for now) | cloudflare |
+| `--backend <tmux|daytona>` | Terminal backend | tmux |
 | `--tunnel-token <token>` | Use a named Cloudflare Tunnel token (requires `--port`) | - |
 | `--tunnel-url <url>` | Public URL for the named tunnel (required with `--tunnel-token`) | - |
+| `--daytona-repo <url>` | Repo URL for Daytona | - |
+| `--daytona-branch <branch>` | Branch for Daytona | - |
+| `--daytona-path <path>` | Repo path in the sandbox | - |
+| `--daytona-name <name>` | Sandbox name | - |
+| `--daytona-preview-port <port>` | Preview port in the sandbox | - |
+| `--daytona-public` | Create a public sandbox | Off |
 
 ## Examples
 
@@ -97,6 +104,8 @@ For development and testing:
 | `TERMBRIDGE_DEV_PORT=3000` | Override Termbridge server port in dev |
 | `TERMBRIDGE_TUNNEL_TOKEN=<token>` | Named tunnel token (requires `TERMBRIDGE_TUNNEL_URL`) |
 | `TERMBRIDGE_TUNNEL_URL=https://term.example.com` | Public URL for the named tunnel |
+
+For full Daytona configuration, see the Sandboxes guide.
 
 ## Stopping Termbridge
 
