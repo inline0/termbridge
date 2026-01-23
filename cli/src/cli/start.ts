@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { resolve, dirname } from "node:path";
 import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
@@ -61,6 +62,7 @@ export type StartDeps = {
     devProxyUrl?: string;
     devProxyHeaders?: Record<string, string>;
     hideTerminalSwitcher?: boolean;
+    listenHost?: string;
   }) => { listen: (port: number) => Promise<StartedServer> };
   qr?: {
     generate: (text: string, options: { small: boolean }) => void;
@@ -90,6 +92,30 @@ const resolveUiDistPath = () => {
   }
 
   return candidates[0];
+};
+
+const packLocalCli = (logger: Logger) => {
+  const cliDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+  const packageJson = resolve(cliDir, "package.json");
+  if (!existsSync(packageJson)) {
+    return undefined;
+  }
+
+  const result = spawnSync("npm", ["pack"], { cwd: cliDir, encoding: "utf8" });
+  if (result.status !== 0) {
+    const stderr = result.stderr?.toString().trim();
+    logger.warn(`Local CLI pack failed${stderr ? ` (${stderr})` : ""}`);
+    return undefined;
+  }
+
+  const lines = result.stdout?.toString().trim().split(/\r?\n/).filter(Boolean) ?? [];
+  const filename = lines[lines.length - 1];
+  if (!filename) {
+    logger.warn("Local CLI pack failed (no output)");
+    return undefined;
+  }
+
+  return resolve(cliDir, filename);
 };
 
 const createDefaultLogger = (): Logger => ({
@@ -277,6 +303,21 @@ const normalizeExternalUrl = (value: string) => {
   return value.endsWith("/") ? value.slice(0, -1) : value;
 };
 
+const buildShareUrl = (publicUrl: string, token: string) => {
+  let parsed: URL;
+
+  try {
+    parsed = new URL(publicUrl);
+  } catch {
+    throw new Error("invalid public url");
+  }
+
+  const basePath = parsed.pathname.endsWith("/") ? parsed.pathname : `${parsed.pathname}/`;
+  parsed.pathname = `${basePath}__tb/s/${token}`;
+  parsed.hash = "";
+  return parsed.toString();
+};
+
 const resolveTunnelMode = (value: string | undefined): "cloudflare" | "none" => {
   if (!value) {
     return "cloudflare";
@@ -311,18 +352,31 @@ export const startCommand = async (
   const env = processRef.env ?? {};
   const insecureCookie =
     env.TERMBRIDGE_INSECURE_COOKIE === "1" || env.TERMBRIDGE_INSECURE_COOKIE === "true";
+  const daytonaDirect = options.daytonaDirect ?? parseBoolean(env.TERMBRIDGE_DAYTONA_DIRECT);
+  const cookieSameSiteRaw = env.TERMBRIDGE_COOKIE_SAMESITE?.trim().toLowerCase();
+  const cookieSameSite =
+    cookieSameSiteRaw === "none"
+      ? "None"
+      : cookieSameSiteRaw === "strict"
+        ? "Strict"
+        : cookieSameSiteRaw === "lax"
+          ? "Lax"
+          : daytonaDirect && !insecureCookie
+            ? "None"
+            : "Lax";
   const auth = (deps.createAuth ?? (() =>
     createAuth({
       tokenTtlMs: 90_000,
       sessionIdleMs: 30 * 60_000,
       sessionMaxMs: 8 * 60 * 60_000,
-      cookieSecure: !insecureCookie
+      cookieSecure: !insecureCookie,
+      cookieSameSite
     })))();
   const backendMode = resolveBackendMode(options.backend ?? env.TERMBRIDGE_BACKEND);
-  const daytonaDirect = options.daytonaDirect ?? parseBoolean(env.TERMBRIDGE_DAYTONA_DIRECT);
   const publicUrlOverride = options.publicUrl ?? env.TERMBRIDGE_PUBLIC_URL;
   const hideTerminalSwitcher = parseBoolean(env.TERMBRIDGE_HIDE_TERMINAL_SWITCHER);
   const tmuxCwd = env.TERMBRIDGE_TMUX_CWD;
+  const listenHost = env.TERMBRIDGE_HOST?.trim() || undefined;
   const agentEnv = collectAgentEnv(env);
   const autoAgentNames = resolveAutoAgentNames(env);
   const autoAgents = resolveAutoAgents(autoAgentNames, logger);
@@ -334,7 +388,13 @@ export const startCommand = async (
     "https://github.com/inline0/termbridge-test-app.git";
   const daytonaPreviewPort =
     options.daytonaPreviewPort ?? parseOptionalNumber(env.TERMBRIDGE_DAYTONA_PREVIEW_PORT);
-  const daytonaPublic = options.daytonaPublic ?? parseBoolean(env.TERMBRIDGE_DAYTONA_PUBLIC);
+  const daytonaPublicEnv = env.TERMBRIDGE_DAYTONA_PUBLIC;
+  const daytonaPublicOverride =
+    options.daytonaPublic ??
+    (daytonaPublicEnv ? parseBoolean(daytonaPublicEnv) : undefined);
+  const daytonaPublic = daytonaDirect
+    ? (daytonaPublicOverride ?? true)
+    : (daytonaPublicOverride ?? false);
   const daytonaDeleteOnExit = parseBoolean(env.TERMBRIDGE_DAYTONA_DELETE_ON_EXIT);
   const daytonaConfig: DaytonaBackendOptions = {
     apiKey: env.DAYTONA_API_KEY,
@@ -358,6 +418,7 @@ export const startCommand = async (
     const serverPort =
       options.port ?? parseOptionalNumber(env.TERMBRIDGE_DAYTONA_SERVER_PORT) ?? 8080;
     const proxyPort = options.proxy ?? daytonaPreviewPort;
+    const localCliPackPath = packLocalCli(logger);
     const sandboxProvider = (deps.createSandboxProvider ?? createDaytonaSandboxServerProvider)({
       apiKey: daytonaConfig.apiKey,
       apiUrl: daytonaConfig.apiUrl,
@@ -377,7 +438,9 @@ export const startCommand = async (
       agentEnv: daytonaConfig.agentEnv,
       agentInstall: daytonaConfig.agentInstall,
       agentAuth: daytonaConfig.agentAuth,
+      localCliPackPath,
       serverPort,
+      previewPort: daytonaPreviewPort,
       proxyPort,
       sessionName: options.session,
       killOnExit: options.killOnExit,
@@ -385,7 +448,7 @@ export const startCommand = async (
       logger
     });
 
-    const redeemUrl = `${result.publicUrl}/__tb/s/${result.token}`;
+    const redeemUrl = buildShareUrl(result.publicUrl, result.token);
     logger.info(`Public URL: ${result.publicUrl}`);
     logger.info(`Share URL: ${redeemUrl}`);
 
@@ -473,7 +536,8 @@ export const startCommand = async (
     proxyPort: options.proxy,
     devProxyUrl,
     devProxyHeaders,
-    hideTerminalSwitcher
+    hideTerminalSwitcher,
+    listenHost
   });
 
   const started = await server.listen(options.port ?? 0);
@@ -512,7 +576,7 @@ export const startCommand = async (
     }
   }
 
-  const redeemUrl = `${publicUrl}/__tb/s/${token}`;
+  const redeemUrl = buildShareUrl(publicUrl, token);
   await maybeWriteShareFile(env.TERMBRIDGE_SHARE_FILE, redeemUrl, logger);
 
   logger.info(`Local server: ${localUrl}`);

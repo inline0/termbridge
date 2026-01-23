@@ -72,12 +72,14 @@ beforeAll(async () => {
 
 class FakeWebSocket {
   url: string;
+  protocols: Array<string | undefined> = [];
   listeners: Record<string, Array<(event: { data?: unknown }) => void>> = {};
   send = vi.fn();
   close = vi.fn();
 
-  constructor(url: string) {
+  constructor(url: string, protocol?: string | string[]) {
     this.url = url;
+    this.protocols.push(typeof protocol === "string" ? protocol : protocol?.[0]);
   }
 
   addEventListener(type: string, handler: (event: { data?: unknown }) => void) {
@@ -99,9 +101,12 @@ class FakeWebSocket {
 const createWebSocketCtor = (socket: FakeWebSocket) =>
   class WebSocketImpl {
     url: string;
+    protocol?: string | string[];
 
-    constructor(url: string) {
+    constructor(url: string, protocol?: string | string[]) {
       this.url = url;
+      this.protocol = protocol;
+      socket.protocols.push(typeof protocol === "string" ? protocol : protocol?.[0]);
     }
 
     addEventListener(
@@ -161,6 +166,89 @@ describe("terminal-client", () => {
     expect(getWebSocketUrl("abc", "csrf-token-123", windowRef)).toBe(
       "wss://example.com/__tb/ws/terminal/abc?csrf=csrf-token-123"
     );
+  });
+
+  it("preserves query params in websocket URLs", () => {
+    const windowRef = {
+      location: { protocol: "https:", host: "example.com", search: "?token=abc" }
+    } as Window;
+
+    expect(getWebSocketUrl("abc", "csrf-token-123", windowRef)).toBe(
+      "wss://example.com/__tb/ws/terminal/abc?DAYTONA_SANDBOX_AUTH_KEY=abc&csrf=csrf-token-123"
+    );
+  });
+
+  it("keeps empty token params intact", () => {
+    const windowRef = {
+      location: { protocol: "https:", host: "example.com", search: "?token=" }
+    } as Window;
+
+    expect(getWebSocketUrl("abc", "csrf-token-123", windowRef)).toBe(
+      "wss://example.com/__tb/ws/terminal/abc?token=&csrf=csrf-token-123"
+    );
+  });
+
+  it("adds ws tokens to websocket URLs", () => {
+    const windowRef = {
+      location: { protocol: "https:", host: "example.com" }
+    } as Window;
+
+    expect(getWebSocketUrl("abc", "csrf-token-123", windowRef, "ws-123")).toBe(
+      "wss://example.com/__tb/ws/terminal/abc?csrf=csrf-token-123&wsToken=ws-123"
+    );
+  });
+
+  it("adds the Daytona websocket protocol when the preview token is present", () => {
+    const windowRef = {
+      location: {
+        protocol: "https:",
+        host: "example.com",
+        search: "?token=token-123"
+      },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn()
+    } as unknown as Window;
+
+    const socket = new FakeWebSocket("ws://example.com");
+    const WebSocketImpl = createWebSocketCtor(socket);
+
+    createTerminalClient(document.body, "terminal-daytona", "csrf-test", {
+      createTerminal: () => new FakeTerminal() as unknown as Terminal,
+      createFitAddon: () => new FakeFitAddon() as unknown as FitAddon,
+      WebSocketImpl,
+      windowRef
+    });
+
+    expect(socket.protocols).toContain("X-Daytona-SDK-Version~0.0.0");
+  });
+
+  it("falls back to 0.0.0 when the Daytona SDK version is empty", () => {
+    const previous = (globalThis as { __DAYTONA_SDK_VERSION__?: string }).__DAYTONA_SDK_VERSION__;
+    (globalThis as { __DAYTONA_SDK_VERSION__?: string }).__DAYTONA_SDK_VERSION__ = " ";
+
+    const windowRef = {
+      location: {
+        protocol: "https:",
+        host: "example.com",
+        search: "?token=token-456"
+      },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn()
+    } as unknown as Window;
+
+    const socket = new FakeWebSocket("ws://example.com");
+    const WebSocketImpl = createWebSocketCtor(socket);
+
+    createTerminalClient(document.body, "terminal-daytona", "csrf-test", {
+      createTerminal: () => new FakeTerminal() as unknown as Terminal,
+      createFitAddon: () => new FakeFitAddon() as unknown as FitAddon,
+      WebSocketImpl,
+      windowRef
+    });
+
+    expect(socket.protocols).toContain("X-Daytona-SDK-Version~0.0.0");
+
+    (globalThis as { __DAYTONA_SDK_VERSION__?: string }).__DAYTONA_SDK_VERSION__ = previous;
   });
 
   it("connects, resizes, and streams output", () => {

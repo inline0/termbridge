@@ -42,6 +42,8 @@ export type TmuxBackendDeps = {
   defaultCwd?: string;
   /** @internal Skip spawn-helper check when using mock spawnPty in tests */
   _skipSpawnHelperCheck?: boolean;
+  /** @internal Override platform for spawn-helper checks */
+  _platform?: NodeJS.Platform;
 };
 
 const controlKeyMap: Record<TerminalControlKey, string> = {
@@ -61,11 +63,18 @@ const defaultDeps: Required<Omit<TmuxBackendDeps, "defaultCwd">> & { defaultCwd?
   defaultCols: 80,
   defaultRows: 24,
   defaultCwd: undefined,
-  _skipSpawnHelperCheck: false
+  _skipSpawnHelperCheck: false,
+  _platform: process.platform
 };
 
-const ensureSpawnHelperExecutable = () => {
-  if (spawnHelperChecked || process.platform === "win32") {
+const ensureSpawnHelperExecutable = (platform: NodeJS.Platform) => {
+  if (spawnHelperChecked || platform === "win32") {
+    return;
+  }
+
+  const forceCheck = process.env.TERMBRIDGE_FORCE_SPAWN_HELPER === "1";
+  if (!forceCheck && platform !== "darwin") {
+    spawnHelperChecked = true;
     return;
   }
 
@@ -92,6 +101,7 @@ const ensureSpawnHelperExecutable = () => {
 
 export const createTmuxBackend = (deps: TmuxBackendDeps = {}): TerminalBackend => {
   const runtime = { ...defaultDeps, ...deps };
+  const platform = runtime._platform ?? process.platform;
   const sessions = new Map<string, {
     session: TerminalSession;
     pty: pty.IPty | null;
@@ -181,7 +191,7 @@ export const createTmuxBackend = (deps: TmuxBackendDeps = {}): TerminalBackend =
     }
 
     if (!runtime._skipSpawnHelperCheck) {
-      ensureSpawnHelperExecutable();
+      ensureSpawnHelperExecutable(platform);
     }
 
     const ptyInstance = runtime.spawnPty("tmux", ["attach-session", "-t", entry.session.name], {

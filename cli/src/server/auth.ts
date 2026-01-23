@@ -23,13 +23,17 @@ export type AuthOptions = {
   sessionMaxMs: number;
   redeemLimiter?: RateLimiter;
   cookieSecure?: boolean;
+  cookieSameSite?: "Lax" | "None" | "Strict";
   now?: () => number;
 };
 
 export type Auth = {
   issueToken: () => { token: string };
+  issueWsToken: (sessionId: string) => { token: string };
   redeemToken: (token: string, ip: string) => SessionRecord | null;
+  redeemWsToken: (token: string) => SessionRecord | null;
   getSession: (sessionId: string) => SessionRecord | null;
+  getSessionByCsrfToken?: (csrfToken: string) => SessionRecord | null;
   getSessionFromRequest: (request: IncomingMessage) => SessionRecord | null;
   createSessionCookie: (sessionId: string) => string;
   verifyCsrfToken: (sessionId: string, csrfToken: string) => boolean;
@@ -68,12 +72,16 @@ export const createAuth = ({
   sessionMaxMs,
   redeemLimiter,
   cookieSecure,
+  cookieSameSite,
   now
 }: AuthOptions): Auth => {
   const clock = now ?? (() => Date.now());
   const secureCookie = cookieSecure ?? true;
+  const resolvedSameSite = cookieSameSite ?? "Lax";
   const tokens = new Map<string, TokenRecord>();
+  const wsTokens = new Map<string, { sessionId: string; expiresAt: number }>();
   const sessions = new Map<string, SessionRecord>();
+  const wsTokenTtlMs = 2 * 60_000;
 
   const issueToken = () => {
     const token = randomBytes(16).toString("base64url");
@@ -85,6 +93,12 @@ export const createAuth = ({
 
     tokens.set(record.hash, record);
 
+    return { token };
+  };
+
+  const issueWsToken = (sessionId: string) => {
+    const token = randomBytes(18).toString("base64url");
+    wsTokens.set(token, { sessionId, expiresAt: clock() + wsTokenTtlMs });
     return { token };
   };
 
@@ -110,6 +124,18 @@ export const createAuth = ({
 
     sessions.set(session.id, session);
     return session;
+  };
+
+  const redeemWsToken = (token: string) => {
+    const record = wsTokens.get(token);
+    if (!record) {
+      return null;
+    }
+    if (record.expiresAt <= clock()) {
+      wsTokens.delete(token);
+      return null;
+    }
+    return getSession(record.sessionId);
   };
 
   const getSession = (sessionId: string) => {
@@ -146,12 +172,21 @@ export const createAuth = ({
     return getSession(sessionId);
   };
 
+  const getSessionByCsrfToken = (csrfToken: string) => {
+    for (const session of sessions.values()) {
+      if (session.csrfToken === csrfToken) {
+        return getSession(session.id);
+      }
+    }
+    return null;
+  };
+
   const createSessionCookie = (sessionId: string) => {
     const parts = [
       `${SESSION_COOKIE_NAME}=${sessionId}`,
       "Path=/",
       "HttpOnly",
-      "SameSite=Lax"
+      `SameSite=${resolvedSameSite}`
     ];
 
     if (secureCookie) {
@@ -171,8 +206,11 @@ export const createAuth = ({
 
   return {
     issueToken,
+    issueWsToken,
     redeemToken,
+    redeemWsToken,
     getSession,
+    getSessionByCsrfToken,
     getSessionFromRequest,
     createSessionCookie,
     verifyCsrfToken

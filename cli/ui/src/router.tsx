@@ -13,7 +13,11 @@ const TerminalIndexRoute = () => {
   const navigate = useNavigate();
   const handleSelectTerminal = useCallback(
     (terminalId: string) => {
-      navigate({ to: "/terminal/$terminalId", params: { terminalId } });
+      navigate({
+        to: "/terminal/$terminalId",
+        params: { terminalId },
+        search: (prev) => prev
+      });
     },
     [navigate]
   );
@@ -26,7 +30,11 @@ const TerminalRoute = () => {
   const { terminalId } = useParams({ from: "/terminal/$terminalId" });
   const handleSelectTerminal = useCallback(
     (nextTerminalId: string) => {
-      navigate({ to: "/terminal/$terminalId", params: { terminalId: nextTerminalId } });
+      navigate({
+        to: "/terminal/$terminalId",
+        params: { terminalId: nextTerminalId },
+        search: (prev) => prev
+      });
     },
     [navigate]
   );

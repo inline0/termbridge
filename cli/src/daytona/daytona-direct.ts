@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { stat } from "node:fs/promises";
 import { Daytona, type Sandbox } from "@daytonaio/sdk";
 import type { Logger } from "../server/server";
 import type {
@@ -20,6 +21,48 @@ const noopLogger: Logger = {
   info: () => undefined,
   warn: () => undefined,
   error: () => undefined
+};
+
+const shellEscape = (value: string) => `'${value.replace(/'/g, `'"'"'`)}'`;
+
+const installLocalTermbridge = async (
+  sandbox: Sandbox,
+  startOptions: SandboxServerStartOptions,
+  logger: Logger
+) => {
+  if (!startOptions.localCliPackPath) {
+    return null;
+  }
+
+  try {
+    const cliStats = await stat(startOptions.localCliPackPath);
+    if (!cliStats.isFile()) {
+      logger.warn("Daytona: local CLI pack missing; falling back to npx");
+      return null;
+    }
+  } catch {
+    logger.warn("Daytona: local CLI pack missing; falling back to npx");
+    return null;
+  }
+
+  const npmCheck = await sandbox.process.executeCommand("command -v npm");
+  if (npmCheck.exitCode !== 0) {
+    logger.warn("Daytona: npm not available; falling back to npx");
+    return null;
+  }
+
+  const remotePackPath = `/tmp/termbridge-${randomBytes(4).toString("hex")}.tgz`;
+  await sandbox.fs.uploadFile(startOptions.localCliPackPath, remotePackPath);
+  const install = await sandbox.process.executeCommand(
+    `npm install -g ${shellEscape(remotePackPath)}`
+  );
+  if (install.exitCode !== 0) {
+    logger.warn("Daytona: local CLI install failed; falling back to npx");
+    return null;
+  }
+
+  logger.info("Daytona: installed local termbridge package");
+  return { useLocal: true };
 };
 
 const deriveRepoPath = (repoUrl: string) => {
@@ -57,46 +100,78 @@ const ensureTmux = async (sandbox: Sandbox, logger: Logger) => {
   }
 
   logger.info("Daytona: installing tmux");
-  const installScript = [
-    "set -e",
-    "SUDO=\"\"",
-    "if command -v sudo >/dev/null 2>&1; then SUDO=\"sudo\"; fi",
-    "if command -v apt-get >/dev/null 2>&1; then $SUDO apt-get update -y && $SUDO apt-get install -y tmux;",
-    "elif command -v apk >/dev/null 2>&1; then $SUDO apk add --no-cache tmux;",
-    "elif command -v dnf >/dev/null 2>&1; then $SUDO dnf install -y tmux;",
-    "elif command -v yum >/dev/null 2>&1; then $SUDO yum install -y tmux;",
-    "else echo 'tmux install failed: no supported package manager'; exit 1; fi"
-  ].join(" ");
 
-  const result = await sandbox.process.executeCommand(installScript);
-  if (result.exitCode !== 0) {
-    throw new Error("tmux install failed");
+  const sudoCheck = await sandbox.process.executeCommand("command -v sudo");
+  const sudoPrefix = sudoCheck.exitCode === 0 ? "sudo -E " : "";
+  const env = { DEBIAN_FRONTEND: "noninteractive" };
+  const installTimeout = 180;
+
+  const run = async (command: string, allowFailure = false) => {
+    const result = await sandbox.process.executeCommand(command, undefined, env, installTimeout);
+    if (!allowFailure && result.exitCode !== 0) {
+      const detail = result.result?.trim();
+      const message = detail
+        ? `tmux install failed: ${detail.slice(-1000)}`
+        : "tmux install failed";
+      throw new Error(message);
+    }
+    return result;
+  };
+
+  const hasCommand = async (name: string) => {
+    const result = await sandbox.process.executeCommand(`command -v ${name}`);
+    return result.exitCode === 0;
+  };
+
+  if (await hasCommand("apt-get")) {
+    await run(`${sudoPrefix}apt-get update -o Acquire::Retries=3 -o Acquire::ForceIPv4=true`, true);
+    await run(`${sudoPrefix}apt-get install -y tmux`);
+    return;
   }
+
+  if (await hasCommand("apk")) {
+    await run(`${sudoPrefix}apk add --no-cache tmux`);
+    return;
+  }
+
+  if (await hasCommand("dnf")) {
+    await run(`${sudoPrefix}dnf install -y tmux`);
+    return;
+  }
+
+  if (await hasCommand("yum")) {
+    await run(`${sudoPrefix}yum install -y tmux`);
+    return;
+  }
+
+  throw new Error("tmux install failed: no supported package manager");
 };
 
 const resolvePreviewUrl = async (
   sandbox: Sandbox,
   port: number,
-  logger: Logger
+  _logger: Logger
 ): Promise<string> => {
   const preview = await sandbox.getPreviewLink(port);
   if (!preview.url) {
     throw new Error("Daytona preview url unavailable");
   }
 
-  if (preview.token) {
-    try {
-      const signed = await sandbox.getSignedPreviewUrl(port, 60 * 60 * 24);
-      if (signed.url) {
-        return signed.url;
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "unknown error";
-      logger.warn(`Daytona: signed preview url failed (${message})`);
+  const withPreviewToken = (value: string) => {
+    if (!preview.token) {
+      return value;
     }
-  }
-
-  return preview.url;
+    try {
+      const parsed = new URL(value);
+      if (!parsed.searchParams.has("token")) {
+        parsed.searchParams.set("token", preview.token);
+      }
+      return parsed.toString();
+    } catch {
+      return value;
+    }
+  };
+  return withPreviewToken(preview.url);
 };
 
 const readShareUrl = async (sandbox: Sandbox, path: string, timeoutMs: number) => {
@@ -119,16 +194,32 @@ const readShareUrl = async (sandbox: Sandbox, path: string, timeoutMs: number) =
 };
 
 const parseShareUrl = (shareUrl: string) => {
-  const trimmed = shareUrl.trim();
+  let parsed: URL;
+  try {
+    parsed = new URL(shareUrl.trim());
+  } catch {
+    throw new Error("invalid share url");
+  }
+
   const marker = "/__tb/s/";
-  const index = trimmed.indexOf(marker);
+  const index = parsed.pathname.indexOf(marker);
   if (index === -1) {
     throw new Error("invalid share url");
   }
-  const publicUrl = trimmed.slice(0, index);
-  const token = trimmed.slice(index + marker.length);
-  if (!publicUrl || !token) {
+  const token = parsed.pathname.slice(index + marker.length);
+  if (!token) {
     throw new Error("invalid share url");
+  }
+
+  const basePath = parsed.pathname.slice(0, index);
+  const normalizedPath = basePath || "/";
+  parsed.pathname = normalizedPath;
+  parsed.hash = "";
+  let publicUrl = parsed.toString();
+  if (normalizedPath === "/" && parsed.search) {
+    publicUrl = `${parsed.origin}${parsed.search}`;
+  } else if (publicUrl.endsWith("/")) {
+    publicUrl = publicUrl.slice(0, -1);
   }
   return { publicUrl, token };
 };
@@ -183,6 +274,8 @@ export const createDaytonaSandboxServerProvider = (
         await installAgents(sandbox, startOptions.agentInstall, logger);
         await syncAgentAuth(sandbox, startOptions.agentAuth, logger);
 
+        const localCli = await installLocalTermbridge(sandbox, startOptions, logger);
+
         const publicUrl = normalizePublicUrl(
           await resolvePreviewUrl(sandbox, startOptions.serverPort, logger)
         );
@@ -193,8 +286,7 @@ export const createDaytonaSandboxServerProvider = (
         const logFile = `/tmp/termbridge-${runId}.log`;
 
         const args = [
-          "npx",
-          "termbridge",
+          ...(localCli ? ["termbridge"] : ["npx", "termbridge"]),
           "start",
           "--port",
           String(startOptions.serverPort),
@@ -205,6 +297,10 @@ export const createDaytonaSandboxServerProvider = (
 
         if (startOptions.proxyPort) {
           args.push("--proxy", String(startOptions.proxyPort));
+        }
+
+        if (startOptions.previewPort) {
+          args.push("--dev-proxy-url", `http://127.0.0.1:${startOptions.previewPort}`);
         }
 
         if (startOptions.sessionName) {
@@ -220,6 +316,8 @@ export const createDaytonaSandboxServerProvider = (
           TERMBRIDGE_PUBLIC_URL: publicUrl,
           TERMBRIDGE_SHARE_FILE: shareFile,
           TERMBRIDGE_TMUX_CWD: repoDir,
+          TERMBRIDGE_HOST: "0.0.0.0",
+          TERMBRIDGE_COOKIE_SAMESITE: "none",
           TERMBRIDGE_HIDE_TERMINAL_SWITCHER: startOptions.hideTerminalSwitcher ? "1" : undefined,
           ...startOptions.agentEnv
         });
@@ -229,7 +327,12 @@ export const createDaytonaSandboxServerProvider = (
 
         logger.info("Daytona: waiting for share url");
         const shareUrl = await readShareUrl(sandbox, shareFile, 90_000);
-        const parsed = parseShareUrl(shareUrl);
+        let parsed: { publicUrl: string; token: string };
+        try {
+          parsed = parseShareUrl(shareUrl);
+        } catch {
+          throw new Error(`invalid share url: ${shareUrl}`);
+        }
 
         const stop = async () => {
           try {

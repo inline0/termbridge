@@ -4,7 +4,13 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser } from "playwright";
-import { waitForTerminalText } from "./terminal-utils";
+import {
+  redeemShareUrl,
+  sendTerminalInputAndWait,
+  waitForTerminalConnected,
+  waitForTerminalText
+} from "./terminal-utils";
+import { buildUrl, parseShareUrl } from "./share-utils";
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const cliDir = resolve(rootDir, "cli");
@@ -37,6 +43,8 @@ const buildCli = () => {
   }
 };
 
+const failFastPatterns = [/Tunnel failed/i, /tmux install failed/i];
+
 const waitForMatch = (
   child: ChildProcessWithoutNullStreams,
   output: { stdout: string; stderr: string },
@@ -47,6 +55,23 @@ const waitForMatch = (
     const deadline = Date.now() + timeoutMs;
 
     const check = () => {
+      const failMatch = failFastPatterns.find(
+        (pattern) => pattern.test(output.stdout) || pattern.test(output.stderr)
+      );
+
+      if (failMatch) {
+        cleanup();
+        const summary = [
+          `fail fast: ${failMatch.source}`,
+          output.stdout ? `stdout:\n${output.stdout}` : "",
+          output.stderr ? `stderr:\n${output.stderr}` : ""
+        ]
+          .filter(Boolean)
+          .join("\n");
+        reject(new Error(summary));
+        return;
+      }
+
       const match = output.stdout.match(regex) ?? output.stderr.match(regex);
 
       if (match) {
@@ -69,6 +94,12 @@ const waitForMatch = (
     };
 
     const handleExit = (code: number | null, signal: NodeJS.Signals | null) => {
+      const match = output.stdout.match(regex) ?? output.stderr.match(regex);
+      if (match) {
+        cleanup();
+        resolvePromise(match);
+        return;
+      }
       cleanup();
       const summary = [
         `cli exited (${code ?? "unknown"}) ${signal ?? ""}`.trim(),
@@ -149,7 +180,7 @@ maybeDescribe("cli integration", () => {
   let child: ChildProcessWithoutNullStreams | null = null;
   let localUrl = "";
   let redeemUrl = "";
-  let token = "";
+  let publicBase: URL | null = null;
   let sessionName = "";
   let browser: Browser | null = null;
 
@@ -196,9 +227,9 @@ maybeDescribe("cli integration", () => {
       45_000
     );
     redeemUrl = tunnelMatch[1] ?? "";
-    token = redeemUrl.split("/__tb/s/")[1] ?? "";
+    publicBase = parseShareUrl(redeemUrl).baseUrl;
 
-    if (!localUrl || !redeemUrl || !token) {
+    if (!localUrl || !redeemUrl || !publicBase) {
       throw new Error("failed to parse cli output");
     }
 
@@ -292,35 +323,28 @@ maybeDescribe("cli integration", () => {
       });
     });
 
-    const redeem = await withTimeout(
-      fetch(`${localUrl}/__tb/s/${token}`, { redirect: "manual" }),
-      10_000,
-      "redeem fetch"
-    );
+    const { baseUrl } = await redeemShareUrl(context, redeemUrl, {
+      fallbackBaseUrl: new URL(localUrl),
+      log: logStep
+    });
     logStep("token redeemed");
-    expect(redeem.status).toBe(302);
-    const cookieHeader = redeem.headers.get("set-cookie");
-    expect(cookieHeader).toBeTruthy();
-    const cookiePair = (cookieHeader ?? "").split(";")[0] ?? "";
-    const [name, value] = cookiePair.split("=");
-    await context.addCookies([{ name, value, url: localUrl }]);
-    logStep("cookies added");
-    const storedCookies = await context.cookies(localUrl);
+    publicBase = baseUrl;
+    const storedCookies = await context.cookies(publicBase.toString());
     logStep("cookies verified");
-    expect(storedCookies.some((cookie) => cookie.name === name && cookie.value === value)).toBe(
+    expect(storedCookies.length > 0).toBe(
       true
     );
 
     try {
       const [terminalsResponse] = await Promise.all([
         page.waitForResponse((response) => response.url().endsWith("/__tb/api/terminals")),
-        page.goto(`${localUrl}/__tb/app`, { waitUntil: "domcontentloaded" })
+        page.goto(buildUrl(publicBase, "__tb/app"), { waitUntil: "domcontentloaded" })
       ]);
       logStep("page loaded");
       expect(terminalsResponse.status()).toBe(200);
 
-      await page.waitForSelector(".terminal-host .xterm-screen canvas", { timeout: 45_000 });
-      logStep("terminal rows ready");
+      await waitForTerminalConnected(page, 45_000);
+      logStep("terminal connected");
 
       await Promise.race([
         statusPromise,
@@ -347,13 +371,8 @@ maybeDescribe("cli integration", () => {
       throw new Error([message, details].filter(Boolean).join("\n"));
     }
 
-    const sendResult = spawnSync("tmux", ["send-keys", "-t", sessionName, "-l", "echo termbridge-ui"]);
-    if (sendResult.status !== 0) {
-      throw new Error("tmux send-keys failed");
-    }
-    spawnSync("tmux", ["send-keys", "-t", sessionName, "C-m"]);
-    logStep("tmux output sent");
-
+    await sendTerminalInputAndWait(page, "echo termbridge-ui", /termbridge-ui/, 20_000);
+    logStep("terminal input confirmed");
     await Promise.race([
       outputPromise,
       new Promise<void>((_, reject) =>

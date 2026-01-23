@@ -12,12 +12,20 @@ const createPtyStub = () =>
   }) as unknown as IPty;
 
 describe("spawn-helper", () => {
+  const originalEnv = process.env.TERMBRIDGE_FORCE_SPAWN_HELPER;
+
   afterEach(() => {
+    if (originalEnv === undefined) {
+      delete process.env.TERMBRIDGE_FORCE_SPAWN_HELPER;
+    } else {
+      process.env.TERMBRIDGE_FORCE_SPAWN_HELPER = originalEnv;
+    }
     vi.resetModules();
     vi.restoreAllMocks();
   });
 
   it("marks spawn-helper as executable when needed", async () => {
+    process.env.TERMBRIDGE_FORCE_SPAWN_HELPER = "1";
     const accessSync = vi.fn(() => {
       throw new Error("no access");
     });
@@ -72,6 +80,7 @@ describe("spawn-helper", () => {
   });
 
   it("surfaces load errors", async () => {
+    process.env.TERMBRIDGE_FORCE_SPAWN_HELPER = "1";
     vi.doMock("node:fs", () => ({
       accessSync: vi.fn(),
       chmodSync: vi.fn(),
@@ -105,6 +114,7 @@ describe("spawn-helper", () => {
   });
 
   it("stringifies non-error failures", async () => {
+    process.env.TERMBRIDGE_FORCE_SPAWN_HELPER = "1";
     vi.doMock("node:fs", () => ({
       accessSync: vi.fn(),
       chmodSync: vi.fn(),
@@ -135,5 +145,43 @@ describe("spawn-helper", () => {
     expect(() => backend.onOutput("session", () => undefined)).toThrow(
       "node-pty spawn-helper unavailable: boom"
     );
+  });
+
+  it("skips spawn-helper checks on non-darwin by default", async () => {
+    delete process.env.TERMBRIDGE_FORCE_SPAWN_HELPER;
+    const accessSync = vi.fn();
+    const chmodSync = vi.fn();
+
+    vi.doMock("node:fs", () => ({
+      accessSync,
+      chmodSync,
+      constants: { X_OK: 1 }
+    }));
+
+    const requireFn = Object.assign(
+      () => {
+        throw new Error("boom");
+      },
+      {
+        resolve: () => "/fake/node-pty/lib/unixTerminal.js"
+      }
+    );
+
+    vi.doMock("node:module", () => ({
+      createRequire: () => requireFn
+    }));
+
+    const { createTmuxBackend } = await import("./index");
+    const backend = createTmuxBackend({
+      execFile: vi.fn(async () => ({ stdout: "" })),
+      spawnPty: vi.fn(() => createPtyStub()),
+      _platform: "linux"
+    });
+
+    await backend.createSession("session");
+
+    expect(() => backend.onOutput("session", () => undefined)).not.toThrow();
+    expect(accessSync).not.toHaveBeenCalled();
+    expect(chmodSync).not.toHaveBeenCalled();
   });
 });

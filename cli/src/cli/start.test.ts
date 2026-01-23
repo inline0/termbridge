@@ -77,6 +77,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -145,6 +147,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -189,6 +193,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -357,6 +363,33 @@ describe("startCommand", () => {
     expect(logger.warn).toHaveBeenCalledWith("QR output unavailable");
   });
 
+  it("rejects invalid public urls from the sandbox provider in direct mode", async () => {
+    const start = vi.fn(async () => ({
+      localUrl: "https://sandbox.example",
+      publicUrl: "not-a-url",
+      token: "token-invalid",
+      stop: vi.fn(async () => undefined)
+    }));
+    const createSandboxProvider = vi.fn(() => ({ start }));
+
+    await expect(
+      startCommand(
+        {
+          killOnExit: false,
+          noQr: true,
+          tunnel: "cloudflare",
+          backend: "daytona",
+          daytonaDirect: true
+        },
+        {
+          createSandboxProvider,
+          process: { on: vi.fn() } as unknown as NodeJS.Process,
+          logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+        }
+      )
+    ).rejects.toThrow("invalid public url");
+  });
+
   it("requires a public url when the tunnel is disabled", async () => {
     const listen = vi.fn(async (): Promise<StartedServer> => ({
       port: 4020,
@@ -380,6 +413,8 @@ describe("startCommand", () => {
           createTerminalRegistry: () => createTerminalRegistryStub(),
           createAuth: () => ({
             issueToken: () => ({ token: "token" }),
+            issueWsToken: () => ({ token: "ws-token" }),
+            redeemWsToken: () => null,
             redeemToken: () => null,
             getSession: () => null,
             getSessionFromRequest: () => null,
@@ -422,6 +457,8 @@ describe("startCommand", () => {
           createTerminalRegistry: () => createTerminalRegistryStub(),
           createAuth: () => ({
             issueToken: () => ({ token: "token" }),
+            issueWsToken: () => ({ token: "ws-token" }),
+            redeemWsToken: () => null,
             redeemToken: () => null,
             getSession: () => null,
             getSessionFromRequest: () => null,
@@ -463,6 +500,8 @@ describe("startCommand", () => {
           createTerminalRegistry: () => createTerminalRegistryStub(),
           createAuth: () => ({
             issueToken: () => ({ token: "token" }),
+            issueWsToken: () => ({ token: "ws-token" }),
+            redeemWsToken: () => null,
             redeemToken: () => null,
             getSession: () => null,
             getSessionFromRequest: () => null,
@@ -504,6 +543,8 @@ describe("startCommand", () => {
           createTerminalRegistry: () => createTerminalRegistryStub(),
           createAuth: () => ({
             issueToken: () => ({ token: "token" }),
+            issueWsToken: () => ({ token: "ws-token" }),
+            redeemWsToken: () => null,
             redeemToken: () => null,
             getSession: () => null,
             getSessionFromRequest: () => null,
@@ -527,6 +568,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -566,6 +609,109 @@ describe("startCommand", () => {
     await fsPromises.rm(tempDir, { recursive: true, force: true });
   });
 
+  it("writes share urls when public url includes query params", async () => {
+    const tempDir = await fsPromises.mkdtemp(join(tmpdir(), "termbridge-share-query-"));
+    const sharePath = join(tempDir, "share.txt");
+    const listen = vi.fn(async (): Promise<StartedServer> => ({
+      port: 4024,
+      close: vi.fn(async () => undefined)
+    }));
+    const auth: Auth = {
+      issueToken: () => ({ token: "token-query" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
+      redeemToken: () => null,
+      getSession: () => null,
+      getSessionFromRequest: () => null,
+      createSessionCookie: () => "",
+      verifyCsrfToken: () => false
+    };
+    const processRef = {
+      env: { TERMBRIDGE_SHARE_FILE: sharePath },
+      on: vi.fn()
+    } as unknown as NodeJS.Process;
+
+    const result = await startCommand(
+      { killOnExit: false, noQr: true, tunnel: "none", publicUrl: "https://public.example?token=abc" },
+      {
+        createServer: () => ({ listen }),
+        createAuth: () => auth,
+        createTerminalBackend: () => ({
+          createSession: vi.fn(async (name) => ({ name, createdAt: new Date() })),
+          write: vi.fn(async () => undefined),
+          resize: vi.fn(async () => undefined),
+          sendControl: vi.fn(async () => undefined),
+          scroll: vi.fn(async () => undefined),
+          onOutput: () => () => undefined,
+          closeSession: vi.fn(async () => undefined)
+        }),
+        createTerminalRegistry: () => createTerminalRegistryStub(),
+        process: processRef,
+        logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+      }
+    );
+
+    const contents = await fsPromises.readFile(sharePath, "utf8");
+    expect(contents.trim()).toBe("https://public.example/__tb/s/token-query?token=abc");
+
+    await result.stop();
+    await fsPromises.rm(tempDir, { recursive: true, force: true });
+  });
+
+  it("writes share urls when public url includes a trailing slash path", async () => {
+    const tempDir = await fsPromises.mkdtemp(join(tmpdir(), "termbridge-share-path-"));
+    const sharePath = join(tempDir, "share.txt");
+    const listen = vi.fn(async (): Promise<StartedServer> => ({
+      port: 4026,
+      close: vi.fn(async () => undefined)
+    }));
+    const auth: Auth = {
+      issueToken: () => ({ token: "token-path" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
+      redeemToken: () => null,
+      getSession: () => null,
+      getSessionFromRequest: () => null,
+      createSessionCookie: () => "",
+      verifyCsrfToken: () => false
+    };
+    const processRef = {
+      env: { TERMBRIDGE_SHARE_FILE: sharePath },
+      on: vi.fn()
+    } as unknown as NodeJS.Process;
+
+    const result = await startCommand(
+      {
+        killOnExit: false,
+        noQr: true,
+        tunnel: "none",
+        publicUrl: "https://public.example/prefix/"
+      },
+      {
+        createServer: () => ({ listen }),
+        createAuth: () => auth,
+        createTerminalBackend: () => ({
+          createSession: vi.fn(async (name) => ({ name, createdAt: new Date() })),
+          write: vi.fn(async () => undefined),
+          resize: vi.fn(async () => undefined),
+          sendControl: vi.fn(async () => undefined),
+          scroll: vi.fn(async () => undefined),
+          onOutput: () => () => undefined,
+          closeSession: vi.fn(async () => undefined)
+        }),
+        createTerminalRegistry: () => createTerminalRegistryStub(),
+        process: processRef,
+        logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+      }
+    );
+
+    const contents = await fsPromises.readFile(sharePath, "utf8");
+    expect(contents.trim()).toBe("https://public.example/prefix/__tb/s/token-path");
+
+    await result.stop();
+    await fsPromises.rm(tempDir, { recursive: true, force: true });
+  });
+
   it("logs when share file writes fail", async () => {
     const listen = vi.fn(async (): Promise<StartedServer> => ({
       port: 4025,
@@ -575,6 +721,8 @@ describe("startCommand", () => {
     const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -620,6 +768,8 @@ describe("startCommand", () => {
     const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -689,6 +839,8 @@ describe("startCommand", () => {
           createTerminalRegistry: () => createTerminalRegistryStub(),
           createAuth: () => ({
             issueToken: () => ({ token: "token" }),
+            issueWsToken: () => ({ token: "ws-token" }),
+            redeemWsToken: () => null,
             redeemToken: () => null,
             getSession: () => null,
             getSessionFromRequest: () => null,
@@ -725,6 +877,8 @@ describe("startCommand", () => {
           createTerminalRegistry: () => createTerminalRegistryStub(),
           createAuth: () => ({
             issueToken: () => ({ token: "token" }),
+            issueWsToken: () => ({ token: "ws-token" }),
+            redeemWsToken: () => null,
             redeemToken: () => null,
             getSession: () => null,
             getSessionFromRequest: () => null,
@@ -748,6 +902,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -798,6 +954,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -866,6 +1024,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -943,6 +1103,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -1010,6 +1172,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -1083,6 +1247,8 @@ describe("startCommand", () => {
 
       const auth: Auth = {
         issueToken: () => ({ token: "token" }),
+        issueWsToken: () => ({ token: "ws-token" }),
+        redeemWsToken: () => null,
         redeemToken: () => null,
         getSession: () => null,
         getSessionFromRequest: () => null,
@@ -1161,6 +1327,8 @@ describe("startCommand", () => {
 
       const auth: Auth = {
         issueToken: () => ({ token: "token" }),
+        issueWsToken: () => ({ token: "ws-token" }),
+        redeemWsToken: () => null,
         redeemToken: () => null,
         getSession: () => null,
         getSessionFromRequest: () => null,
@@ -1229,6 +1397,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -1343,6 +1513,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -1409,6 +1581,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -1475,6 +1649,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -1537,6 +1713,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -1604,6 +1782,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -1681,6 +1861,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -1748,6 +1930,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -1815,6 +1999,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -1880,6 +2066,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -1949,6 +2137,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -2016,6 +2206,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -2050,6 +2242,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -2102,6 +2296,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -2153,6 +2349,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -2207,6 +2405,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -2261,6 +2461,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -2316,6 +2518,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -2371,6 +2575,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -2429,6 +2635,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -2487,6 +2695,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,
@@ -2541,6 +2751,8 @@ describe("startCommand", () => {
 
     const auth: Auth = {
       issueToken: () => ({ token: "token" }),
+      issueWsToken: () => ({ token: "ws-token" }),
+      redeemWsToken: () => null,
       redeemToken: () => null,
       getSession: () => null,
       getSessionFromRequest: () => null,

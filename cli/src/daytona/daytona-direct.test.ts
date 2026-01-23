@@ -1,4 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { Logger } from "../server/server";
 import { createDaytonaSandboxServerProvider } from "./daytona-direct";
 
@@ -19,7 +22,8 @@ const mocks = vi.hoisted(() => {
       )
     },
     fs: {
-      downloadFile: vi.fn(async (_path: string) => Buffer.from(""))
+      downloadFile: vi.fn(async (_path: string) => Buffer.from("")),
+      uploadFile: vi.fn(async () => undefined)
     },
     getPreviewLink: vi.fn(),
     getSignedPreviewUrl: vi.fn(),
@@ -81,6 +85,7 @@ beforeEach(() => {
   mocks.sandbox.process.executeCommand.mockReset();
   mocks.sandbox.process.executeCommand.mockResolvedValue({ exitCode: 0 });
   mocks.sandbox.fs.downloadFile.mockReset();
+  mocks.sandbox.fs.uploadFile.mockReset();
   mocks.sandbox.getPreviewLink.mockReset();
   mocks.sandbox.getSignedPreviewUrl.mockReset();
   mocks.sandbox.getWorkDir.mockReset();
@@ -109,6 +114,7 @@ describe("createDaytonaSandboxServerProvider", () => {
     const provider = createProvider();
     const startPromise = provider.start({
       ...baseOptions,
+      previewPort: 5173,
       proxyPort: 5173,
       sessionName: "session",
       killOnExit: true,
@@ -121,10 +127,13 @@ describe("createDaytonaSandboxServerProvider", () => {
     expect(result.publicUrl).toBe("https://preview.example");
     const startCall = findStartCall();
     expect(startCall?.[0]).toContain("--proxy 5173");
+    expect(startCall?.[0]).toContain("--dev-proxy-url http://127.0.0.1:5173");
     expect(startCall?.[0]).toContain("--session session");
     expect(startCall?.[0]).toContain("--kill-on-exit");
     expect(startCall?.[2]).toMatchObject({
       TERMBRIDGE_PUBLIC_URL: "https://preview.example",
+      TERMBRIDGE_HOST: "0.0.0.0",
+      TERMBRIDGE_COOKIE_SAMESITE: "none",
       TERMBRIDGE_HIDE_TERMINAL_SWITCHER: "1"
     });
 
@@ -135,12 +144,57 @@ describe("createDaytonaSandboxServerProvider", () => {
     expect(mocks.daytonaDelete).not.toHaveBeenCalled();
   });
 
-  it("uses the signed preview url when available", async () => {
+  it("preserves preview query params in share urls", async () => {
+    mocks.sandbox.getPreviewLink.mockResolvedValue({
+      url: "https://preview.example?token=abc",
+      token: ""
+    });
+    mocks.sandbox.fs.downloadFile.mockImplementation(async (path: string) => {
+      if (path.includes("share")) {
+        return Buffer.from("https://preview.example/__tb/s/token-query?token=abc");
+      }
+      if (path.includes(".pid")) {
+        return Buffer.from("99");
+      }
+      throw new Error("missing");
+    });
+
+    const provider = createProvider();
+    const result = await provider.start({ ...baseOptions });
+
+    expect(result.publicUrl).toBe("https://preview.example?token=abc");
+    expect(result.token).toBe("token-query");
+
+    await result.stop();
+  });
+
+  it("parses share urls with path prefixes", async () => {
+    mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example/prefix", token: "" });
+    mocks.sandbox.fs.downloadFile.mockImplementation(async (path: string) => {
+      if (path.includes("share")) {
+        return Buffer.from("https://preview.example/prefix/__tb/s/token-path");
+      }
+      if (path.includes(".pid")) {
+        return Buffer.from("101");
+      }
+      throw new Error("missing");
+    });
+
+    const provider = createProvider();
+    const result = await provider.start({ ...baseOptions });
+
+    expect(result.publicUrl).toBe("https://preview.example/prefix");
+    expect(result.token).toBe("token-path");
+
+    await result.stop();
+  });
+
+  it("prefers the preview url even when a signed preview is available", async () => {
     mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example", token: "token" });
     mocks.sandbox.getSignedPreviewUrl.mockResolvedValue({ url: "https://signed.example" });
     mocks.sandbox.fs.downloadFile.mockImplementation(async (path: string) => {
       if (path.includes("share")) {
-        return Buffer.from("https://signed.example/__tb/s/token-abc");
+        return Buffer.from("https://preview.example/__tb/s/token-abc?token=token");
       }
       if (path.includes(".pid")) {
         return Buffer.from("not-a-number");
@@ -156,7 +210,8 @@ describe("createDaytonaSandboxServerProvider", () => {
 
     const startCall = findStartCall();
     expect(startCall?.[2]).toMatchObject({
-      TERMBRIDGE_PUBLIC_URL: "https://signed.example"
+      TERMBRIDGE_PUBLIC_URL: "https://preview.example/?token=token",
+      TERMBRIDGE_COOKIE_SAMESITE: "none"
     });
     expect(startCall?.[2]).not.toHaveProperty("TERMBRIDGE_HIDE_TERMINAL_SWITCHER");
     expect(startCall?.[1]).toBe("/workspace/repo");
@@ -164,97 +219,15 @@ describe("createDaytonaSandboxServerProvider", () => {
     await result.stop();
   });
 
-  it("falls back when the signed preview url is empty", async () => {
-    mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example", token: "token" });
-    mocks.sandbox.getSignedPreviewUrl.mockResolvedValue({ url: "" });
-    mocks.sandbox.fs.downloadFile.mockImplementation(async (path: string) => {
-      if (path.includes("share")) {
-        return Buffer.from("https://preview.example/__tb/s/token-empty");
-      }
-      if (path.includes(".pid")) {
-        return Buffer.from("111");
-      }
-      throw new Error("missing");
-    });
-
-    const provider = createProvider();
-    const result = await provider.start({ ...baseOptions });
-
-    const startCall = findStartCall();
-    expect(startCall?.[2]).toMatchObject({
-      TERMBRIDGE_PUBLIC_URL: "https://preview.example"
-    });
-
-    await result.stop();
-  });
-
-  it("falls back to preview url when signed preview fails", async () => {
-    const logger = createLogger();
-    mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example", token: "token" });
-    mocks.sandbox.getSignedPreviewUrl.mockRejectedValue(new Error("signed failed"));
+  it("falls back to the repo path when no work dir is reported", async () => {
+    mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example", token: "" });
     mocks.sandbox.getWorkDir.mockResolvedValue(undefined);
     mocks.sandbox.fs.downloadFile.mockImplementation(async (path: string) => {
       if (path.includes("share")) {
-        return Buffer.from("https://preview.example/__tb/s/token-def");
-      }
-      throw new Error("missing");
-    });
-
-    const provider = createProvider(logger);
-    const result = await provider.start({
-      ...baseOptions,
-      repoUrl: "https://example.com/repo"
-    });
-
-    const startCall = findStartCall();
-    expect(startCall?.[2]).toMatchObject({
-      TERMBRIDGE_PUBLIC_URL: "https://preview.example"
-    });
-    expect(startCall?.[1]).toBe("repo");
-    expect(logger.warn).toHaveBeenCalledWith(
-      expect.stringContaining("Daytona: signed preview url failed")
-    );
-
-    await result.stop();
-  });
-
-  it("falls back to preview url when signed preview fails with non-errors", async () => {
-    const logger = createLogger();
-    mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example", token: "token" });
-    mocks.sandbox.getSignedPreviewUrl.mockRejectedValue("signed failed");
-    mocks.sandbox.fs.downloadFile.mockImplementation(async (path: string) => {
-      if (path.includes("share")) {
-        return Buffer.from("https://preview.example/__tb/s/token-nonerror");
+        return Buffer.from("https://preview.example/__tb/s/token-no-workdir");
       }
       if (path.includes(".pid")) {
-        return Buffer.from("333");
-      }
-      throw new Error("missing");
-    });
-
-    const provider = createProvider(logger);
-    const result = await provider.start({ ...baseOptions });
-
-    const startCall = findStartCall();
-    expect(startCall?.[2]).toMatchObject({
-      TERMBRIDGE_PUBLIC_URL: "https://preview.example"
-    });
-    expect(logger.warn).toHaveBeenCalledWith(
-      expect.stringContaining("Daytona: signed preview url failed")
-    );
-
-    await result.stop();
-  });
-
-  it("falls back to preview url when signed preview fails without a logger", async () => {
-    mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example", token: "token" });
-    mocks.sandbox.getSignedPreviewUrl.mockRejectedValue(new Error("signed failed"));
-    mocks.sandbox.fs.downloadFile.mockImplementation(async (path: string) => {
-      if (path.includes("share")) {
-        return Buffer.from("https://preview.example/__tb/s/token-noop");
-      }
-      if (path.includes(".pid")) {
-        return Buffer.from("222");
+        return Buffer.from("901");
       }
       throw new Error("missing");
     });
@@ -263,17 +236,62 @@ describe("createDaytonaSandboxServerProvider", () => {
     const result = await provider.start({ ...baseOptions });
 
     const startCall = findStartCall();
-    expect(startCall?.[2]).toMatchObject({
-      TERMBRIDGE_PUBLIC_URL: "https://preview.example"
+    expect(startCall?.[1]).toBe("termbridge-test-app");
+    expect(startCall?.[2]).toMatchObject({ TERMBRIDGE_TMUX_CWD: "termbridge-test-app" });
+
+    await result.stop();
+  });
+
+  it("derives repo paths without .git suffixes", async () => {
+    mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example", token: "" });
+    mocks.sandbox.getWorkDir.mockResolvedValue(undefined);
+    mocks.sandbox.fs.downloadFile.mockImplementation(async (path: string) => {
+      if (path.includes("share")) {
+        return Buffer.from("https://preview.example/__tb/s/token-no-suffix");
+      }
+      if (path.includes(".pid")) {
+        return Buffer.from("902");
+      }
+      throw new Error("missing");
     });
+
+    const provider = createProvider();
+    const result = await provider.start({
+      ...baseOptions,
+      repoUrl: "https://github.com/inline0/termbridge-test-app"
+    });
+
+    const startCall = findStartCall();
+    expect(startCall?.[1]).toBe("termbridge-test-app");
 
     await result.stop();
   });
 
   it("installs tmux when missing", async () => {
     mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example", token: "" });
+    let installCommand = "";
     mocks.sandbox.process.executeCommand.mockImplementation(async (command: string) => {
       if (command.includes("command -v tmux")) {
+        return { exitCode: 1 };
+      }
+      if (command.includes("command -v sudo")) {
+        return { exitCode: 0 };
+      }
+      if (command.includes("command -v apt-get")) {
+        return { exitCode: 0 };
+      }
+      if (command.includes("apt-get update")) {
+        return { exitCode: 0 };
+      }
+      if (command.includes("apt-get install -y tmux")) {
+        installCommand = command;
+        return { exitCode: 0 };
+      }
+      if (
+        command.includes("command -v apk") ||
+        command.includes("command -v dnf") ||
+        command.includes("command -v yum")
+      ) {
         return { exitCode: 1 };
       }
       return { exitCode: 0 };
@@ -295,9 +313,421 @@ describe("createDaytonaSandboxServerProvider", () => {
     const result = await provider.start({ ...baseOptions, deleteOnExit: true });
 
     expect(logger.info).toHaveBeenCalledWith("Daytona: installing tmux");
+    expect(installCommand).toContain("apt-get install -y tmux");
     await result.stop();
     expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Daytona: stop failed"));
     expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Daytona: delete failed"));
+  });
+
+  it("installs tmux without sudo when sudo is unavailable", async () => {
+    mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example", token: "" });
+    let installCommand = "";
+    mocks.sandbox.process.executeCommand.mockImplementation(async (command: string) => {
+      if (command.includes("command -v tmux")) {
+        return { exitCode: 1 };
+      }
+      if (command.includes("command -v sudo")) {
+        return { exitCode: 1 };
+      }
+      if (command.includes("command -v apt-get")) {
+        return { exitCode: 0 };
+      }
+      if (command.includes("apt-get update")) {
+        return { exitCode: 0 };
+      }
+      if (command.includes("apt-get install -y tmux")) {
+        installCommand = command;
+        return { exitCode: 0 };
+      }
+      if (
+        command.includes("command -v apk") ||
+        command.includes("command -v dnf") ||
+        command.includes("command -v yum")
+      ) {
+        return { exitCode: 1 };
+      }
+      return { exitCode: 0 };
+    });
+    mocks.sandbox.fs.downloadFile.mockImplementation(async (path: string) => {
+      if (path.includes("share")) {
+        return Buffer.from("https://preview.example/__tb/s/token-no-sudo");
+      }
+      if (path.includes(".pid")) {
+        return Buffer.from("567");
+      }
+      throw new Error("missing");
+    });
+
+    const provider = createProvider();
+    const result = await provider.start({ ...baseOptions });
+
+    expect(installCommand).toContain("apt-get install -y tmux");
+    expect(installCommand).not.toContain("sudo -E");
+    await result.stop();
+  });
+
+  it("uses the local CLI pack when available", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "termbridge-pack-"));
+    const packPath = join(tempDir, "termbridge.tgz");
+    await writeFile(packPath, "tgz");
+
+    mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example", token: "" });
+    mocks.sandbox.process.executeCommand.mockImplementation(async (command: string) => {
+      if (command.includes("command -v tmux")) {
+        return { exitCode: 0 };
+      }
+      if (command.includes("command -v npm")) {
+        return { exitCode: 0 };
+      }
+      if (command.includes("npm install -g")) {
+        return { exitCode: 0 };
+      }
+      return { exitCode: 0 };
+    });
+    mocks.sandbox.fs.downloadFile.mockImplementation(async (path: string) => {
+      if (path.includes("share")) {
+        return Buffer.from("https://preview.example/__tb/s/token-local");
+      }
+      if (path.includes(".pid")) {
+        return Buffer.from("777");
+      }
+      throw new Error("missing");
+    });
+
+    const provider = createProvider();
+    const result = await provider.start({ ...baseOptions, localCliPackPath: packPath });
+    const startCall = findStartCall();
+    expect(String(startCall?.[0])).toContain("nohup termbridge start");
+    expect(mocks.sandbox.fs.uploadFile).toHaveBeenCalledWith(
+      packPath,
+      expect.stringContaining("/tmp/termbridge-")
+    );
+
+    await result.stop();
+  });
+
+  it("falls back when the local CLI pack path is missing", async () => {
+    mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example", token: "" });
+    mocks.sandbox.process.executeCommand.mockImplementation(async (command: string) => {
+      if (command.includes("command -v tmux")) {
+        return { exitCode: 0 };
+      }
+      return { exitCode: 0 };
+    });
+    mocks.sandbox.fs.downloadFile.mockImplementation(async (path: string) => {
+      if (path.includes("share")) {
+        return Buffer.from("https://preview.example/__tb/s/token-missing-pack");
+      }
+      if (path.includes(".pid")) {
+        return Buffer.from("888");
+      }
+      throw new Error("missing");
+    });
+
+    const logger = createLogger();
+    const provider = createProvider(logger);
+    const result = await provider.start({
+      ...baseOptions,
+      localCliPackPath: "/nope/termbridge.tgz"
+    });
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      "Daytona: local CLI pack missing; falling back to npx"
+    );
+    const startCall = findStartCall();
+    expect(String(startCall?.[0])).toContain("nohup npx termbridge start");
+    await result.stop();
+  });
+
+  it("falls back when the local CLI pack path is not a file", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "termbridge-pack-dir-"));
+
+    mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example", token: "" });
+    mocks.sandbox.process.executeCommand.mockImplementation(async (command: string) => {
+      if (command.includes("command -v tmux")) {
+        return { exitCode: 0 };
+      }
+      return { exitCode: 0 };
+    });
+    mocks.sandbox.fs.downloadFile.mockImplementation(async (path: string) => {
+      if (path.includes("share")) {
+        return Buffer.from("https://preview.example/__tb/s/token-pack-dir");
+      }
+      if (path.includes(".pid")) {
+        return Buffer.from("333");
+      }
+      throw new Error("missing");
+    });
+
+    const logger = createLogger();
+    const provider = createProvider(logger);
+    const result = await provider.start({ ...baseOptions, localCliPackPath: tempDir });
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      "Daytona: local CLI pack missing; falling back to npx"
+    );
+    const startCall = findStartCall();
+    expect(String(startCall?.[0])).toContain("nohup npx termbridge start");
+    await result.stop();
+  });
+
+  it("falls back to npx without a custom logger", async () => {
+    mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example", token: "" });
+    mocks.sandbox.process.executeCommand.mockImplementation(async (command: string) => {
+      if (command.includes("command -v tmux")) {
+        return { exitCode: 0 };
+      }
+      return { exitCode: 0 };
+    });
+    mocks.sandbox.fs.downloadFile.mockImplementation(async (path: string) => {
+      if (path.includes("share")) {
+        return Buffer.from("https://preview.example/__tb/s/token-no-logger");
+      }
+      if (path.includes(".pid")) {
+        return Buffer.from("444");
+      }
+      throw new Error("missing");
+    });
+
+    const provider = createProvider();
+    const result = await provider.start({
+      ...baseOptions,
+      localCliPackPath: "/missing/termbridge.tgz"
+    });
+
+    const startCall = findStartCall();
+    expect(String(startCall?.[0])).toContain("nohup npx termbridge start");
+    await result.stop();
+  });
+
+  it("falls back when npm is unavailable for local CLI packs", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "termbridge-pack-"));
+    const packPath = join(tempDir, "termbridge.tgz");
+    await writeFile(packPath, "tgz");
+
+    mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example", token: "" });
+    mocks.sandbox.process.executeCommand.mockImplementation(async (command: string) => {
+      if (command.includes("command -v tmux")) {
+        return { exitCode: 0 };
+      }
+      if (command.includes("command -v npm")) {
+        return { exitCode: 1 };
+      }
+      return { exitCode: 0 };
+    });
+    mocks.sandbox.fs.downloadFile.mockImplementation(async (path: string) => {
+      if (path.includes("share")) {
+        return Buffer.from("https://preview.example/__tb/s/token-no-npm");
+      }
+      if (path.includes(".pid")) {
+        return Buffer.from("111");
+      }
+      throw new Error("missing");
+    });
+
+    const logger = createLogger();
+    const provider = createProvider(logger);
+    const result = await provider.start({ ...baseOptions, localCliPackPath: packPath });
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      "Daytona: npm not available; falling back to npx"
+    );
+    const startCall = findStartCall();
+    expect(String(startCall?.[0])).toContain("nohup npx termbridge start");
+    await result.stop();
+  });
+
+  it("falls back when local CLI install fails", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "termbridge-pack-"));
+    const packPath = join(tempDir, "termbridge.tgz");
+    await writeFile(packPath, "tgz");
+
+    mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example", token: "" });
+    mocks.sandbox.process.executeCommand.mockImplementation(async (command: string) => {
+      if (command.includes("command -v tmux")) {
+        return { exitCode: 0 };
+      }
+      if (command.includes("command -v npm")) {
+        return { exitCode: 0 };
+      }
+      if (command.includes("npm install -g")) {
+        return { exitCode: 1 };
+      }
+      return { exitCode: 0 };
+    });
+    mocks.sandbox.fs.downloadFile.mockImplementation(async (path: string) => {
+      if (path.includes("share")) {
+        return Buffer.from("https://preview.example/__tb/s/token-install-fail");
+      }
+      if (path.includes(".pid")) {
+        return Buffer.from("222");
+      }
+      throw new Error("missing");
+    });
+
+    const logger = createLogger();
+    const provider = createProvider(logger);
+    const result = await provider.start({ ...baseOptions, localCliPackPath: packPath });
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      "Daytona: local CLI install failed; falling back to npx"
+    );
+    const startCall = findStartCall();
+    expect(String(startCall?.[0])).toContain("nohup npx termbridge start");
+    await result.stop();
+  });
+
+  it("installs tmux with apk when available", async () => {
+    mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example", token: "" });
+    let installCommand = "";
+    mocks.sandbox.process.executeCommand.mockImplementation(async (command: string) => {
+      if (command.includes("command -v tmux")) {
+        return { exitCode: 1 };
+      }
+      if (command.includes("command -v sudo")) {
+        return { exitCode: 0 };
+      }
+      if (command.includes("command -v apt-get")) {
+        return { exitCode: 1 };
+      }
+      if (command.includes("command -v apk")) {
+        return { exitCode: 0 };
+      }
+      if (command.includes("apk add --no-cache tmux")) {
+        installCommand = command;
+        return { exitCode: 0 };
+      }
+      return { exitCode: 0 };
+    });
+    mocks.sandbox.fs.downloadFile.mockImplementation(async (path: string) => {
+      if (path.includes("share")) {
+        return Buffer.from("https://preview.example/__tb/s/token-apk");
+      }
+      if (path.includes(".pid")) {
+        return Buffer.from("321");
+      }
+      throw new Error("missing");
+    });
+
+    const provider = createProvider();
+    const result = await provider.start({ ...baseOptions });
+
+    expect(installCommand).toContain("apk add --no-cache tmux");
+    await result.stop();
+  });
+
+  it("installs tmux with dnf when available", async () => {
+    mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example", token: "" });
+    let installCommand = "";
+    mocks.sandbox.process.executeCommand.mockImplementation(async (command: string) => {
+      if (command.includes("command -v tmux")) {
+        return { exitCode: 1 };
+      }
+      if (command.includes("command -v sudo")) {
+        return { exitCode: 0 };
+      }
+      if (command.includes("command -v apt-get")) {
+        return { exitCode: 1 };
+      }
+      if (command.includes("command -v apk")) {
+        return { exitCode: 1 };
+      }
+      if (command.includes("command -v dnf")) {
+        return { exitCode: 0 };
+      }
+      if (command.includes("dnf install -y tmux")) {
+        installCommand = command;
+        return { exitCode: 0 };
+      }
+      return { exitCode: 0 };
+    });
+    mocks.sandbox.fs.downloadFile.mockImplementation(async (path: string) => {
+      if (path.includes("share")) {
+        return Buffer.from("https://preview.example/__tb/s/token-dnf");
+      }
+      if (path.includes(".pid")) {
+        return Buffer.from("654");
+      }
+      throw new Error("missing");
+    });
+
+    const provider = createProvider();
+    const result = await provider.start({ ...baseOptions });
+
+    expect(installCommand).toContain("dnf install -y tmux");
+    await result.stop();
+  });
+
+  it("installs tmux with yum when available", async () => {
+    mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example", token: "" });
+    let installCommand = "";
+    mocks.sandbox.process.executeCommand.mockImplementation(async (command: string) => {
+      if (command.includes("command -v tmux")) {
+        return { exitCode: 1 };
+      }
+      if (command.includes("command -v sudo")) {
+        return { exitCode: 0 };
+      }
+      if (command.includes("command -v apt-get")) {
+        return { exitCode: 1 };
+      }
+      if (command.includes("command -v apk")) {
+        return { exitCode: 1 };
+      }
+      if (command.includes("command -v dnf")) {
+        return { exitCode: 1 };
+      }
+      if (command.includes("command -v yum")) {
+        return { exitCode: 0 };
+      }
+      if (command.includes("yum install -y tmux")) {
+        installCommand = command;
+        return { exitCode: 0 };
+      }
+      return { exitCode: 0 };
+    });
+    mocks.sandbox.fs.downloadFile.mockImplementation(async (path: string) => {
+      if (path.includes("share")) {
+        return Buffer.from("https://preview.example/__tb/s/token-yum");
+      }
+      if (path.includes(".pid")) {
+        return Buffer.from("999");
+      }
+      throw new Error("missing");
+    });
+
+    const provider = createProvider();
+    const result = await provider.start({ ...baseOptions });
+
+    expect(installCommand).toContain("yum install -y tmux");
+    await result.stop();
+  });
+
+  it("errors when no supported package manager exists", async () => {
+    mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example", token: "" });
+    mocks.sandbox.process.executeCommand.mockImplementation(async (command: string) => {
+      if (command.includes("command -v tmux")) {
+        return { exitCode: 1 };
+      }
+      if (command.includes("command -v sudo")) {
+        return { exitCode: 0 };
+      }
+      if (
+        command.includes("command -v apt-get") ||
+        command.includes("command -v apk") ||
+        command.includes("command -v dnf") ||
+        command.includes("command -v yum")
+      ) {
+        return { exitCode: 1 };
+      }
+      return { exitCode: 0 };
+    });
+
+    const provider = createProvider();
+
+    await expect(provider.start({ ...baseOptions })).rejects.toThrow(
+      "tmux install failed: no supported package manager"
+    );
   });
 
   it("cleans up and reports errors when tmux install fails", async () => {
@@ -307,8 +737,17 @@ describe("createDaytonaSandboxServerProvider", () => {
       if (command.includes("command -v tmux")) {
         return { exitCode: 1 };
       }
-      if (command.includes("tmux install failed")) {
-        return { exitCode: 1 };
+      if (command.includes("command -v sudo")) {
+        return { exitCode: 0 };
+      }
+      if (command.includes("command -v apt-get")) {
+        return { exitCode: 0 };
+      }
+      if (command.includes("apt-get update")) {
+        return { exitCode: 0 };
+      }
+      if (command.includes("apt-get install -y tmux")) {
+        return { exitCode: 1, result: "apt-get blew up" };
       }
       return { exitCode: 0 };
     });
@@ -322,10 +761,36 @@ describe("createDaytonaSandboxServerProvider", () => {
         ...baseOptions,
         deleteOnExit: true
       })
-    ).rejects.toThrow("tmux install failed");
+    ).rejects.toThrow("tmux install failed: apt-get blew up");
 
     expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Daytona: stop failed"));
     expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Daytona: delete failed"));
+  });
+
+  it("reports a generic error when tmux install fails without detail", async () => {
+    mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example", token: "" });
+    mocks.sandbox.process.executeCommand.mockImplementation(async (command: string) => {
+      if (command.includes("command -v tmux")) {
+        return { exitCode: 1 };
+      }
+      if (command.includes("command -v sudo")) {
+        return { exitCode: 0 };
+      }
+      if (command.includes("command -v apt-get")) {
+        return { exitCode: 0 };
+      }
+      if (command.includes("apt-get update")) {
+        return { exitCode: 0 };
+      }
+      if (command.includes("apt-get install -y tmux")) {
+        return { exitCode: 1 };
+      }
+      return { exitCode: 0 };
+    });
+
+    const provider = createProvider();
+
+    await expect(provider.start({ ...baseOptions })).rejects.toThrow("tmux install failed");
   });
 
   it("cleans up with non-error failures when startup crashes", async () => {
@@ -349,8 +814,17 @@ describe("createDaytonaSandboxServerProvider", () => {
       if (command.includes("command -v tmux")) {
         return { exitCode: 1 };
       }
-      if (command.includes("tmux install failed")) {
-        return { exitCode: 1 };
+      if (command.includes("command -v sudo")) {
+        return { exitCode: 0 };
+      }
+      if (command.includes("command -v apt-get")) {
+        return { exitCode: 0 };
+      }
+      if (command.includes("apt-get update")) {
+        return { exitCode: 0 };
+      }
+      if (command.includes("apt-get install -y tmux")) {
+        return { exitCode: 1, result: "install failed" };
       }
       return { exitCode: 0 };
     });
@@ -425,6 +899,20 @@ describe("createDaytonaSandboxServerProvider", () => {
     ).rejects.toThrow("invalid share url");
   });
 
+  it("rejects share urls without the share marker", async () => {
+    mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example", token: "" });
+    mocks.sandbox.fs.downloadFile.mockImplementation(async (path: string) => {
+      if (path.includes("share")) {
+        return Buffer.from("https://preview.example/nope");
+      }
+      throw new Error("missing");
+    });
+
+    const provider = createProvider();
+
+    await expect(provider.start({ ...baseOptions })).rejects.toThrow("invalid share url");
+  });
+
   it("rejects share urls without tokens", async () => {
     mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example", token: "" });
     mocks.sandbox.fs.downloadFile.mockImplementation(async (path: string) => {
@@ -459,6 +947,14 @@ describe("createDaytonaSandboxServerProvider", () => {
 
   it("rejects malformed preview urls", async () => {
     mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "not a url", token: "" });
+
+    const provider = createProvider();
+
+    await expect(provider.start({ ...baseOptions })).rejects.toThrow("invalid public url");
+  });
+
+  it("rejects malformed preview urls when token parsing fails", async () => {
+    mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "not a url", token: "token" });
 
     const provider = createProvider();
 

@@ -5,10 +5,28 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
-import { focusTerminal, waitForTerminalText } from "./terminal-utils";
+import {
+  redeemShareUrl,
+  sendTerminalInputAndWait,
+  waitForTerminalConnected,
+  waitForTerminalText
+} from "./terminal-utils";
+import { buildUrl, parseShareUrl } from "./share-utils";
 import { Daytona } from "@daytonaio/sdk";
 
-const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const resolveRepoRoot = () => {
+  const cwd = process.cwd();
+  if (existsSync(resolve(cwd, "cli", "package.json"))) {
+    return cwd;
+  }
+  const parent = resolve(cwd, "..");
+  if (existsSync(resolve(parent, "cli", "package.json"))) {
+    return parent;
+  }
+  return resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+};
+
+const rootDir = resolveRepoRoot();
 const cliDir = resolve(rootDir, "cli");
 const distBin = resolve(cliDir, "dist/bin.js");
 const testAppDir = resolve(rootDir, "../termbridge-test-app");
@@ -61,15 +79,24 @@ const hasDaytonaConfig =
   Boolean(daytonaEnv.DAYTONA_API_KEY) &&
   (!requiresGitAuth || hasGitAuth);
 
+if (process.env.TERMBRIDGE_TEST_DEBUG) {
+  const envFileExists = existsSync(envPath);
+  const e2eFlag = daytonaEnv.TERMBRIDGE_E2E_DAYTONA ?? "(unset)";
+  process.stdout.write(
+    `[daytona integration] envPath=${envPath} exists=${envFileExists} e2e=${e2eFlag} requiresGitAuth=${requiresGitAuth} hasGitAuth=${hasGitAuth} hasDaytonaConfig=${hasDaytonaConfig}\n`
+  );
+}
+
 const claudeAuthPath = resolve(homedir(), ".claude.json");
 const codexAuthPath = resolve(homedir(), ".codex", "auth.json");
 const openCodeAuthPath = resolve(homedir(), ".config", "opencode", "opencode.json");
 const hasAgentAuth =
   existsSync(claudeAuthPath) && existsSync(codexAuthPath) && existsSync(openCodeAuthPath);
 const hasAgentClis = hasClaudeCli && hasCodexCli && hasOpenCodeCli;
-const shouldTestAgents = hasCloudflared && hasDaytonaConfig && hasAgentClis && hasAgentAuth;
+const shouldTestAgents = hasDaytonaConfig && hasAgentClis && hasAgentAuth;
 
-const maybeDescribe = hasCloudflared && hasDaytonaConfig ? describe : describe.skip;
+const maybeDescribe = hasDaytonaConfig ? describe : describe.skip;
+const maybeDescribeTunnel = hasCloudflared && hasDaytonaConfig ? describe : describe.skip;
 
 const resolveNodePath = () => {
   const result = spawnSync("which", ["node"], { encoding: "utf8" });
@@ -92,6 +119,8 @@ const buildCli = () => {
   }
 };
 
+const failFastPatterns = [/tmux install failed/i, /Daytona: sandbox start failed/i, /Tunnel failed/i];
+
 const waitForMatch = (
   child: ChildProcessWithoutNullStreams,
   output: { stdout: string; stderr: string },
@@ -102,6 +131,23 @@ const waitForMatch = (
     const deadline = Date.now() + timeoutMs;
 
     const check = () => {
+      const failMatch = failFastPatterns.find(
+        (pattern) => pattern.test(output.stdout) || pattern.test(output.stderr)
+      );
+
+      if (failMatch) {
+        cleanup();
+        const summary = [
+          `fail fast: ${failMatch.source}`,
+          output.stdout ? `stdout:\n${output.stdout}` : "",
+          output.stderr ? `stderr:\n${output.stderr}` : ""
+        ]
+          .filter(Boolean)
+          .join("\n");
+        reject(new Error(summary));
+        return;
+      }
+
       const match = output.stdout.match(regex) ?? output.stderr.match(regex);
 
       if (match) {
@@ -124,6 +170,12 @@ const waitForMatch = (
     };
 
     const handleExit = (code: number | null, signal: NodeJS.Signals | null) => {
+      const match = output.stdout.match(regex) ?? output.stderr.match(regex);
+      if (match) {
+        cleanup();
+        resolvePromise(match);
+        return;
+      }
       cleanup();
       const summary = [
         `cli exited (${code ?? "unknown"}) ${signal ?? ""}`.trim(),
@@ -176,6 +228,7 @@ const logStep = (label: string) => {
   }
 };
 
+
 const sandboxPrefix = "termbridge-test-";
 
 const createDaytonaClient = () => {
@@ -205,9 +258,27 @@ const cleanupSandboxes = async () => {
         continue;
       }
       const label = sandbox.name || sandbox.id;
-      await daytona.delete(sandbox);
-      deleted += 1;
-      logStep(`deleted sandbox ${label}`);
+      let attempt = 0;
+      while (attempt < 3) {
+        attempt += 1;
+        try {
+          await daytona.delete(sandbox);
+          deleted += 1;
+          logStep(`deleted sandbox ${label}`);
+          break;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (/state change in progress/i.test(message)) {
+            if (attempt >= 3) {
+              logStep(`skip delete ${label} (${message})`);
+              break;
+            }
+            await new Promise((resolvePromise) => setTimeout(resolvePromise, 2_000));
+            continue;
+          }
+          throw error;
+        }
+      }
     }
 
     page += 1;
@@ -304,10 +375,11 @@ const stopCli = async (child: ChildProcessWithoutNullStreams | null) => {
   });
 };
 
-maybeDescribe("daytona integration", () => {
+maybeDescribeTunnel("daytona integration (tunnel)", () => {
   let child: ChildProcessWithoutNullStreams | null = null;
   let localUrl = "";
-  let token = "";
+  let shareUrl = "";
+  let publicBase: URL | null = null;
   let browser: Browser | null = null;
   let sandboxName = "";
 
@@ -370,10 +442,11 @@ maybeDescribe("daytona integration", () => {
       /Tunnel URL:\s*(https:\/\/[^\s]+)/,
       90_000
     );
-    const redeemUrl = tunnelMatch[1] ?? "";
-    token = redeemUrl.split("/__tb/s/")[1] ?? "";
+    shareUrl = tunnelMatch[1] ?? "";
+    const parsedShare = parseShareUrl(shareUrl);
+    publicBase = parsedShare.baseUrl;
 
-    if (!localUrl || !token) {
+    if (!localUrl || !shareUrl || !publicBase) {
       throw new Error("failed to parse cli output");
     }
 
@@ -440,35 +513,27 @@ maybeDescribe("daytona integration", () => {
       let previewStatus: number | null = null;
       let previewSnippet = "";
 
-      const redeem = await withTimeout(
-        fetch(`${localUrl}/__tb/s/${token}`, { redirect: "manual" }),
-        15_000,
-        "redeem fetch"
-      );
+      const redeemResult = await redeemShareUrl(context, shareUrl, {
+        fallbackBaseUrl: new URL(localUrl),
+        log: logStep
+      });
+      publicBase = redeemResult.baseUrl;
+      const sessionCookie = redeemResult.sessionCookie;
       logStep("token redeemed");
-      expect(redeem.status).toBe(302);
-      const cookieHeader = redeem.headers.get("set-cookie");
-      expect(cookieHeader).toBeTruthy();
-      const cookiePair = (cookieHeader ?? "").split(";")[0] ?? "";
-      const [name, value] = cookiePair.split("=");
-      await context.addCookies([{ name, value, url: localUrl }]);
+      if (!sessionCookie) {
+        throw new Error("missing session cookie");
+      }
 
       try {
         const [terminalsResponse] = await Promise.all([
           page.waitForResponse((response) => response.url().endsWith("/__tb/api/terminals")),
-          page.goto(`${localUrl}/__tb/app`, { waitUntil: "domcontentloaded" })
+          page.goto(buildUrl(publicBase, "__tb/app"), { waitUntil: "domcontentloaded" })
         ]);
         logStep("page loaded");
         expect(terminalsResponse.status()).toBe(200);
 
-        await page.waitForSelector(".terminal-host .xterm-screen canvas", { timeout: 60_000 });
-        logStep("terminal rows ready");
-
-        await page.waitForSelector(
-          '[data-testid="connection-status"][data-state="connected"]',
-          { timeout: 30_000 }
-        );
-        logStep("connection status ready");
+        await waitForTerminalConnected(page, 60_000);
+        logStep("terminal connected");
       } catch (error) {
         const statusText = await page
           .locator(".terminal-status")
@@ -487,7 +552,9 @@ maybeDescribe("daytona integration", () => {
         throw new Error([message, details].filter(Boolean).join("\n"));
       }
 
-      await focusTerminal(page);
+      await sendTerminalInputAndWait(page, "printf '__tb_ready__'", /__tb_ready__/, 30_000);
+      logStep("terminal input ready");
+
       await page.keyboard.type(
         "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
       );
@@ -498,8 +565,8 @@ maybeDescribe("daytona integration", () => {
       logStep("vite dev server ready");
 
       try {
-        const configResponse = await fetch(`${localUrl}/__tb/api/config`, {
-          headers: { cookie: cookiePair }
+        const configResponse = await fetch(buildUrl(publicBase, "__tb/api/config"), {
+          headers: { cookie: sessionCookie }
         });
         if (configResponse.ok) {
           const configPayload = (await configResponse.json()) as {
@@ -511,8 +578,8 @@ maybeDescribe("daytona integration", () => {
           logStep(`config response status: ${configResponse.status}`);
         }
 
-        const previewResponse = await fetch(`${localUrl}/`, {
-          headers: { cookie: cookiePair }
+        const previewResponse = await fetch(publicBase.toString(), {
+          headers: { cookie: sessionCookie }
         });
         previewStatus = previewResponse.status;
         const text = await previewResponse.text();
@@ -564,6 +631,263 @@ maybeDescribe("daytona integration", () => {
           pageErrors.length > 0 ? `page errors:\n${pageErrors.join("\n")}` : "",
           consoleErrors.length > 0 ? `console errors:\n${consoleErrors.join("\n")}` : "",
           devProxyUrl ? `dev proxy url:\n${devProxyUrl}` : "",
+          previewStatus !== null ? `preview status:\n${previewStatus}` : "",
+          previewSnippet ? `preview body snippet:\n${previewSnippet}` : "",
+          previewBodyText ? `preview frame text:\n${previewBodyText}` : "",
+          previewHtmlSnippet ? `preview frame html:\n${previewHtmlSnippet}` : "",
+          responseErrors.length > 0 ? `response errors:\n${responseErrors.join("\n")}` : ""
+        ]
+          .filter(Boolean)
+          .join("\n");
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error([message, details].filter(Boolean).join("\n"));
+      }
+    },
+    240_000
+  );
+
+  const maybeAgentIt = shouldTestAgents ? it : it.skip;
+  maybeAgentIt(
+    "runs coding agent CLIs in the sandbox with synced auth",
+    async () => {
+      const sandbox = await waitForSandboxByName(sandboxName, 120_000);
+      const pathPrefix = await getSandboxPathPrefix(sandbox);
+      const availability = await sandbox.process.executeCommand(
+        `${pathPrefix ? `${pathPrefix} ` : ""}command -v claude && ${pathPrefix ? `${pathPrefix} ` : ""}command -v codex && ${pathPrefix ? `${pathPrefix} ` : ""}command -v opencode`
+      );
+      if (availability.exitCode !== 0) {
+        logStep("agent CLIs not available in sandbox; skipping test");
+        return;
+      }
+
+      const claudeOutput = await runSandboxCommand(
+        sandbox,
+        'claude -p "Respond with exactly OK." --no-session-persistence',
+        "claude",
+        180,
+        pathPrefix
+      );
+      expect(claudeOutput).toMatch(/ok/i);
+
+      const codexOutput = await runSandboxCommand(
+        sandbox,
+        'codex exec --full-auto "Respond with exactly OK."',
+        "codex",
+        180,
+        pathPrefix
+      );
+      expect(codexOutput).toMatch(/ok/i);
+
+      const opencodeOutput = await runSandboxCommand(
+        sandbox,
+        'opencode run "Respond with exactly OK."',
+        "opencode",
+        180,
+        pathPrefix
+      );
+      expect(opencodeOutput).toMatch(/ok/i);
+    },
+    300_000
+  );
+});
+
+maybeDescribe("daytona integration (direct)", () => {
+  let child: ChildProcessWithoutNullStreams | null = null;
+  let shareUrl = "";
+  let publicBase: URL | null = null;
+  let browser: Browser | null = null;
+  let sandboxName = "";
+
+  beforeAll(async () => {
+    if (!existsSync(testAppDir)) {
+      throw new Error(`missing test app directory at ${testAppDir}`);
+    }
+
+    await cleanupSandboxes();
+
+    buildCli();
+
+    const output = { stdout: "", stderr: "" };
+    const sessionName = `termbridge-daytona-direct-${Date.now()}`;
+    sandboxName = `${sandboxPrefix}${Date.now()}`;
+    const env = {
+      ...process.env,
+      NODE_ENV: "production",
+      TERMBRIDGE_DAYTONA_DELETE_ON_EXIT: "true",
+      TERMBRIDGE_DAYTONA_NAME: sandboxName,
+      TERMBRIDGE_DAYTONA_DIRECT: "true",
+      TERMBRIDGE_DAYTONA_PREVIEW_PORT: daytonaEnv.TERMBRIDGE_DAYTONA_PREVIEW_PORT ?? "5173",
+      ...(shouldTestAgents
+        ? {
+            TERMBRIDGE_DAYTONA_AGENTS: "claude,codex,opencode"
+          }
+        : {})
+    };
+    const nodePath = resolveNodePath();
+
+    const started = spawn(nodePath, [distBin, "--no-qr", "--session", sessionName], {
+      cwd: testAppDir,
+      env,
+      stdio: ["pipe", "pipe", "pipe"]
+    }) as ChildProcessWithoutNullStreams;
+
+    child = started;
+
+    started.stdout.on("data", (data) => {
+      output.stdout += data.toString();
+    });
+
+    started.stderr.on("data", (data) => {
+      output.stderr += data.toString();
+    });
+
+    const shareMatch = await waitForMatch(
+      started,
+      output,
+      /Share URL:\s*(https:\/\/[^\s]+)/,
+      90_000
+    );
+    shareUrl = shareMatch[1] ?? "";
+    const parsedShare = parseShareUrl(shareUrl);
+    publicBase = parsedShare.baseUrl;
+
+    if (!shareUrl || !publicBase) {
+      throw new Error("failed to parse direct share url");
+    }
+
+    const health = await fetch(buildUrl(publicBase, "__tb/healthz"));
+    if (!health.ok) {
+      throw new Error(`health check failed: ${health.status}`);
+    }
+  }, 180_000);
+
+  afterAll(async () => {
+    await stopCli(child);
+    if (browser) {
+      await browser.close();
+    }
+  });
+
+  afterEach(async () => {
+    if (!shouldTestAgents) {
+      await cleanupSandboxes();
+    }
+  });
+
+  it(
+    "renders the Vite preview in the UI",
+    async () => {
+      browser = await withTimeout(chromium.launch(), 30_000, "chromium.launch");
+      logStep("browser launched");
+      const context = await browser.newContext();
+      logStep("context created");
+      const page = await context.newPage();
+      logStep("page created");
+      await page.addInitScript(() => {
+        (window as Window & { __TERMbridgeExposeTerminal?: boolean }).__TERMbridgeExposeTerminal =
+          true;
+      });
+      logStep("init script added");
+
+      const pageErrors: string[] = [];
+      const consoleErrors: string[] = [];
+      const responseErrors: string[] = [];
+      let websocketUrl = "";
+
+      page.on("pageerror", (error) => {
+        pageErrors.push(error.message);
+      });
+
+      page.on("console", (message) => {
+        if (message.type() === "error") {
+          consoleErrors.push(message.text());
+        }
+      });
+
+      page.on("response", (response) => {
+        if (response.status() >= 400) {
+          responseErrors.push(`${response.status()} ${response.url()}`);
+        }
+      });
+
+      page.on("websocket", (websocket) => {
+        websocketUrl = websocket.url();
+      });
+
+      let previewStatus: number | null = null;
+      let previewSnippet = "";
+      let previewBodyText = "";
+      let previewHtmlSnippet = "";
+
+      const redeemResult = await redeemShareUrl(context, shareUrl, { log: logStep });
+      publicBase = redeemResult.baseUrl;
+      const sessionCookie = redeemResult.sessionCookie;
+      logStep("token redeemed");
+      if (!sessionCookie) {
+        throw new Error("missing session cookie");
+      }
+
+      try {
+        const [terminalsResponse] = await Promise.all([
+          page.waitForResponse((response) => response.url().endsWith("/__tb/api/terminals")),
+          page.goto(buildUrl(publicBase, "__tb/app"), { waitUntil: "domcontentloaded" })
+        ]);
+        logStep("page loaded");
+        expect(terminalsResponse.status()).toBe(200);
+
+        await waitForTerminalConnected(page, 60_000);
+        logStep("terminal connected");
+      } catch (error) {
+        const statusText = await page
+          .locator(".terminal-status")
+          .textContent()
+          .catch(() => null);
+        const details = [
+          pageErrors.length > 0 ? `page errors:\n${pageErrors.join("\n")}` : "",
+          consoleErrors.length > 0 ? `console errors:\n${consoleErrors.join("\n")}` : "",
+          responseErrors.length > 0 ? `response errors:\n${responseErrors.join("\n")}` : "",
+          websocketUrl ? `websocket url:\n${websocketUrl}` : "",
+          statusText ? `terminal status:\n${statusText}` : ""
+        ]
+          .filter(Boolean)
+          .join("\n");
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error([message, details].filter(Boolean).join("\n"));
+      }
+
+      await sendTerminalInputAndWait(page, "printf '__tb_ready__'", /__tb_ready__/, 30_000);
+      logStep("terminal input ready");
+
+      await page.keyboard.type(
+        "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+      );
+      await page.keyboard.press("Enter");
+      logStep("vite dev server command sent");
+
+      await waitForTerminalText(page, /(Local|Network):\s+http:\/\/.*5173/, 180_000);
+      logStep("vite dev server ready");
+
+      try {
+        const previewResponse = await fetch(publicBase.toString(), {
+          headers: { cookie: sessionCookie }
+        });
+        previewStatus = previewResponse.status;
+        const text = await previewResponse.text();
+        previewSnippet = text.slice(0, 400);
+        logStep(`preview response status: ${previewStatus}`);
+      } catch (error) {
+        logStep(`preview fetch failed: ${String(error)}`);
+      }
+
+      try {
+        await page.waitForSelector("#root", { timeout: 60_000 });
+        previewBodyText = (await page.locator("body").textContent()) ?? "";
+        previewHtmlSnippet = (await page.content()).slice(0, 400);
+      } catch (error) {
+        const details = [
+          pageErrors.length > 0 ? `page errors:\n${pageErrors.join("\n")}` : "",
+          consoleErrors.length > 0 ? `console errors:\n${consoleErrors.join("\n")}` : "",
+          websocketUrl ? `websocket url:\n${websocketUrl}` : "",
           previewStatus !== null ? `preview status:\n${previewStatus}` : "",
           previewSnippet ? `preview body snippet:\n${previewSnippet}` : "",
           previewBodyText ? `preview frame text:\n${previewBodyText}` : "",

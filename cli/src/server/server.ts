@@ -35,6 +35,7 @@ export type ServerDeps = {
   devProxyUrl?: string; // Remote proxy target URL (preview iframe points to /)
   devProxyHeaders?: Record<string, string>;
   hideTerminalSwitcher?: boolean;
+  listenHost?: string;
 };
 
 export type StartedServer = {
@@ -81,17 +82,31 @@ const readJsonBody = async (request: IncomingMessage): Promise<unknown | null | 
 
 const getIp = (request: IncomingMessage) => String(request.socket.remoteAddress);
 
-const isAllowedOrigin = (origin: string | undefined, host: string | undefined) => {
-  if (!origin || !host) {
+export const isAllowedOrigin = (
+  origin: string | undefined,
+  host: string | undefined,
+  forwardedHost?: string | null
+) => {
+  if (!origin || (!host && !forwardedHost)) {
     return true;
   }
 
   try {
-    return new URL(origin).host === host;
+    const originHost = new URL(origin).host;
+    if (host && originHost === host) {
+      return true;
+    }
+    if (forwardedHost && originHost === forwardedHost) {
+      return true;
+    }
+    return false;
   } catch {
     return false;
   }
 };
+
+export const resolveForwardedHost = (header: string | string[] | undefined) =>
+  Array.isArray(header) ? header[0] : header;
 
 const allowedControlKeys: Set<TerminalControlKey> = new Set(TERMINAL_CONTROL_KEYS);
 
@@ -226,7 +241,7 @@ export const createAppServer = (deps: ServerDeps) => {
 
     if (request.method === "GET" && url.pathname === "/" && !hasProxy) {
       response.statusCode = 302;
-      response.setHeader("Location", "/__tb/app");
+      response.setHeader("Location", `/__tb/app${url.search}`);
       response.end();
       return;
     }
@@ -251,7 +266,7 @@ export const createAppServer = (deps: ServerDeps) => {
 
       response.statusCode = 302;
       response.setHeader("Set-Cookie", deps.auth.createSessionCookie(session.id));
-      response.setHeader("Location", "/__tb/app");
+      response.setHeader("Location", `/__tb/app${url.search}`);
       response.end();
       return;
     }
@@ -329,7 +344,8 @@ export const createAppServer = (deps: ServerDeps) => {
       jsonResponse(response, 200, {
         proxyPort: deps.proxyPort ?? null,
         devProxyUrl: deps.devProxyUrl ?? null,
-        hideTerminalSwitcher: Boolean(deps.hideTerminalSwitcher)
+        hideTerminalSwitcher: Boolean(deps.hideTerminalSwitcher),
+        wsToken: deps.auth.issueWsToken(session.id).token
       });
       return;
     }
@@ -393,7 +409,11 @@ export const createAppServer = (deps: ServerDeps) => {
       return;
     }
 
-    if (!isAllowedOrigin(request.headers.origin, request.headers.host)) {
+    const forwardedHostHeader = request.headers["x-forwarded-host"];
+    const forwardedHost = resolveForwardedHost(forwardedHostHeader);
+    const hasDaytonaAuth =
+      url.searchParams.has("DAYTONA_SANDBOX_AUTH_KEY") || url.searchParams.has("token");
+    if (!hasDaytonaAuth && !isAllowedOrigin(request.headers.origin, request.headers.host, forwardedHost)) {
       socket.destroy();
       return;
     }
@@ -412,14 +432,22 @@ export const createAppServer = (deps: ServerDeps) => {
       return;
     }
 
-    const session = deps.auth.getSessionFromRequest(request);
+    const csrfToken = url.searchParams.get("csrf");
+    const wsToken = url.searchParams.get("wsToken");
+    let session = deps.auth.getSessionFromRequest(request);
+
+    if (!session && csrfToken) {
+      session = deps.auth.getSessionByCsrfToken?.(csrfToken) ?? null;
+    }
+
+    if (!session && wsToken) {
+      session = deps.auth.redeemWsToken(wsToken);
+    }
 
     if (!session) {
       socket.destroy();
       return;
     }
-
-    const csrfToken = url.searchParams.get("csrf");
 
     if (!csrfToken || !deps.auth.verifyCsrfToken(session.id, csrfToken)) {
       socket.destroy();
@@ -487,7 +515,8 @@ export const createAppServer = (deps: ServerDeps) => {
 
   const listen = (port: number) =>
     new Promise<StartedServer>((resolve, _reject) => {
-      server.listen(port, "127.0.0.1", () => {
+      const host = deps.listenHost?.trim() || "127.0.0.1";
+      server.listen(port, host, () => {
         const address = server.address() as { port: number };
 
         resolve({

@@ -10,6 +10,7 @@
   "include": [
     "src/**/*",
     "ui/src/**/*",
+    "ui/vite-env.d.ts",
     "integration/**/*"
   ]
 }

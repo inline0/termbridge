@@ -12,7 +12,9 @@ export type SandboxServerStartOptions = {
   agentEnv?: Record<string, string>;
   agentInstall?: AgentInstallOptions;
   agentAuth?: AgentAuthOptions;
+  localCliPackPath?: string;
   serverPort: number;
+  previewPort?: number;
   proxyPort?: number;
   sessionName?: string;
   killOnExit?: boolean;

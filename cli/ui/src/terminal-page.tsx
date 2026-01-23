@@ -15,6 +15,7 @@ type ConfigResponse = {
   proxyPort: number | null;
   devProxyUrl: string | null;
   hideTerminalSwitcher?: boolean;
+  wsToken?: string;
 };
 
 type TerminalPageProps = {
@@ -32,6 +33,7 @@ export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps
   const [proxyPort, setProxyPort] = useState<number | null>(null);
   const [devProxyUrl, setDevProxyUrl] = useState<string | null>(null);
   const [hideTerminalSwitcher, setHideTerminalSwitcher] = useState(false);
+  const [wsToken, setWsToken] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<"terminal" | "preview">("terminal");
   const [scrollInfo, setScrollInfo] = useState<ScrollInfo>({ viewportY: 0, baseY: 0, maxY: 0 });
   const [tmuxScroll, setTmuxScroll] = useState<{ offset: number; mode: "lines" | "pages" } | null>(
@@ -70,6 +72,7 @@ export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps
         setProxyPort(configPayload.proxyPort);
         setDevProxyUrl(configPayload.devProxyUrl);
         setHideTerminalSwitcher(Boolean(configPayload.hideTerminalSwitcher));
+        setWsToken(configPayload.wsToken ?? null);
 
         if (nextTerminals.length === 0) {
           setState("empty");
@@ -141,7 +144,9 @@ export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps
     }
 
     setConnectionState("connecting");
-    const client = createTerminalClient(hostRef.current, activeTerminalId, csrfToken);
+    const client = createTerminalClient(hostRef.current, activeTerminalId, csrfToken, {
+      wsToken: wsToken ?? undefined
+    });
     clientRef.current = client;
 
     setScrollInfo(client.getScrollInfo());
@@ -161,7 +166,7 @@ export const TerminalPage = ({ terminalId, onSelectTerminal }: TerminalPageProps
       setScrollInfo({ viewportY: 0, baseY: 0, maxY: 0 });
       setTmuxScroll(null);
     };
-  }, [state, activeTerminalId, csrfToken]);
+  }, [state, activeTerminalId, csrfToken, wsToken]);
 
   const statusLabel =
     state === "loading"

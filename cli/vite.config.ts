@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { readFileSync, existsSync } from "node:fs";
 import { defineConfig, createLogger } from "vite";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
@@ -39,11 +40,29 @@ const proxy = devProxy
     }
   : undefined;
 
+let daytonaSdkVersion = "0.0.0";
+try {
+  const candidates = [
+    resolve(__dirname, "node_modules/@daytonaio/sdk/package.json"),
+    resolve(__dirname, "../node_modules/@daytonaio/sdk/package.json")
+  ];
+  const packageJsonPath = candidates.find((candidate) => existsSync(candidate));
+  if (packageJsonPath) {
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8")) as { version?: string };
+    if (packageJson.version) {
+      daytonaSdkVersion = packageJson.version;
+    }
+  }
+} catch {}
+
 export default defineConfig({
   root: resolve(__dirname, "ui"),
   base: "/__tb/app/",
   plugins: [tailwindcss(), react()],
   customLogger: devProxy ? logger : undefined,
+  define: {
+    __DAYTONA_SDK_VERSION__: JSON.stringify(daytonaSdkVersion)
+  },
   server: { port: 5000, ...(proxy ? { proxy } : {}) },
   build: {
     outDir: resolve(__dirname, "ui/dist"),

@@ -8,7 +8,7 @@ import WebSocket, { WebSocketServer } from "ws";
 import { createAuth } from "./auth";
 import { createRateLimiter } from "./rate-limit";
 import { createTerminalRegistry } from "./terminal-registry";
-import { createAppServer } from "./server";
+import { createAppServer, isAllowedOrigin, resolveForwardedHost } from "./server";
 import type { TerminalBackend, TerminalSession } from "@termbridge/terminal";
 
 const createTestBackend = () => {
@@ -103,6 +103,34 @@ const createServerFixture = async (
     close: started.close
   };
 };
+
+describe("origin helpers", () => {
+  it("allows missing origins", () => {
+    expect(isAllowedOrigin(undefined, "example.com", null)).toBe(true);
+  });
+
+  it("allows origins when host headers are missing", () => {
+    expect(isAllowedOrigin("https://example.com", undefined, undefined)).toBe(true);
+  });
+
+  it("allows matching host origins", () => {
+    expect(isAllowedOrigin("https://example.com", "example.com", null)).toBe(true);
+  });
+
+  it("allows matching forwarded host origins", () => {
+    expect(isAllowedOrigin("https://proxy.example", "example.com", "proxy.example")).toBe(true);
+  });
+
+  it("rejects mismatched origins", () => {
+    expect(isAllowedOrigin("https://evil.example", "example.com", "proxy.example")).toBe(false);
+  });
+
+  it("resolves forwarded host headers", () => {
+    expect(resolveForwardedHost("forwarded.example")).toBe("forwarded.example");
+    expect(resolveForwardedHost(["primary.example", "secondary.example"])).toBe("primary.example");
+    expect(resolveForwardedHost(undefined)).toBeUndefined();
+  });
+});
 
 const TLS_KEY = `-----BEGIN PRIVATE KEY-----
 MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDsQfJ4TrOfubEC
@@ -220,6 +248,23 @@ describe("createAppServer", () => {
 
     expect(listResponse.status).toBe(200);
     expect(listPayload.terminals).toHaveLength(1);
+
+    await fixture.close();
+  });
+
+  it("preserves share query params in the redirect", async () => {
+    const fixture = await createServerFixture();
+
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(
+      `${fixture.baseUrl}/__tb/s/${token}?DAYTONA_SANDBOX_AUTH_KEY=token-123`,
+      { redirect: "manual" }
+    );
+
+    expect(redeem.status).toBe(302);
+    expect(redeem.headers.get("location")).toBe(
+      "/__tb/app?DAYTONA_SANDBOX_AUTH_KEY=token-123"
+    );
 
     await fixture.close();
   });
@@ -509,6 +554,102 @@ describe("createAppServer", () => {
     await fixture.close();
   });
 
+  it("accepts websocket connections when the origin matches the host", async () => {
+    const fixture = await createServerFixture();
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+    const csrfToken = await getCsrfToken(fixture.baseUrl, cookie);
+
+    const session = await fixture.backend.createSession("session-origin-ok");
+    const record = fixture.terminalRegistry.add(session.name, session.name, "tmux");
+    const port = new URL(fixture.baseUrl).port;
+
+    const ws = new WebSocket(
+      `ws://127.0.0.1:${port}/__tb/ws/terminal/${record.id}?csrf=${csrfToken}`,
+      { headers: { cookie, origin: `http://127.0.0.1:${port}` } }
+    );
+
+    await new Promise((resolve) => ws.on("open", resolve));
+    ws.close();
+    await fixture.close();
+  });
+
+  it("accepts websocket connections when the origin matches the forwarded host", async () => {
+    const fixture = await createServerFixture();
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+    const csrfToken = await getCsrfToken(fixture.baseUrl, cookie);
+
+    const session = await fixture.backend.createSession("session-forwarded-origin");
+    const record = fixture.terminalRegistry.add(session.name, session.name, "tmux");
+    const port = new URL(fixture.baseUrl).port;
+
+    const ws = new WebSocket(
+      `ws://127.0.0.1:${port}/__tb/ws/terminal/${record.id}?csrf=${csrfToken}`,
+      {
+        headers: {
+          cookie,
+          origin: "http://forwarded.example",
+          "x-forwarded-host": "forwarded.example"
+        }
+      }
+    );
+
+    await new Promise((resolve) => ws.on("open", resolve));
+    ws.close();
+    await fixture.close();
+  });
+
+  it("accepts websocket connections with empty origins", async () => {
+    const fixture = await createServerFixture();
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+    const csrfToken = await getCsrfToken(fixture.baseUrl, cookie);
+
+    const session = await fixture.backend.createSession("session-empty-origin");
+    const record = fixture.terminalRegistry.add(session.name, session.name, "tmux");
+    const port = new URL(fixture.baseUrl).port;
+
+    const ws = new WebSocket(
+      `ws://127.0.0.1:${port}/__tb/ws/terminal/${record.id}?csrf=${csrfToken}`,
+      { headers: { cookie, origin: "" } }
+    );
+
+    await new Promise((resolve) => ws.on("open", resolve));
+    ws.close();
+    await fixture.close();
+  });
+
+  it("handles websocket connections when forwarded host is an array", async () => {
+    const fixture = await createServerFixture();
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+    const csrfToken = await getCsrfToken(fixture.baseUrl, cookie);
+
+    const session = await fixture.backend.createSession("session-forwarded-array");
+    const record = fixture.terminalRegistry.add(session.name, session.name, "tmux");
+    const port = new URL(fixture.baseUrl).port;
+
+    const ws = new WebSocket(
+      `ws://127.0.0.1:${port}/__tb/ws/terminal/${record.id}?csrf=${csrfToken}`,
+      {
+        headers: {
+          cookie,
+          origin: "http://forwarded-array.example",
+          "x-forwarded-host": ["forwarded-array.example", "extra"] as unknown as string
+        }
+      }
+    );
+
+    await new Promise((resolve) => ws.on("error", resolve));
+    ws.close();
+    await fixture.close();
+  });
+
   it("rejects websocket connections without a session", async () => {
     const fixture = await createServerFixture();
     const session = await fixture.backend.createSession("session-no-cookie");
@@ -517,6 +658,26 @@ describe("createAppServer", () => {
     const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/__tb/ws/terminal/${record.id}`);
 
     await new Promise((resolve) => ws.on("error", resolve));
+    await fixture.close();
+  });
+
+  it("accepts websocket connections with csrf tokens even without cookies", async () => {
+    const fixture = await createServerFixture();
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+    const csrfToken = await getCsrfToken(fixture.baseUrl, cookie);
+
+    const session = await fixture.backend.createSession("session-csrf");
+    const record = fixture.terminalRegistry.add(session.name, session.name, "tmux");
+    const port = new URL(fixture.baseUrl).port;
+
+    const ws = new WebSocket(
+      `ws://127.0.0.1:${port}/__tb/ws/terminal/${record.id}?csrf=${csrfToken}`
+    );
+
+    await new Promise((resolve) => ws.on("open", resolve));
+    ws.close();
     await fixture.close();
   });
 
@@ -532,6 +693,29 @@ describe("createAppServer", () => {
     const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/__tb/ws/terminal/${record.id}`, {
       headers: { cookie }
     });
+
+    await new Promise((resolve) => ws.on("error", resolve));
+    await fixture.close();
+  });
+
+  it("falls back to websocket tokens when csrf lookup fails", async () => {
+    const fixture = await createServerFixture();
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+
+    const configResponse = await fetch(`${fixture.baseUrl}/__tb/api/config`, {
+      headers: { cookie }
+    });
+    const { wsToken } = (await configResponse.json()) as { wsToken: string };
+
+    const session = await fixture.backend.createSession("session-ws-token");
+    const record = fixture.terminalRegistry.add(session.name, session.name, "tmux");
+    const port = new URL(fixture.baseUrl).port;
+
+    const ws = new WebSocket(
+      `ws://127.0.0.1:${port}/__tb/ws/terminal/${record.id}?csrf=bad-token&wsToken=${wsToken}`
+    );
 
     await new Promise((resolve) => ws.on("error", resolve));
     await fixture.close();
@@ -619,12 +803,14 @@ describe("createAppServer", () => {
       proxyPort: number | null;
       devProxyUrl: string | null;
       hideTerminalSwitcher: boolean;
+      wsToken?: string;
     };
 
     expect(configResponse.status).toBe(200);
     expect(payload.proxyPort).toBe(null);
     expect(payload.devProxyUrl).toBe(null);
     expect(payload.hideTerminalSwitcher).toBe(false);
+    expect(typeof payload.wsToken).toBe("string");
 
     await fixture.close();
   });
@@ -640,12 +826,14 @@ describe("createAppServer", () => {
       proxyPort: number | null;
       devProxyUrl: string | null;
       hideTerminalSwitcher: boolean;
+      wsToken?: string;
     };
 
     expect(configResponse.status).toBe(200);
     expect(payload.proxyPort).toBe(5173);
     expect(payload.devProxyUrl).toBe(null);
     expect(payload.hideTerminalSwitcher).toBe(false);
+    expect(typeof payload.wsToken).toBe("string");
 
     await fixture.close();
   });
@@ -661,12 +849,14 @@ describe("createAppServer", () => {
       proxyPort: number | null;
       devProxyUrl: string | null;
       hideTerminalSwitcher: boolean;
+      wsToken?: string;
     };
 
     expect(configResponse.status).toBe(200);
     expect(payload.proxyPort).toBe(null);
     expect(payload.devProxyUrl).toBe("https://preview.example");
     expect(payload.hideTerminalSwitcher).toBe(false);
+    expect(typeof payload.wsToken).toBe("string");
 
     await fixture.close();
   });
@@ -682,10 +872,12 @@ describe("createAppServer", () => {
       proxyPort: number | null;
       devProxyUrl: string | null;
       hideTerminalSwitcher: boolean;
+      wsToken?: string;
     };
 
     expect(configResponse.status).toBe(200);
     expect(payload.hideTerminalSwitcher).toBe(true);
+    expect(typeof payload.wsToken).toBe("string");
 
     await fixture.close();
   });

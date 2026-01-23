@@ -62,11 +62,9 @@ if (!existsSync(testAppDir)) {
   process.exit(1);
 }
 
-if (!existsSync(cliDist)) {
-  const build = spawnSync("bun", ["run", "build"], { cwd: rootDir, stdio: "inherit" });
-  if (build.status !== 0) {
-    process.exit(build.status ?? 1);
-  }
+const build = spawnSync("bun", ["run", "build"], { cwd: rootDir, stdio: "inherit" });
+if (build.status !== 0) {
+  process.exit(build.status ?? 1);
 }
 
 const daytonaEnv = parseEnvFile(envPath);

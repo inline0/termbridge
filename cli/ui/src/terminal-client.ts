@@ -37,6 +37,7 @@ export type TerminalClientDeps = {
   createFitAddon?: () => FitAddon;
   WebSocketImpl?: typeof WebSocket;
   windowRef?: WindowLike;
+  wsToken?: string;
 };
 
 type WindowLike = Window & {
@@ -44,9 +45,40 @@ type WindowLike = Window & {
   WebGLRenderingContext?: typeof WebGLRenderingContext;
 };
 
-export const getWebSocketUrl = (terminalId: string, csrfToken: string, windowRef: Window) => {
+export const getWebSocketUrl = (
+  terminalId: string,
+  csrfToken: string,
+  windowRef: Window,
+  wsToken?: string
+) => {
   const protocol = windowRef.location.protocol === "https:" ? "wss" : "ws";
-  return `${protocol}://${windowRef.location.host}/__tb/ws/terminal/${terminalId}?csrf=${encodeURIComponent(csrfToken)}`;
+  const url = new URL(`${protocol}://${windowRef.location.host}/__tb/ws/terminal/${terminalId}`);
+  const params = new URLSearchParams(windowRef.location.search ?? "");
+  if (params.has("token") && !params.has("DAYTONA_SANDBOX_AUTH_KEY")) {
+    const token = params.get("token");
+    if (token) {
+      params.set("DAYTONA_SANDBOX_AUTH_KEY", token);
+      params.delete("token");
+    }
+  }
+  params.set("csrf", csrfToken);
+  if (wsToken) {
+    params.set("wsToken", wsToken);
+  }
+  url.search = params.toString();
+  return url.toString();
+};
+
+const getDaytonaProtocol = (windowRef: WindowLike) => {
+  const params = new URLSearchParams(windowRef.location.search ?? "");
+  if (!params.has("DAYTONA_SANDBOX_AUTH_KEY") && !params.has("token")) {
+    return undefined;
+  }
+  const sdkVersion =
+    typeof __DAYTONA_SDK_VERSION__ === "string" && __DAYTONA_SDK_VERSION__.trim()
+      ? __DAYTONA_SDK_VERSION__
+      : "0.0.0";
+  return `X-Daytona-SDK-Version~${sdkVersion}`;
 };
 
 const terminalTheme = {
@@ -179,7 +211,9 @@ export const createTerminalClient = (
       return;
     }
 
-    socket = new WebSocketImpl(getWebSocketUrl(terminalId, csrfToken, windowRef));
+    const wsUrl = getWebSocketUrl(terminalId, csrfToken, windowRef, deps.wsToken);
+    const protocol = getDaytonaProtocol(windowRef);
+    socket = protocol ? new WebSocketImpl(wsUrl, protocol) : new WebSocketImpl(wsUrl);
 
     socket.addEventListener("open", () => {
       socketReady = true;

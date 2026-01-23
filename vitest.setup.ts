@@ -155,3 +155,7 @@ if (typeof HTMLElement !== "undefined") {
     HTMLElement.prototype.scrollBy = () => undefined;
   }
 }
+
+if (typeof globalThis !== "undefined" && !("__DAYTONA_SDK_VERSION__" in globalThis)) {
+  (globalThis as { __DAYTONA_SDK_VERSION__?: string }).__DAYTONA_SDK_VERSION__ = "0.0.0";
+}
