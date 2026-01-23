@@ -230,7 +230,7 @@ export const TerminalControls = ({
           </div>
         </div>
       ) : null}
-      <div className="px-2 pt-2 pb-4">
+      <div className={`px-2 pb-4 ${showActions ? "pt-2" : "pt-4"}`}>
         <div className="flex w-full min-w-0 items-center gap-2">
           <Button
             type="button"
