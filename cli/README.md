@@ -1,100 +1,46 @@
 # Termbridge
 
-Local-first terminal beaming with tmux + Cloudflare tunnel and a mobile-friendly UI.
+Access your terminal from anywhere — beam it to your phone with one command.
 
-## Quick start
+## Quick Start
 
-Prereqs:
-- Node.js 18+
-- tmux in PATH
-- cloudflared in PATH
-
-Run:
+**Prerequisites:** Node.js 18+, [tmux](https://github.com/tmux/tmux), [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
 
 ```bash
 npx termbridge
 ```
 
-Scan the QR code and open the URL on your phone. The CLI stays running while the tunnel is active.
-Use the action tray in the UI for quick navigation, including line + page scroll jumps.
+Scan the QR code and you're connected!
+
+## What It Does
+
+Termbridge runs a local server that connects to your terminal (via tmux), then creates a secure Cloudflare tunnel. Access your terminal from your phone or any browser.
+
+**Features:**
+- Mobile-first UI with quick actions
+- Multi-terminal support (switch between tmux sessions)
+- Proxy mode to preview your dev server alongside the terminal
+- Optional Daytona sandbox support for cloud terminals
+- Coding agent integration (Claude Code, Codex, OpenCode)
+
+## CLI Options
+
+```bash
+termbridge [options]
+```
+
+| Option | Description |
+|--------|-------------|
+| `--port <port>` | Use a specific local port |
+| `--proxy <port>` | Proxy a local dev server |
+| `--session <name>` | Name for the tmux session |
+| `--kill-on-exit` | Kill tmux sessions on exit |
+| `--no-qr` | Don't show the QR code |
+| `--backend <mode>` | `tmux` (default) or `sandbox-daytona` |
 
 ## Documentation
 
-Visit `https://termbridge.dev` for the full docs, architecture notes, and troubleshooting.
-
-## CLI usage
-
-```bash
-termbridge --port 8080 --session dev --kill-on-exit --no-qr --tunnel cloudflare
-```
-
-Flags:
-- `--port <port>`: fixed local port (default: random free port)
-- `--session <name>`: tmux session name override
-- `--kill-on-exit`: kill tmux sessions on exit
-- `--no-qr`: disable QR output
-- `--no-tunnel`: disable the tunnel (requires `--public-url`)
-- `--public-url <url>`: public URL when no tunnel is used
-- `--tunnel cloudflare`: tunnel provider (default)
-- `--backend <tmux|daytona>`: terminal backend (defaults to tmux)
-- `--daytona-direct`: run the server inside the Daytona sandbox (no tunnel)
-
-## Environment variables
-
-- `TERMBRIDGE_SESSIONS=2`: create multiple tmux sessions on start
-- `TERMBRIDGE_INSECURE_COOKIE=1`: allow HTTP cookies for local dev
-- `TERMBRIDGE_DEV_UI=http://127.0.0.1:5173`: override Vite dev UI URL
-- `TERMBRIDGE_PUBLIC_URL=https://example.com`: public URL when tunnel disabled
-- `TERMBRIDGE_TUNNEL=none`: disable the tunnel
-
-### Daytona sandbox mode
-
-```bash
-TERMBRIDGE_BACKEND=daytona
-DAYTONA_API_KEY=your_key
-DAYTONA_API_URL=https://app.daytona.io/api
-TERMBRIDGE_DAYTONA_REPO=https://github.com/inline0/termbridge-test-app.git
-TERMBRIDGE_DAYTONA_BRANCH=main
-TERMBRIDGE_DAYTONA_PATH=termbridge-test-app
-TERMBRIDGE_DAYTONA_NAME=termbridge-sandbox
-TERMBRIDGE_DAYTONA_GIT_USERNAME=your_github_username
-TERMBRIDGE_DAYTONA_GIT_TOKEN=your_github_token
-TERMBRIDGE_DAYTONA_PUBLIC=true
-TERMBRIDGE_DAYTONA_PREVIEW_PORT=5173
-TERMBRIDGE_DAYTONA_DELETE_ON_EXIT=true
-```
-
-### Daytona direct mode (no tunnel)
-
-```bash
-TERMBRIDGE_BACKEND=daytona
-TERMBRIDGE_DAYTONA_DIRECT=true
-TERMBRIDGE_DAYTONA_SERVER_PORT=8080
-```
-
-### Sandboxes
-
-For short-lived sandboxes (tests, CI), use a dedicated prefix and enable cleanup:
-
-```bash
-TERMBRIDGE_DAYTONA_NAME=termbridge-test-$(date +%s)
-TERMBRIDGE_DAYTONA_DELETE_ON_EXIT=true
-```
-
-## Development
-
-```bash
-bun install
-bun run dev:beam
-bun run dev:beam:multi
-bun run test
-```
-
-## Troubleshooting
-
-- `tmux` not found: install `tmux` and ensure it is on your PATH.
-- `cloudflared` not found: install Cloudflare's tunnel client and ensure it is on your PATH.
-- `node-pty` issues: ensure the spawn-helper binary is executable (Termbridge attempts to fix this automatically).
+Full documentation, environment variables, and Daytona sandbox setup at [termbridge.dev](https://termbridge.dev) or see the [GitHub README](https://github.com/inline0/termbridge).
 
 ## License
 

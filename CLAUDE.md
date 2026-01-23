@@ -7,7 +7,6 @@ Local terminal beaming CLI. Exposes your terminal via a public HTTPS URL for mob
 Termbridge is an open-source CLI that runs entirely on the user's machine. It starts a local web server with a browser UI and WebSocket endpoint, backed by tmux PTY streaming or a Daytona sandbox. A Cloudflare tunnel exposes the local server on a public HTTPS URL with QR code for easy mobile access.
 
 **Package name:** `termbridge`
-**Version:** 0.3.0
 **License:** MIT
 
 ---
@@ -16,144 +15,253 @@ Termbridge is an open-source CLI that runs entirely on the user's machine. It st
 
 ```
 termbridge/
-├── cli/                        # Main publishable package
+├── cli/                           # Main publishable package
 │   ├── src/
-│   │   ├── bin.ts             # Entry point
-│   │   ├── cli/               # CLI orchestration
-│   │   │   ├── args.ts        # Argument parsing
-│   │   │   ├── help.ts        # Help text
-│   │   │   ├── run.ts         # CLI dispatcher
-│   │   │   ├── start.ts       # Start command
-│   │   │   └── ink.tsx        # Ink-based TTY UI
-│   │   └── server/            # HTTP/WebSocket server
-│   │       ├── server.ts      # Core handlers
-│   │       ├── auth.ts        # Token/session management
-│   │       ├── rate-limit.ts  # Rate limiting
-│   │       ├── static.ts      # Static file serving
-│   │       ├── terminal-registry.ts
-│   │       └── parse-client-message.ts
-│   ├── ui/                    # React UI (Vite)
+│   │   ├── bin.ts                # Entry point
+│   │   ├── cli/                  # CLI orchestration
+│   │   │   ├── args.ts           # Argument parsing
+│   │   │   ├── help.ts           # Help text
+│   │   │   ├── run.ts            # CLI dispatcher
+│   │   │   ├── start.ts          # Start command (main logic)
+│   │   │   └── ink.tsx           # Ink-based TTY UI
+│   │   ├── server/               # HTTP/WebSocket server
+│   │   │   ├── server.ts         # Core handlers
+│   │   │   ├── auth.ts           # Token/session management
+│   │   │   ├── rate-limit.ts     # Rate limiting
+│   │   │   ├── static.ts         # Static file serving
+│   │   │   └── terminal-registry.ts
+│   │   └── sandbox/              # Sandbox providers
+│   │       └── daytona/          # Daytona sandbox backend
+│   │           ├── backend.ts    # Sandbox backend implementation
+│   │           ├── direct.ts     # Direct mode (server in sandbox)
+│   │           ├── agent-auto.ts # Agent auto-detection
+│   │           ├── agent-install.ts # Agent installation
+│   │           └── agent-auth.ts # Auth file syncing
+│   ├── ui/                       # React UI (Vite)
 │   │   └── src/
-│   │       ├── main.tsx, app.tsx, router.tsx
-│   │       ├── terminal-page.tsx     # Main terminal view with connection indicator
-│   │       ├── terminal-client.ts    # xterm.js WebSocket + reconnection logic
-│   │       ├── terminal-controls.tsx # Input bar and action buttons
-│   │       ├── terminal-switcher.tsx # Session picker bottom sheet
-│   │       ├── view-tabs.tsx         # Terminal/Preview tabs (proxy mode)
-│   │       ├── bottom-sheet.tsx      # Silk-based bottom sheet component
-│   │       └── styles.css            # Global styles + xterm overrides
-│   ├── integration/           # E2E tests (tmux + Playwright)
-│   ├── dist/                  # Built CLI (tsup)
-│   └── package.json
+│   │       ├── terminal-page.tsx     # Main terminal view
+│   │       ├── terminal-client.ts    # xterm.js WebSocket client
+│   │       ├── terminal-controls.tsx # Input bar and actions
+│   │       ├── terminal-switcher.tsx # Session picker
+│   │       └── view-tabs.tsx         # Terminal/Preview tabs
+│   ├── integration/              # E2E tests
+│   │   ├── cli.test.ts           # Local tmux tests
+│   │   ├── sandbox-daytona.test.ts # Daytona sandbox tests
+│   │   ├── cli-test-utils.ts     # Shared test utilities
+│   │   └── sandbox-utils.ts      # Sandbox test utilities
+│   └── dist/                     # Built CLI (tsup)
 ├── packages/
-│   ├── shared/                # Protocol types
-│   ├── terminal/              # tmux backend (node-pty)
-│   ├── tunnel/                # Cloudflare tunnel
-│   └── ui/                    # Reusable React components
+│   ├── shared/                   # Protocol types
+│   ├── terminal/                 # tmux backend (node-pty)
+│   ├── tunnel/                   # Cloudflare tunnel
+│   └── ui/                       # Reusable React components
 ├── apps/
-│   └── docs/                  # Next.js + OneDocs site
-├── scripts/
-│   └── dev-beam.mjs           # Dev workflow script
-├── vitest.config.ts           # Unit test config
-├── vitest.cli.config.ts       # E2E test config
-├── vitest.setup.ts            # Test mocks
-└── biome.json
+│   └── docs/                     # Next.js + OneDocs site
+└── scripts/
+    ├── dev-beam.mjs              # Dev workflow script
+    └── daytona-debug.mjs         # Daytona debugging script
 ```
 
 ---
 
-## Packages
-
-### @termbridge/shared
-Protocol definitions for WebSocket communication.
-
-```ts
-// Terminal types
-type TerminalListItem = { id, label, status, createdAt, source }
-type TerminalListResponse = { terminals: TerminalListItem[] }
-type TerminalCreateRequest = { name?: string }
-
-// Message types
-type TerminalClientMessage =
-  | { type: "input", data: string }
-  | { type: "resize", cols: number, rows: number }
-  | { type: "control", key: ControlKey }
-
-type TerminalServerMessage =
-  | { type: "output", data: string }
-  | { type: "status", state: "connected"|"disconnected"|"error" }
-
-// Control keys
-type ControlKey = "ctrl_c"|"esc"|"tab"|"up"|"down"|"left"|"right"
-```
-
-### @termbridge/terminal
-tmux backend via node-pty.
-
-```ts
-createSession(name): Promise<void>
-write(sessionName, data): Promise<void>
-resize(sessionName, cols, rows): void
-sendControl(sessionName, key): void
-onOutput(sessionName, callback): unsubscribe
-closeSession(sessionName): void
-```
-
-### @termbridge/tunnel
-Cloudflare tunnel integration.
-
-```ts
-start(localUrl): Promise<{ publicUrl: string }>
-stop(): Promise<void>
-```
-
-### @termbridge/ui
-Reusable React component library with Tailwind CSS.
-
----
-
-## CLI Commands
-
-```bash
-termbridge                    # Start (default command)
-termbridge start              # Explicit start
-termbridge help               # Show help
-```
-
-### Flags
+## CLI Flags
 
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--port <port>` | Fixed local port | Random |
-| `--proxy <port>` | Proxy a local dev server (enables Terminal/Preview tabs) | - |
-| `--dev-proxy-url <url>` | Direct URL for iframe in dev mode (enables HMR) | - |
+| `--proxy <port>` | Proxy a local dev server | - |
 | `--session <name>` | tmux session name | Autogenerated |
 | `--kill-on-exit` | Kill tmux on exit | false |
 | `--no-qr` | Disable QR code | false |
-| `--no-tunnel` | Disable tunnel (requires public URL) | false |
-| `--public-url <url>` | Public URL when tunnel disabled | - |
-| `--tunnel cloudflare` | Tunnel provider (cloudflare or none) | cloudflare |
-| `--backend <tmux|sandbox-daytona>` | Terminal backend | tmux |
-| `--sandbox-daytona-direct` | Run the server inside the Daytona sandbox (no tunnel) | false |
+| `--no-tunnel` | Disable tunnel | false |
+| `--public-url <url>` | Public URL (when tunnel disabled) | - |
+| `--tunnel cloudflare` | Tunnel provider | cloudflare |
+| `--backend <mode>` | `tmux` or `sandbox-daytona` | tmux |
+| `--sandbox-daytona-direct` | Run server inside sandbox | false |
+| `--sandbox-daytona-repo <url>` | Git repo URL | - |
+| `--sandbox-daytona-branch <branch>` | Git branch | - |
+| `--sandbox-daytona-path <path>` | Path inside sandbox | - |
+| `--sandbox-daytona-name <name>` | Sandbox name | - |
+| `--sandbox-daytona-preview-port <port>` | Preview port | - |
+| `--sandbox-daytona-public` | Make sandbox public | false |
+
+---
+
+## Environment Variables
+
+### Core
+
+| Variable | Description |
+|----------|-------------|
+| `TERMBRIDGE_BACKEND` | Terminal backend: `tmux` or `sandbox-daytona` |
+| `TERMBRIDGE_SESSIONS=<n>` | Create N tmux sessions on start |
+| `TERMBRIDGE_TMUX_CWD=<path>` | Working directory for tmux sessions |
+| `TERMBRIDGE_HOST=<host>` | Host to listen on |
+| `TERMBRIDGE_PUBLIC_URL=<url>` | Public URL when tunnel disabled |
+| `TERMBRIDGE_TUNNEL=none` | Disable the Cloudflare tunnel |
+| `TERMBRIDGE_TUNNEL_TOKEN` | Cloudflare tunnel token |
+| `TERMBRIDGE_TUNNEL_URL` | Custom tunnel URL |
+
+### Security
+
+| Variable | Description |
+|----------|-------------|
+| `TERMBRIDGE_INSECURE_COOKIE=1` | Allow HTTP cookies (dev only) |
+| `TERMBRIDGE_COOKIE_SAMESITE` | Cookie SameSite attribute |
+
+### UI
+
+| Variable | Description |
+|----------|-------------|
+| `TERMBRIDGE_HIDE_TERMINAL_SWITCHER=1` | Hide terminal switcher in UI |
+| `TERMBRIDGE_SHARE_FILE=<path>` | Write share URL to file |
+
+### Daytona SDK
+
+| Variable | Description |
+|----------|-------------|
+| `TERMBRIDGE_DAYTONA_API_KEY` | Daytona API key (required for sandbox mode) |
+| `TERMBRIDGE_DAYTONA_API_URL` | Daytona API URL |
+| `TERMBRIDGE_DAYTONA_TARGET` | Daytona target |
+
+### Sandbox Configuration
+
+| Variable | Description |
+|----------|-------------|
+| `TERMBRIDGE_SANDBOX_DAYTONA_REPO` | Git repo URL to clone |
+| `TERMBRIDGE_SANDBOX_DAYTONA_BRANCH` | Git branch |
+| `TERMBRIDGE_SANDBOX_DAYTONA_PATH` | Path inside sandbox |
+| `TERMBRIDGE_SANDBOX_DAYTONA_NAME` | Sandbox name |
+| `TERMBRIDGE_SANDBOX_DAYTONA_PUBLIC=true` | Make sandbox publicly accessible |
+| `TERMBRIDGE_SANDBOX_DAYTONA_DELETE_ON_EXIT=true` | Delete sandbox on exit |
+| `TERMBRIDGE_SANDBOX_DAYTONA_DIRECT=true` | Run server inside sandbox |
+| `TERMBRIDGE_SANDBOX_DAYTONA_SERVER_PORT` | Server port in direct mode |
+| `TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT` | Preview port |
+| `TERMBRIDGE_SANDBOX_DAYTONA_GIT_USERNAME` | Git username (private repos) |
+| `TERMBRIDGE_SANDBOX_DAYTONA_GIT_TOKEN` | Git token (private repos) |
+| `TERMBRIDGE_SANDBOX_DAYTONA_GIT_PASSWORD` | Git password (alias for token) |
+
+### Agent Configuration
+
+| Variable | Description |
+|----------|-------------|
+| `TERMBRIDGE_SANDBOX_DAYTONA_AGENTS` | Agents to install: `claude`, `codex`, `opencode`, or `all` |
+| `TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTO=true` | Auto-detect agents from local auth |
+| `TERMBRIDGE_SANDBOX_DAYTONA_AGENT_INSTALL=true` | Enable agent installation |
+| `TERMBRIDGE_SANDBOX_DAYTONA_AGENT_PACKAGES` | NPM packages to install (comma-separated) |
+| `TERMBRIDGE_SANDBOX_DAYTONA_AGENT_ENV` | Env var keys to pass to agents |
+| `TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTH_PATHS` | Auth file paths to sync |
+| `TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTH_MAPS` | Auth file mappings (`local=remote`) |
+
+### Development
+
+| Variable | Description |
+|----------|-------------|
+| `TERMBRIDGE_DEV_PORT` | Override server port in dev |
+| `TERMBRIDGE_DEV_UI` | Override Vite dev UI URL |
+| `TERMBRIDGE_DEV_SESSION` | Session name for dev |
+| `TERMBRIDGE_DEV_PROXY` | Dev proxy URL |
+| `TERMBRIDGE_SKIP_BUILD=1` | Skip build in dev scripts |
+| `TERMBRIDGE_PROXY_PORT` | Proxy port for dev:beam:proxy |
+
+### Testing
+
+| Variable | Description |
+|----------|-------------|
+| `TERMBRIDGE_E2E_DAYTONA=1` | Enable Daytona E2E tests |
+| `TERMBRIDGE_TEST_DEBUG=1` | Enable debug logging in tests |
+| `NODE_ENV=test` | Skip auto-main in bin.ts |
+
+---
+
+## Testing
+
+### Test Structure
+
+```
+bun run test          # All tests (mocked + CLI)
+bun run test:mocked   # Unit tests with 100% coverage
+bun run test:cli      # E2E tests (tmux + Playwright + Daytona)
+```
+
+### Unit Tests (`test:mocked`)
+- **UI tests:** jsdom environment, `cli/ui/src/**/*.test.tsx`
+- **Node tests:** node environment, all other `**/*.test.ts`
+- **Coverage:** 100% enforced
+
+### E2E Tests (`test:cli`)
+- `cli/integration/cli.test.ts` - Local tmux tests
+- `cli/integration/sandbox-daytona.test.ts` - Daytona sandbox tests
+
+### Test App Repository
+
+The Daytona E2E tests use a sibling repository:
+```
+termbridge/                 # This repo
+termbridge-test-app/        # Test app repo (sibling)
+  └── .env                  # Daytona config for tests
+```
+
+The test app's `.env` file contains:
+```bash
+TERMBRIDGE_DAYTONA_API_KEY=...
+TERMBRIDGE_DAYTONA_API_URL=https://app.daytona.io/api
+TERMBRIDGE_BACKEND=sandbox-daytona
+TERMBRIDGE_SANDBOX_DAYTONA_PUBLIC=true
+TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT=5173
+TERMBRIDGE_SANDBOX_DAYTONA_GIT_USERNAME=...
+TERMBRIDGE_SANDBOX_DAYTONA_GIT_TOKEN=...
+TERMBRIDGE_E2E_DAYTONA=1
+```
+
+The `TERMBRIDGE_E2E_DAYTONA=1` flag enables the Daytona tests. Without it, they're skipped.
+
+---
+
+## Commands
+
+```bash
+# Development
+bun run dev              # Build CLI + Vite dev server
+bun run dev:beam         # Full dev workflow with tunnel
+bun run dev:beam:multi   # Multi-session dev (2 terminals)
+bun run dev:beam:proxy   # Dev with proxy mode
+
+# Building
+bun run build            # Build CLI + UI
+
+# Testing
+bun run test             # All tests
+bun run test:mocked      # Unit tests (100% coverage)
+bun run test:cli         # E2E tests
+
+# Quality
+bun run lint             # Biome lint
+bun run typecheck        # TypeScript check
+bun run format           # Biome format
+
+# Daytona Debugging
+bun run daytona:debug           # Debug Daytona sandbox
+bun run daytona:debug:direct    # Debug direct mode
+bun run daytona:debug:claude    # Debug with Claude agent
+```
 
 ---
 
 ## HTTP Endpoints
 
-All termbridge routes are under the `/__tb/` prefix to avoid conflicts with proxied apps.
+All termbridge routes use `/__tb/` prefix to avoid conflicts with proxied apps.
 
 | Endpoint | Description |
 |----------|-------------|
 | `GET /__tb/s/:token` | Token redemption → cookie → redirect |
-| `GET /__tb/api/terminals` | List terminals (auth required) |
-| `POST /__tb/api/terminals` | Create terminal (auth required) |
-| `GET /__tb/api/csrf` | Get CSRF token for WebSocket connections |
-| `GET /__tb/api/config` | Get config (proxyPort, devProxyUrl) |
+| `GET /__tb/api/terminals` | List terminals |
+| `POST /__tb/api/terminals` | Create terminal |
+| `GET /__tb/api/csrf` | Get CSRF token |
+| `GET /__tb/api/config` | Get config |
 | `GET /__tb/healthz` | Health check |
-| `GET /__tb/app/*` | SPA fallback |
-| `WS /__tb/ws/terminal/:terminalId?csrf=<token>` | Terminal WebSocket (requires CSRF token) |
-| `GET /` | Redirects to `/__tb/app` (when proxy mode disabled) |
-| `* /*` | Proxied to target app (when proxy mode enabled) |
+| `WS /__tb/ws/terminal/:id?csrf=<token>` | Terminal WebSocket |
+| `GET /` | Redirect to app (or proxy) |
 
 ---
 
@@ -167,155 +275,47 @@ All termbridge routes are under the `/__tb/` prefix to avoid conflicts with prox
 ### Session
 - 144-bit session ID in HttpOnly cookie
 - 30-minute idle timeout, 8-hour max
-- CSRF token stored in session for WebSocket protection
-- `TERMBRIDGE_INSECURE_COOKIE=1` for local dev
-
-### CSRF Protection
-- WebSocket upgrades require CSRF token in query param
-- Token fetched via `GET /api/csrf` (requires valid session)
-- Prevents cross-site WebSocket hijacking
+- CSRF token for WebSocket protection
 
 ### Input Limits
 - HTTP request body: 64KB max
 - WebSocket message: 1MB max
 - Terminal input per message: 64KB max
 
-### Rate Limiting
-- Per-IP limits on token redemption
-- Per-IP limits on WebSocket connects
-
----
-
-## Daytona sandboxes
-
-Set the backend to Daytona via `TERMBRIDGE_BACKEND=sandbox-daytona`, then configure repo + access:
-
-```bash
-TERMBRIDGE_DAYTONA_API_KEY=your_key
-TERMBRIDGE_DAYTONA_API_URL=https://app.daytona.io/api
-TERMBRIDGE_SANDBOX_DAYTONA_REPO=https://github.com/inline0/termbridge-test-app.git
-TERMBRIDGE_SANDBOX_DAYTONA_BRANCH=main
-TERMBRIDGE_SANDBOX_DAYTONA_PATH=termbridge-test-app
-TERMBRIDGE_SANDBOX_DAYTONA_NAME=termbridge-sandbox
-TERMBRIDGE_SANDBOX_DAYTONA_GIT_USERNAME=your_github_username
-TERMBRIDGE_SANDBOX_DAYTONA_GIT_TOKEN=your_github_token
-TERMBRIDGE_SANDBOX_DAYTONA_PUBLIC=true
-TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT=5173
-TERMBRIDGE_SANDBOX_DAYTONA_DELETE_ON_EXIT=true
-```
-
-### Daytona direct mode (no tunnel)
-
-```bash
-TERMBRIDGE_BACKEND=sandbox-daytona
-TERMBRIDGE_SANDBOX_DAYTONA_DIRECT=true
-TERMBRIDGE_SANDBOX_DAYTONA_SERVER_PORT=8080
-```
-
-For E2E runs, prefer a `termbridge-test-*` name and enable delete-on-exit so sandboxes are cleaned up automatically.
-
----
-
-## Commands
-
-```bash
-# Development
-bun run dev              # Build CLI + Vite dev server
-bun run dev:beam         # Full dev workflow with tunnel
-bun run dev:beam:multi   # Multi-session dev (2 terminals)
-bun run dev:beam:proxy   # Dev with proxy mode (set TERMBRIDGE_PROXY_PORT)
-
-# Building
-bun run build            # Build CLI + UI
-
-# Testing
-bun run test             # All tests
-bun run test:mocked      # Unit/integration (100% coverage)
-bun run test:cli         # Real CLI + Playwright E2E
-
-# Quality
-bun run lint             # Biome lint
-bun run typecheck        # TypeScript check
-bun run format           # Biome format
-```
-
----
-
-## Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `TERMBRIDGE_SESSIONS=<n>` | Create N tmux sessions on start |
-| `TERMBRIDGE_INSECURE_COOKIE=1` | Allow HTTP cookies (dev) |
-| `TERMBRIDGE_PROXY_PORT=<port>` | Proxy port for dev:beam:proxy script |
-| `TERMBRIDGE_DEV_PORT=<port>` | Override termbridge server port in dev |
-| `TERMBRIDGE_DEV_UI=<url>` | Override Vite dev URL |
-| `TERMBRIDGE_PUBLIC_URL=<url>` | Public URL when tunnel disabled |
-| `TERMBRIDGE_TUNNEL=none` | Disable the tunnel |
-| `TERMBRIDGE_SANDBOX_DAYTONA_DIRECT=true` | Run Termbridge inside the Daytona sandbox |
-| `TERMBRIDGE_SANDBOX_DAYTONA_SERVER_PORT=<port>` | Port for sandboxed Termbridge server |
-| `NODE_ENV=test` | Skip auto-main in bin.ts |
-
----
-
-## Testing
-
-### Unit Tests (Vitest)
-- **UI tests:** jsdom, `cli/ui/src/**/*.test.tsx`
-- **Node tests:** node env, all other `**/*.test.ts`
-- **Coverage:** 100% enforced (lines, functions, branches, statements)
-
-### E2E Tests
-- Real CLI + tmux + Playwright
-- 60-second timeout
-- Config: `vitest.cli.config.ts`
-
-### Test Setup (vitest.setup.ts)
-Mocks for:
-- `@xterm/xterm` (Terminal class)
-- `@xterm/addon-fit` (FitAddon)
-- DOM APIs (matchMedia, ResizeObserver, CSS.supports)
-
 ---
 
 ## Data Flow
 
 ```
-Browser → Public URL (tunnel) → Local HTTP/WS → tmux session
+Browser → Public URL (tunnel) → Local HTTP/WS → tmux/sandbox
 ```
 
 1. Browser connects to Cloudflare tunnel URL
 2. `GET /__tb/s/:token` redeems token, sets session cookie
 3. Redirect to `/__tb/app`, load React SPA
 4. Fetch CSRF token via `GET /__tb/api/csrf`
-5. WebSocket to `/__tb/ws/terminal/:terminalId?csrf=<token>`
-6. Server validates session, CSRF, and terminal ID
-7. Streams tmux PTY output to client
-8. Client sends input/resize/control back
+5. WebSocket to `/__tb/ws/terminal/:id?csrf=<token>`
+6. Server streams PTY output to client
+7. Client sends input/resize/control back
 
 ### Proxy Mode
-
-When `--proxy <port>` is passed:
 - UI shows Terminal/Preview tabs
-- All non-`/__tb/` requests are proxied to the target app
-- Preview tab shows iframe pointing to `/` (or `devProxyUrl` in dev mode)
-- Terminal and controls remain accessible while previewing
+- Non-`/__tb/` requests proxied to target app
+- Preview tab shows iframe pointing to `/`
+
+### Direct Mode (Daytona)
+- Server runs inside sandbox
+- No Cloudflare tunnel needed
+- Uses Daytona's preview URLs
 
 ---
 
-## Terminal Client
+## Terminal Source Types
 
-### Connection States
-- `connecting` - Initial connection attempt
-- `connected` - WebSocket open and ready
-- `reconnecting` - Connection lost, attempting reconnect
-- `disconnected` - Connection failed after max retries
-
-### Reconnection Logic
-- Exponential backoff: 1s base, 30s max delay
-- Max 10 reconnect attempts before giving up
-- Automatic reconnect on unexpected disconnect
-- UI shows connection status indicator (colored dot)
+The `source` field in terminal metadata indicates the backend:
+- `tmux` - Local tmux session
+- `sandbox` - Daytona sandbox
+- `mock` - Mock backend (tests only)
 
 ---
 
@@ -328,37 +328,18 @@ When `--proxy <port>` is passed:
 
 ### UI (Vite)
 - Entry: `ui/src/main.tsx`
-- Output: `ui/dist/` (served by server)
+- Output: `ui/dist/`
 - Stack: React 19, TanStack Router, xterm.js, Tailwind
-
----
-
-## Dependencies
-
-**CLI Runtime:**
-- `ink@^6.6.0` - TTY UI
-- `node-pty@^1.1.0` - PTY spawning
-- `qrcode-terminal@^0.12.0` - ASCII QR
-- `ws@^8.19.0` - WebSocket server
-
-**UI:**
-- `react@^19.2.3`
-- `@tanstack/react-router@^1.151.6`
-- `@xterm/xterm@^6.0.0` + addons
-- `tailwindcss@^4.1.18`
-
-**Internal packages:** `@termbridge/shared`, `@termbridge/terminal`, `@termbridge/tunnel`, `@termbridge/ui`
 
 ---
 
 ## Prerequisites
 
-**Runtime (end users):**
+**Runtime:**
 - Node.js 18+
 - tmux in PATH
 - cloudflared in PATH
 
 **Development:**
 - Bun 1.2.22+
-- tmux, cloudflared
 - Playwright (`bunx playwright install chromium`)
