@@ -6,6 +6,7 @@ import type {
   SandboxServerStartOptions,
   SandboxServerStartResult
 } from "../sandbox/server-provider";
+import { installAgents } from "./agent-install";
 
 export type DaytonaSandboxProviderOptions = {
   apiKey?: string;
@@ -178,6 +179,7 @@ export const createDaytonaSandboxServerProvider = (
             : repoPath;
 
         await ensureTmux(sandbox, logger);
+        await installAgents(sandbox, startOptions.agentInstall, logger);
 
         const publicUrl = normalizePublicUrl(
           await resolvePreviewUrl(sandbox, startOptions.serverPort, logger)
@@ -216,7 +218,8 @@ export const createDaytonaSandboxServerProvider = (
           TERMBRIDGE_PUBLIC_URL: publicUrl,
           TERMBRIDGE_SHARE_FILE: shareFile,
           TERMBRIDGE_TMUX_CWD: repoDir,
-          TERMBRIDGE_HIDE_TERMINAL_SWITCHER: startOptions.hideTerminalSwitcher ? "1" : undefined
+          TERMBRIDGE_HIDE_TERMINAL_SWITCHER: startOptions.hideTerminalSwitcher ? "1" : undefined,
+          ...startOptions.agentEnv
         });
 
         const startCommand = `nohup ${args.join(" ")} > ${logFile} 2>&1 & echo $! > ${pidFile}`;

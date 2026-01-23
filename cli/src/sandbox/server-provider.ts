@@ -9,6 +9,8 @@ export type SandboxServerStartOptions = {
   deleteOnExit?: boolean;
   gitUsername?: string;
   gitPassword?: string;
+  agentEnv?: Record<string, string>;
+  agentInstall?: AgentInstallOptions;
   serverPort: number;
   proxyPort?: number;
   sessionName?: string;
@@ -26,4 +28,9 @@ export type SandboxServerStartResult = {
 
 export type SandboxServerProvider = {
   start: (options: SandboxServerStartOptions) => Promise<SandboxServerStartResult>;
+};
+
+export type AgentInstallOptions = {
+  enabled: boolean;
+  packages: string[];
 };

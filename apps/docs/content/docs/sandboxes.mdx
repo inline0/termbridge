@@ -82,6 +82,25 @@ TERMBRIDGE_DAYTONA_GIT_TOKEN=your_github_token
 
 `TERMBRIDGE_DAYTONA_GIT_PASSWORD` is also supported and overrides the token if set.
 
+## Coding agents
+
+If you want coding agents (Claude Code, Codex, OpenCode) ready inside the sandbox, Termbridge can install them and forward your API keys.
+
+By default, if any agent API keys are present, Termbridge will:
+- Install the agent CLIs in the sandbox (via `npm install -g`)
+- Forward the API keys into the tmux session
+
+You can override this behavior with the following variables:
+
+| Variable | Purpose |
+| --- | --- |
+| `TERMBRIDGE_DAYTONA_AGENT_INSTALL=true` | Force agent installation |
+| `TERMBRIDGE_DAYTONA_AGENT_INSTALL=false` | Skip agent installation |
+| `TERMBRIDGE_DAYTONA_AGENT_PACKAGES=...` | Comma/space separated npm packages to install |
+| `TERMBRIDGE_DAYTONA_AGENT_ENV=...` | Extra env var names to forward into the sandbox |
+
+Default agent packages are `@anthropic-ai/claude-code`, `@openai/codex`, and `opencode`.
+
 ## Preview mode
 
 To show the preview view, set `TERMBRIDGE_DAYTONA_PREVIEW_PORT` to the port your dev server uses inside the sandbox.

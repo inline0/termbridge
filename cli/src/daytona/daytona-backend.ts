@@ -3,6 +3,7 @@ import { Daytona, type PtyHandle, type Sandbox } from "@daytonaio/sdk";
 import type { TerminalBackend, TerminalSession } from "@termbridge/terminal";
 import type { TerminalControlKey } from "@termbridge/shared";
 import type { Logger } from "../server/server";
+import { installAgents } from "./agent-install";
 
 type DaytonaSessionEntry = {
   session: TerminalSession;
@@ -24,6 +25,8 @@ export type DaytonaBackendOptions = {
   deleteOnExit?: boolean;
   gitUsername?: string;
   gitPassword?: string;
+  agentEnv?: Record<string, string>;
+  agentInstall?: { enabled: boolean; packages: string[] };
   logger?: Logger;
 };
 
@@ -82,6 +85,7 @@ export const createDaytonaBackend = (options: DaytonaBackendOptions): TerminalBa
             options.gitUsername,
             options.gitPassword
           );
+          await installAgents(sandbox, options.agentInstall, logger);
           sandboxRef = sandbox;
           logger.info(`Daytona: repo ready at ${repoPath}`);
           return { sandbox, repoPath };
@@ -109,7 +113,8 @@ export const createDaytonaBackend = (options: DaytonaBackendOptions): TerminalBa
       rows: entry.rows,
       envs: {
         TERM: "xterm-256color",
-        COLORTERM: "truecolor"
+        COLORTERM: "truecolor",
+        ...(options.agentEnv ?? {})
       },
       onData: (data) => {
         if (!sessions.has(entry.session.name)) {

@@ -128,6 +128,55 @@ const parseOptionalNumber = (value: string | undefined) => {
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
+const parseList = (value: string | undefined) => {
+  if (!value) {
+    return [];
+  }
+  return value
+    .split(/[,\s]+/)
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+};
+
+const defaultAgentEnvKeys = [
+  "OPENAI_API_KEY",
+  "OPENAI_BASE_URL",
+  "OPENAI_ORG_ID",
+  "OPENAI_ORGANIZATION",
+  "OPENAI_PROJECT",
+  "ANTHROPIC_API_KEY",
+  "ANTHROPIC_BASE_URL",
+  "CLAUDE_API_KEY",
+  "OPENROUTER_API_KEY",
+  "OPENROUTER_BASE_URL"
+];
+
+const collectAgentEnv = (env: Record<string, string | undefined>) => {
+  const extraKeys = parseList(env.TERMBRIDGE_DAYTONA_AGENT_ENV);
+  const keys = new Set([...defaultAgentEnvKeys, ...extraKeys]);
+  const entries = Array.from(keys)
+    .map((key) => [key, env[key]])
+    .filter(([, value]) => typeof value === "string" && value.length > 0) as Array<
+    [string, string]
+  >;
+  return Object.fromEntries(entries);
+};
+
+const resolveAgentInstall = (env: Record<string, string | undefined>, agentEnv: Record<string, string>) => {
+  const installRaw = env.TERMBRIDGE_DAYTONA_AGENT_INSTALL;
+  const enabled =
+    typeof installRaw === "string"
+      ? parseBoolean(installRaw)
+      : Object.keys(agentEnv).length > 0;
+  const packages = parseList(env.TERMBRIDGE_DAYTONA_AGENT_PACKAGES);
+  return {
+    enabled,
+    packages: packages.length > 0
+      ? packages
+      : ["@anthropic-ai/claude-code", "@openai/codex", "opencode"]
+  };
+};
+
 const resolveBackendMode = (value: string | undefined): "tmux" | "daytona" => {
   if (!value) {
     return "tmux";
@@ -227,6 +276,8 @@ export const startCommand = async (
   const publicUrlOverride = options.publicUrl ?? env.TERMBRIDGE_PUBLIC_URL;
   const hideTerminalSwitcher = parseBoolean(env.TERMBRIDGE_HIDE_TERMINAL_SWITCHER);
   const tmuxCwd = env.TERMBRIDGE_TMUX_CWD;
+  const agentEnv = collectAgentEnv(env);
+  const agentInstall = resolveAgentInstall(env, agentEnv);
   const daytonaRepo =
     options.daytonaRepo ??
     env.TERMBRIDGE_DAYTONA_REPO ??
@@ -247,6 +298,8 @@ export const startCommand = async (
     deleteOnExit: daytonaDeleteOnExit,
     gitUsername: env.TERMBRIDGE_DAYTONA_GIT_USERNAME,
     gitPassword: env.TERMBRIDGE_DAYTONA_GIT_PASSWORD ?? env.TERMBRIDGE_DAYTONA_GIT_TOKEN,
+    agentEnv,
+    agentInstall,
     logger
   };
 
@@ -270,6 +323,8 @@ export const startCommand = async (
       deleteOnExit: daytonaConfig.deleteOnExit,
       gitUsername: daytonaConfig.gitUsername,
       gitPassword: daytonaConfig.gitPassword,
+      agentEnv: daytonaConfig.agentEnv,
+      agentInstall: daytonaConfig.agentInstall,
       serverPort,
       proxyPort,
       sessionName: options.session,

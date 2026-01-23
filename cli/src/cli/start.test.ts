@@ -854,6 +854,116 @@ describe("startCommand", () => {
     );
   });
 
+  it("passes agent env and default install to the daytona backend", async () => {
+    const listen = vi.fn(async (): Promise<StartedServer> => ({
+      port: 4030,
+      close: vi.fn(async () => undefined)
+    }));
+    const createServer = vi.fn(() => ({ listen }));
+
+    const auth: Auth = {
+      issueToken: () => ({ token: "token" }),
+      redeemToken: () => null,
+      getSession: () => null,
+      getSessionFromRequest: () => null,
+      createSessionCookie: () => "",
+      verifyCsrfToken: () => false
+    };
+
+    const terminalBackend: TerminalBackend = {
+      createSession: vi.fn(async (name) => ({ name, createdAt: new Date() })),
+      write: vi.fn(async () => undefined),
+      resize: vi.fn(async () => undefined),
+      sendControl: vi.fn(async () => undefined),
+      scroll: vi.fn(async () => undefined),
+      onOutput: () => () => undefined,
+      closeSession: vi.fn(async () => undefined)
+    };
+
+    const createDaytonaBackend = vi.fn(() => terminalBackend);
+
+    const result = await startCommand(
+      {
+        killOnExit: false,
+        noQr: true,
+        tunnel: "cloudflare",
+        backend: "daytona",
+        daytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+      },
+      {
+        createServer,
+        createAuth: () => auth,
+        createDaytonaBackend,
+        createTerminalRegistry: () => createTerminalRegistryStub(),
+        createTunnelProvider: () => ({
+          start: vi.fn(async () => ({ publicUrl: "https://tunnel" })),
+          stop: vi.fn(async () => undefined)
+        }),
+        process: {
+          env: {
+            OPENAI_API_KEY: "openai-key",
+            TERMBRIDGE_DAYTONA_AGENT_ENV: "CUSTOM_TOKEN",
+            CUSTOM_TOKEN: "custom-value"
+          },
+          on: vi.fn()
+        } as unknown as NodeJS.Process,
+        logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+      }
+    );
+
+    expect(createDaytonaBackend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentEnv: {
+          OPENAI_API_KEY: "openai-key",
+          CUSTOM_TOKEN: "custom-value"
+        },
+        agentInstall: {
+          enabled: true,
+          packages: ["@anthropic-ai/claude-code", "@openai/codex", "opencode"]
+        }
+      })
+    );
+
+    await result.stop();
+  });
+
+  it("respects agent install env and packages override in daytona direct mode", async () => {
+    const start = vi.fn(async () => ({
+      localUrl: "https://sandbox.example",
+      publicUrl: "https://sandbox.example",
+      token: "token-agent",
+      stop: vi.fn(async () => undefined)
+    }));
+    daytonaDirectMocks.createDaytonaSandboxProvider.mockReturnValue({ start });
+
+    await startCommand(
+      {
+        killOnExit: false,
+        noQr: true,
+        backend: "daytona",
+        daytonaDirect: true
+      },
+      {
+        process: {
+          env: {
+            ANTHROPIC_API_KEY: "anthropic-key",
+            TERMBRIDGE_DAYTONA_AGENT_INSTALL: "0",
+            TERMBRIDGE_DAYTONA_AGENT_PACKAGES: "codex,opencode"
+          },
+          on: vi.fn()
+        } as unknown as NodeJS.Process,
+        logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+      }
+    );
+
+    expect(start).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentEnv: { ANTHROPIC_API_KEY: "anthropic-key" },
+        agentInstall: { enabled: false, packages: ["codex", "opencode"] }
+      })
+    );
+  });
+
   it("uses the default daytona backend factory when none is provided", async () => {
     const listen = vi.fn(async (): Promise<StartedServer> => ({
       port: 4012,
