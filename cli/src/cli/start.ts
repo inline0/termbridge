@@ -189,6 +189,15 @@ const collectAgentEnv = (env: Record<string, string | undefined>) => {
   return Object.fromEntries(entries);
 };
 
+const packageAliasMap: Record<string, string> = {
+  claude: "@anthropic-ai/claude-code",
+  "claude-code": "@anthropic-ai/claude-code",
+  codex: "@openai/codex",
+  opencode: "opencode"
+};
+
+const normalizePackageName = (name: string) => packageAliasMap[name.trim().toLowerCase()] ?? name;
+
 const resolveAgentInstall = (
   env: Record<string, string | undefined>,
   agentEnv: Record<string, string>,
@@ -201,7 +210,7 @@ const resolveAgentInstall = (
     typeof installRaw === "string"
       ? parseBoolean(installRaw)
       : hasAutoAgents || Object.keys(agentEnv).length > 0;
-  const packages = parseList(env.TERMBRIDGE_SANDBOX_AGENT_PACKAGES);
+  const packages = parseList(env.TERMBRIDGE_SANDBOX_AGENT_PACKAGES).map(normalizePackageName);
   return {
     enabled,
     packages: packages.length > 0 ? packages : autoPackages.length > 0 ? autoPackages : defaultAgentPackages,

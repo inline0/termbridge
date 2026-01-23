@@ -1483,7 +1483,7 @@ describe("startCommand", () => {
           env: {
             ANTHROPIC_API_KEY: "anthropic-key",
             TERMBRIDGE_SANDBOX_AGENT_INSTALL: "0",
-            TERMBRIDGE_SANDBOX_AGENT_PACKAGES: "codex,opencode",
+            TERMBRIDGE_SANDBOX_AGENT_PACKAGES: "codex,opencode,@custom/pkg",
             TERMBRIDGE_SANDBOX_AGENT_AUTH_MAPS: "/tmp/auth.json=/home/daytona/.config/claude/auth.json"
           },
           on: vi.fn()
@@ -1495,7 +1495,7 @@ describe("startCommand", () => {
     expect(start).toHaveBeenCalledWith(
       expect.objectContaining({
         agentEnv: { ANTHROPIC_API_KEY: "anthropic-key" },
-        agentInstall: { enabled: false, packages: ["codex", "opencode"], installScripts: [] },
+        agentInstall: { enabled: false, packages: ["@openai/codex", "opencode", "@custom/pkg"], installScripts: [] },
         agentAuth: {
           specs: [
             {
