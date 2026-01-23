@@ -62,7 +62,7 @@ export type TerminalListItem = {
   label: string;
   status: "running" | "closed";
   createdAt: string;
-  source: "tmux" | "mock" | "daytona";
+  source: "tmux" | "mock" | "sandbox";
 };
 
 export type TerminalListResponse = {

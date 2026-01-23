@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Logger } from "../server/server";
-import { createDaytonaSandboxServerProvider } from "./daytona-direct";
+import type { Logger } from "../../server/server";
+import { createSandboxDaytonaServerProvider } from "./direct";
 
 const mocks = vi.hoisted(() => {
   const daytonaCreate = vi.fn();
@@ -66,7 +66,7 @@ const baseOptions = {
 };
 
 const createProvider = (logger?: Logger) =>
-  createDaytonaSandboxServerProvider({ apiKey: "key", apiUrl: "https://api", logger });
+  createSandboxDaytonaServerProvider({ apiKey: "key", apiUrl: "https://api", logger });
 
 const findStartCall = () => {
   const calls = mocks.sandbox.process.executeCommand.mock.calls as Array<unknown[]>;
@@ -92,7 +92,7 @@ beforeEach(() => {
   mocks.sandbox.getWorkDir.mockResolvedValue("/home/daytona");
 });
 
-describe("createDaytonaSandboxServerProvider", () => {
+describe("createSandboxDaytonaServerProvider", () => {
   it("starts the server in the sandbox and returns the share url", async () => {
     vi.useFakeTimers();
     mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example/", token: "" });
@@ -312,11 +312,11 @@ describe("createDaytonaSandboxServerProvider", () => {
     const provider = createProvider(logger);
     const result = await provider.start({ ...baseOptions, deleteOnExit: true });
 
-    expect(logger.info).toHaveBeenCalledWith("Daytona: installing tmux");
+    expect(logger.info).toHaveBeenCalledWith("Sandbox (Daytona): installing tmux");
     expect(installCommand).toContain("apt-get install -y tmux");
     await result.stop();
-    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Daytona: stop failed"));
-    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Daytona: delete failed"));
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Sandbox (Daytona): stop failed"));
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Sandbox (Daytona): delete failed"));
   });
 
   it("installs tmux without sudo when sudo is unavailable", async () => {
@@ -432,7 +432,7 @@ describe("createDaytonaSandboxServerProvider", () => {
     });
 
     expect(logger.warn).toHaveBeenCalledWith(
-      "Daytona: local CLI pack missing; falling back to npx"
+      "Sandbox (Daytona): local CLI pack missing; falling back to npx"
     );
     const startCall = findStartCall();
     expect(String(startCall?.[0])).toContain("nohup npx termbridge start");
@@ -464,7 +464,7 @@ describe("createDaytonaSandboxServerProvider", () => {
     const result = await provider.start({ ...baseOptions, localCliPackPath: tempDir });
 
     expect(logger.warn).toHaveBeenCalledWith(
-      "Daytona: local CLI pack missing; falling back to npx"
+      "Sandbox (Daytona): local CLI pack missing; falling back to npx"
     );
     const startCall = findStartCall();
     expect(String(startCall?.[0])).toContain("nohup npx termbridge start");
@@ -530,7 +530,7 @@ describe("createDaytonaSandboxServerProvider", () => {
     const result = await provider.start({ ...baseOptions, localCliPackPath: packPath });
 
     expect(logger.warn).toHaveBeenCalledWith(
-      "Daytona: npm not available; falling back to npx"
+      "Sandbox (Daytona): npm not available; falling back to npx"
     );
     const startCall = findStartCall();
     expect(String(startCall?.[0])).toContain("nohup npx termbridge start");
@@ -570,7 +570,7 @@ describe("createDaytonaSandboxServerProvider", () => {
     const result = await provider.start({ ...baseOptions, localCliPackPath: packPath });
 
     expect(logger.warn).toHaveBeenCalledWith(
-      "Daytona: local CLI install failed; falling back to npx"
+      "Sandbox (Daytona): local CLI install failed; falling back to npx"
     );
     const startCall = findStartCall();
     expect(String(startCall?.[0])).toContain("nohup npx termbridge start");
@@ -763,8 +763,8 @@ describe("createDaytonaSandboxServerProvider", () => {
       })
     ).rejects.toThrow("tmux install failed: apt-get blew up");
 
-    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Daytona: stop failed"));
-    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Daytona: delete failed"));
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Sandbox (Daytona): stop failed"));
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Sandbox (Daytona): delete failed"));
   });
 
   it("reports a generic error when tmux install fails without detail", async () => {
@@ -803,9 +803,9 @@ describe("createDaytonaSandboxServerProvider", () => {
 
     await expect(provider.start({ ...baseOptions, deleteOnExit: true })).rejects.toBeDefined();
 
-    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("Daytona: sandbox start failed"));
-    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Daytona: stop failed"));
-    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Daytona: delete failed"));
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("Sandbox (Daytona): sandbox start failed"));
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Sandbox (Daytona): stop failed"));
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Sandbox (Daytona): delete failed"));
   });
 
   it("skips delete-on-exit cleanup when disabled during failures", async () => {
@@ -855,8 +855,8 @@ describe("createDaytonaSandboxServerProvider", () => {
 
     await result.stop();
 
-    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Daytona: stop failed"));
-    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Daytona: delete failed"));
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Sandbox (Daytona): stop failed"));
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Sandbox (Daytona): delete failed"));
   });
 
   it("fails fast when the sandbox cannot be created", async () => {

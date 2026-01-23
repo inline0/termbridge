@@ -50,11 +50,11 @@ describe("packLocalCli", () => {
         killOnExit: false,
         noQr: true,
         tunnel: "cloudflare",
-        backend: "daytona",
-        daytonaDirect: true
+        backend: "sandbox-daytona",
+        sandboxDaytonaDirect: true
       },
       {
-        createSandboxProvider: () => ({ start }),
+        createSandboxDaytonaProvider: () => ({ start }),
         process: { on: vi.fn() } as unknown as NodeJS.Process,
         logger
       }
@@ -78,11 +78,11 @@ describe("packLocalCli", () => {
         killOnExit: false,
         noQr: true,
         tunnel: "cloudflare",
-        backend: "daytona",
-        daytonaDirect: true
+        backend: "sandbox-daytona",
+        sandboxDaytonaDirect: true
       },
       {
-        createSandboxProvider: () => ({ start }),
+        createSandboxDaytonaProvider: () => ({ start }),
         process: { on: vi.fn() } as unknown as NodeJS.Process,
         logger
       }
@@ -106,11 +106,11 @@ describe("packLocalCli", () => {
         killOnExit: false,
         noQr: true,
         tunnel: "cloudflare",
-        backend: "daytona",
-        daytonaDirect: true
+        backend: "sandbox-daytona",
+        sandboxDaytonaDirect: true
       },
       {
-        createSandboxProvider: () => ({ start }),
+        createSandboxDaytonaProvider: () => ({ start }),
         process: { on: vi.fn() } as unknown as NodeJS.Process,
         logger
       }
@@ -134,11 +134,11 @@ describe("packLocalCli", () => {
         killOnExit: false,
         noQr: true,
         tunnel: "cloudflare",
-        backend: "daytona",
-        daytonaDirect: true
+        backend: "sandbox-daytona",
+        sandboxDaytonaDirect: true
       },
       {
-        createSandboxProvider: () => ({ start }),
+        createSandboxDaytonaProvider: () => ({ start }),
         process: { on: vi.fn() } as unknown as NodeJS.Process,
         logger
       }
@@ -161,11 +161,11 @@ describe("packLocalCli", () => {
         killOnExit: false,
         noQr: true,
         tunnel: "cloudflare",
-        backend: "daytona",
-        daytonaDirect: true
+        backend: "sandbox-daytona",
+        sandboxDaytonaDirect: true
       },
       {
-        createSandboxProvider: () => ({ start }),
+        createSandboxDaytonaProvider: () => ({ start }),
         process: { on: vi.fn() } as unknown as NodeJS.Process,
         logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
       }

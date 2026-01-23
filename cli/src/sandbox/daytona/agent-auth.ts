@@ -2,8 +2,8 @@ import { homedir } from "node:os";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { readdir, stat } from "node:fs/promises";
 import type { Sandbox } from "@daytonaio/sdk";
-import type { Logger } from "../server/server";
-import type { AgentAuthOptions, AgentAuthSpec } from "../sandbox/server-provider";
+import type { Logger } from "../../server/server";
+import type { AgentAuthOptions, AgentAuthSpec } from "../server-provider";
 
 const expandHome = (value: string, home: string) => {
   if (value === "~") {
@@ -80,6 +80,7 @@ export const syncAgentAuth = async (
     try {
       stats = await stat(sourcePath);
     } catch {
+      logger.warn(`Sandbox (Daytona): auth path missing: ${sourcePath}`);
       continue;
     }
 
@@ -109,8 +110,8 @@ export const syncAgentAuth = async (
 
   try {
     await sandbox.fs.uploadFiles(uploads);
-    logger.info(`Daytona: synced ${uploads.length} auth file${uploads.length === 1 ? "" : "s"}`);
+    logger.info(`Sandbox (Daytona): synced ${uploads.length} auth file${uploads.length === 1 ? "" : "s"}`);
   } catch (error) {
-    logger.warn(`Daytona: auth upload failed: ${error}`);
+    logger.warn(`Sandbox (Daytona): auth upload failed: ${error}`);
   }
 };

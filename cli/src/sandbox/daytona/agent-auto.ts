@@ -1,8 +1,8 @@
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { statSync } from "node:fs";
-import type { Logger } from "../server/server";
-import type { AgentAuthSpec } from "../sandbox/server-provider";
+import type { Logger } from "../../server/server";
+import type { AgentAuthSpec } from "../server-provider";
 
 export type AgentId = "claude" | "codex" | "opencode";
 
@@ -144,7 +144,7 @@ export const resolveAutoAgents = (
 
     const sources = foundFiles.length > 0 ? foundFiles : foundDirs;
     if (sources.length === 0) {
-      logger.warn(`Daytona: no auth files found for ${agent}`);
+      logger.warn(`Sandbox (Daytona): no auth files found for ${agent}`);
       continue;
     }
 

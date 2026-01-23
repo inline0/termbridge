@@ -133,8 +133,8 @@ termbridge help               # Show help
 | `--no-tunnel` | Disable tunnel (requires public URL) | false |
 | `--public-url <url>` | Public URL when tunnel disabled | - |
 | `--tunnel cloudflare` | Tunnel provider (cloudflare or none) | cloudflare |
-| `--backend <tmux|daytona>` | Terminal backend | tmux |
-| `--daytona-direct` | Run the server inside the Daytona sandbox (no tunnel) | false |
+| `--backend <tmux|sandbox-daytona>` | Terminal backend | tmux |
+| `--sandbox-daytona-direct` | Run the server inside the Daytona sandbox (no tunnel) | false |
 
 ---
 
@@ -188,28 +188,28 @@ All termbridge routes are under the `/__tb/` prefix to avoid conflicts with prox
 
 ## Daytona sandboxes
 
-Set the backend to Daytona via `TERMBRIDGE_BACKEND=daytona`, then configure repo + access:
+Set the backend to Daytona via `TERMBRIDGE_BACKEND=sandbox-daytona`, then configure repo + access:
 
 ```bash
-DAYTONA_API_KEY=your_key
-DAYTONA_API_URL=https://app.daytona.io/api
-TERMBRIDGE_DAYTONA_REPO=https://github.com/inline0/termbridge-test-app.git
-TERMBRIDGE_DAYTONA_BRANCH=main
-TERMBRIDGE_DAYTONA_PATH=termbridge-test-app
-TERMBRIDGE_DAYTONA_NAME=termbridge-sandbox
-TERMBRIDGE_DAYTONA_GIT_USERNAME=your_github_username
-TERMBRIDGE_DAYTONA_GIT_TOKEN=your_github_token
-TERMBRIDGE_DAYTONA_PUBLIC=true
-TERMBRIDGE_DAYTONA_PREVIEW_PORT=5173
-TERMBRIDGE_DAYTONA_DELETE_ON_EXIT=true
+TERMBRIDGE_DAYTONA_API_KEY=your_key
+TERMBRIDGE_DAYTONA_API_URL=https://app.daytona.io/api
+TERMBRIDGE_SANDBOX_DAYTONA_REPO=https://github.com/inline0/termbridge-test-app.git
+TERMBRIDGE_SANDBOX_DAYTONA_BRANCH=main
+TERMBRIDGE_SANDBOX_DAYTONA_PATH=termbridge-test-app
+TERMBRIDGE_SANDBOX_DAYTONA_NAME=termbridge-sandbox
+TERMBRIDGE_SANDBOX_DAYTONA_GIT_USERNAME=your_github_username
+TERMBRIDGE_SANDBOX_DAYTONA_GIT_TOKEN=your_github_token
+TERMBRIDGE_SANDBOX_DAYTONA_PUBLIC=true
+TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT=5173
+TERMBRIDGE_SANDBOX_DAYTONA_DELETE_ON_EXIT=true
 ```
 
 ### Daytona direct mode (no tunnel)
 
 ```bash
-TERMBRIDGE_BACKEND=daytona
-TERMBRIDGE_DAYTONA_DIRECT=true
-TERMBRIDGE_DAYTONA_SERVER_PORT=8080
+TERMBRIDGE_BACKEND=sandbox-daytona
+TERMBRIDGE_SANDBOX_DAYTONA_DIRECT=true
+TERMBRIDGE_SANDBOX_DAYTONA_SERVER_PORT=8080
 ```
 
 For E2E runs, prefer a `termbridge-test-*` name and enable delete-on-exit so sandboxes are cleaned up automatically.
@@ -252,8 +252,8 @@ bun run format           # Biome format
 | `TERMBRIDGE_DEV_UI=<url>` | Override Vite dev URL |
 | `TERMBRIDGE_PUBLIC_URL=<url>` | Public URL when tunnel disabled |
 | `TERMBRIDGE_TUNNEL=none` | Disable the tunnel |
-| `TERMBRIDGE_DAYTONA_DIRECT=true` | Run Termbridge inside the Daytona sandbox |
-| `TERMBRIDGE_DAYTONA_SERVER_PORT=<port>` | Port for sandboxed Termbridge server |
+| `TERMBRIDGE_SANDBOX_DAYTONA_DIRECT=true` | Run Termbridge inside the Daytona sandbox |
+| `TERMBRIDGE_SANDBOX_DAYTONA_SERVER_PORT=<port>` | Port for sandboxed Termbridge server |
 | `NODE_ENV=test` | Skip auto-main in bin.ts |
 
 ---

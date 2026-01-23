@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import type { Logger } from "../server/server";
+import type { Logger } from "../../server/server";
 import { syncAgentAuth } from "./agent-auth";
 
 const createLogger = (): Logger => ({
@@ -53,7 +53,7 @@ describe("syncAgentAuth", () => {
     );
 
     expect(logger.warn).toHaveBeenCalledWith(
-      expect.stringContaining("Daytona: auth path missing")
+      expect.stringContaining("Sandbox (Daytona): auth path missing")
     );
     expect(sandbox.fs.uploadFiles).not.toHaveBeenCalled();
   });
@@ -76,7 +76,7 @@ describe("syncAgentAuth", () => {
         destination: "/home/daytona/.termbridge/auth/auth.json"
       }
     ]);
-    expect(logger.info).toHaveBeenCalledWith("Daytona: synced 1 auth file");
+    expect(logger.info).toHaveBeenCalledWith("Sandbox (Daytona): synced 1 auth file");
   });
 
   it("uploads a directory tree with an explicit destination", async () => {
@@ -107,7 +107,7 @@ describe("syncAgentAuth", () => {
         { source: fileB, destination: "/home/daytona/.config/agents/nested/b.json" }
       ])
     );
-    expect(logger.info).toHaveBeenCalledWith("Daytona: synced 2 auth files");
+    expect(logger.info).toHaveBeenCalledWith("Sandbox (Daytona): synced 2 auth files");
   });
 
   it("skips non-file entries when scanning directories", async () => {
@@ -215,6 +215,24 @@ describe("syncAgentAuth", () => {
     );
 
     expect(sandbox.fs.uploadFiles).not.toHaveBeenCalled();
+  });
+
+  it("warns when upload fails", async () => {
+    const filePath = join(workdir, "auth.json");
+    await writeFile(filePath, "token");
+    const sandbox = createSandbox();
+    sandbox.fs.uploadFiles.mockRejectedValueOnce(new Error("upload error"));
+    const logger = createLogger();
+
+    await syncAgentAuth(
+      sandbox as any,
+      { specs: [{ source: filePath }] },
+      logger
+    );
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining("Sandbox (Daytona): auth upload failed")
+    );
   });
 
 });

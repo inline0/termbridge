@@ -10,11 +10,11 @@ import type { TunnelProvider } from "@termbridge/tunnel";
 import type { TerminalRecord, TerminalRegistry } from "../server/terminal-registry";
 import type { StartedServer } from "../server/server";
 const daytonaMocks = vi.hoisted(() => ({
-  createDaytonaBackend: vi.fn()
+  createSandboxDaytonaBackend: vi.fn()
 }));
 
-const daytonaDirectMocks = vi.hoisted(() => ({
-  createDaytonaSandboxProvider: vi.fn()
+const sandboxDaytonaDirectMocks = vi.hoisted(() => ({
+  createSandboxDaytonaServerProvider: vi.fn()
 }));
 
 const fsMocks = vi.hoisted(() => ({
@@ -32,12 +32,12 @@ vi.mock("node:fs/promises", async (importOriginal) => {
   };
 });
 
-vi.mock("../daytona/daytona-backend", () => ({
-  createDaytonaBackend: daytonaMocks.createDaytonaBackend
+vi.mock("../sandbox/daytona/backend", () => ({
+  createSandboxDaytonaBackend: daytonaMocks.createSandboxDaytonaBackend
 }));
 
-vi.mock("../daytona/daytona-direct", () => ({
-  createDaytonaSandboxServerProvider: daytonaDirectMocks.createDaytonaSandboxProvider
+vi.mock("../sandbox/daytona/direct", () => ({
+  createSandboxDaytonaServerProvider: sandboxDaytonaDirectMocks.createSandboxDaytonaServerProvider
 }));
 
 import { startCommand } from "./start";
@@ -63,8 +63,8 @@ const createTerminalRegistryStub = (): TerminalRegistry => ({
 
 describe("startCommand", () => {
   beforeEach(() => {
-    daytonaMocks.createDaytonaBackend.mockReset();
-    daytonaDirectMocks.createDaytonaSandboxProvider.mockReset();
+    daytonaMocks.createSandboxDaytonaBackend.mockReset();
+    sandboxDaytonaDirectMocks.createSandboxDaytonaServerProvider.mockReset();
     fsMocks.writeFile.mockClear();
   });
 
@@ -237,7 +237,7 @@ describe("startCommand", () => {
       token: "token-123",
       stop: vi.fn(async () => undefined)
     }));
-    const createSandboxProvider = vi.fn(() => ({ start }));
+    const createSandboxDaytonaProvider = vi.fn(() => ({ start }));
     const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 
     const result = await startCommand(
@@ -245,17 +245,17 @@ describe("startCommand", () => {
         killOnExit: false,
         noQr: true,
         tunnel: "cloudflare",
-        backend: "daytona",
-        daytonaDirect: true
+        backend: "sandbox-daytona",
+        sandboxDaytonaDirect: true
       },
       {
-        createSandboxProvider,
+        createSandboxDaytonaProvider,
         process: { on: vi.fn() } as unknown as NodeJS.Process,
         logger
       }
     );
 
-    expect(createSandboxProvider).toHaveBeenCalled();
+    expect(createSandboxDaytonaProvider).toHaveBeenCalled();
     expect(start).toHaveBeenCalledWith(
       expect.objectContaining({ serverPort: 8080, hideTerminalSwitcher: true })
     );
@@ -270,7 +270,7 @@ describe("startCommand", () => {
       token: "token-default",
       stop
     }));
-    daytonaDirectMocks.createDaytonaSandboxProvider.mockReturnValue({ start });
+    sandboxDaytonaDirectMocks.createSandboxDaytonaServerProvider.mockReturnValue({ start });
 
     const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 
@@ -279,8 +279,8 @@ describe("startCommand", () => {
         killOnExit: false,
         noQr: true,
         tunnel: "cloudflare",
-        backend: "daytona",
-        daytonaDirect: true
+        backend: "sandbox-daytona",
+        sandboxDaytonaDirect: true
       },
       {
         process: { on: vi.fn() } as unknown as NodeJS.Process,
@@ -288,7 +288,7 @@ describe("startCommand", () => {
       }
     );
 
-    expect(daytonaDirectMocks.createDaytonaSandboxProvider).toHaveBeenCalled();
+    expect(sandboxDaytonaDirectMocks.createSandboxDaytonaServerProvider).toHaveBeenCalled();
     expect(start).toHaveBeenCalled();
     await result.stop();
   });
@@ -301,7 +301,7 @@ describe("startCommand", () => {
       token: "token-qr",
       stop
     }));
-    const createSandboxProvider = vi.fn(() => ({ start }));
+    const createSandboxDaytonaProvider = vi.fn(() => ({ start }));
     const qr = { generate: vi.fn() };
     const signals: Record<string, () => void> = {};
     const processRef = {
@@ -316,11 +316,11 @@ describe("startCommand", () => {
         killOnExit: false,
         noQr: false,
         tunnel: "cloudflare",
-        backend: "daytona",
-        daytonaDirect: true
+        backend: "sandbox-daytona",
+        sandboxDaytonaDirect: true
       },
       {
-        createSandboxProvider,
+        createSandboxDaytonaProvider,
         process: processRef,
         qr,
         logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
@@ -342,7 +342,7 @@ describe("startCommand", () => {
       token: "token-warn",
       stop: vi.fn(async () => undefined)
     }));
-    const createSandboxProvider = vi.fn(() => ({ start }));
+    const createSandboxDaytonaProvider = vi.fn(() => ({ start }));
     const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 
     await startCommand(
@@ -350,11 +350,11 @@ describe("startCommand", () => {
         killOnExit: false,
         noQr: false,
         tunnel: "cloudflare",
-        backend: "daytona",
-        daytonaDirect: true
+        backend: "sandbox-daytona",
+        sandboxDaytonaDirect: true
       },
       {
-        createSandboxProvider,
+        createSandboxDaytonaProvider,
         process: { on: vi.fn() } as unknown as NodeJS.Process,
         logger
       }
@@ -370,7 +370,7 @@ describe("startCommand", () => {
       token: "token-invalid",
       stop: vi.fn(async () => undefined)
     }));
-    const createSandboxProvider = vi.fn(() => ({ start }));
+    const createSandboxDaytonaProvider = vi.fn(() => ({ start }));
 
     await expect(
       startCommand(
@@ -378,11 +378,11 @@ describe("startCommand", () => {
           killOnExit: false,
           noQr: true,
           tunnel: "cloudflare",
-          backend: "daytona",
-          daytonaDirect: true
+          backend: "sandbox-daytona",
+          sandboxDaytonaDirect: true
         },
         {
-          createSandboxProvider,
+          createSandboxDaytonaProvider,
           process: { on: vi.fn() } as unknown as NodeJS.Process,
           logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
         }
@@ -984,20 +984,20 @@ describe("startCommand", () => {
       on: vi.fn()
     } as unknown as NodeJS.Process;
 
-    const createDaytonaBackend = vi.fn(() => terminalBackend);
+    const createSandboxDaytonaBackend = vi.fn(() => terminalBackend);
 
     const result = await startCommand(
       {
         killOnExit: false,
         noQr: true,
         tunnel: "cloudflare",
-        backend: "daytona",
-        daytonaRepo: "https://github.com/inline0/termbridge-test-app"
+        backend: "sandbox-daytona",
+        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app"
       },
       {
         createServer,
         createAuth: () => auth,
-        createDaytonaBackend,
+        createSandboxDaytonaBackend,
         createTerminalRegistry: () => terminalRegistry,
         createTunnelProvider: () => tunnelProvider,
         process: processRef,
@@ -1007,11 +1007,11 @@ describe("startCommand", () => {
 
     await result.stop();
 
-    expect(createDaytonaBackend).toHaveBeenCalled();
+    expect(createSandboxDaytonaBackend).toHaveBeenCalled();
     expect(terminalRegistry.add).toHaveBeenCalledWith(
       expect.any(String),
       expect.any(String),
-      "daytona"
+      "sandbox"
     );
   });
 
@@ -1043,20 +1043,20 @@ describe("startCommand", () => {
       closeSession: vi.fn(async () => undefined)
     };
 
-    const createDaytonaBackend = vi.fn(() => terminalBackend);
+    const createSandboxDaytonaBackend = vi.fn(() => terminalBackend);
 
     const result = await startCommand(
       {
         killOnExit: false,
         noQr: true,
         tunnel: "cloudflare",
-        backend: "daytona",
-        daytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+        backend: "sandbox-daytona",
+        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
       },
       {
         createServer,
         createAuth: () => auth,
-        createDaytonaBackend,
+        createSandboxDaytonaBackend,
         createTerminalRegistry: () => createTerminalRegistryStub(),
         createTunnelProvider: () => ({
           start: vi.fn(async () => ({ publicUrl: "https://tunnel" })),
@@ -1065,9 +1065,9 @@ describe("startCommand", () => {
         process: {
           env: {
             OPENAI_API_KEY: "openai-key",
-            TERMBRIDGE_DAYTONA_AGENT_ENV: "CUSTOM_TOKEN",
+            TERMBRIDGE_SANDBOX_DAYTONA_AGENT_ENV: "CUSTOM_TOKEN",
             CUSTOM_TOKEN: "custom-value",
-            TERMBRIDGE_DAYTONA_AGENT_AUTH_PATHS: "/tmp/claude/auth.json"
+            TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTH_PATHS: "/tmp/claude/auth.json"
           },
           on: vi.fn()
         } as unknown as NodeJS.Process,
@@ -1075,7 +1075,7 @@ describe("startCommand", () => {
       }
     );
 
-    expect(createDaytonaBackend).toHaveBeenCalledWith(
+    expect(createSandboxDaytonaBackend).toHaveBeenCalledWith(
       expect.objectContaining({
         agentEnv: {
           OPENAI_API_KEY: "openai-key",
@@ -1123,20 +1123,20 @@ describe("startCommand", () => {
       closeSession: vi.fn(async () => undefined)
     };
 
-    const createDaytonaBackend = vi.fn(() => terminalBackend);
+    const createSandboxDaytonaBackend = vi.fn(() => terminalBackend);
 
     const result = await startCommand(
       {
         killOnExit: false,
         noQr: true,
         tunnel: "cloudflare",
-        backend: "daytona",
-        daytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+        backend: "sandbox-daytona",
+        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
       },
       {
         createServer,
         createAuth: () => auth,
-        createDaytonaBackend,
+        createSandboxDaytonaBackend,
         createTerminalRegistry: () => createTerminalRegistryStub(),
         createTunnelProvider: () => ({
           start: vi.fn(async () => ({ publicUrl: "https://tunnel" })),
@@ -1144,7 +1144,7 @@ describe("startCommand", () => {
         }),
         process: {
           env: {
-            TERMBRIDGE_DAYTONA_AGENTS: "claude"
+            TERMBRIDGE_SANDBOX_DAYTONA_AGENTS: "claude"
           },
           on: vi.fn()
         } as unknown as NodeJS.Process,
@@ -1152,7 +1152,7 @@ describe("startCommand", () => {
       }
     );
 
-    expect(createDaytonaBackend).toHaveBeenCalledWith(
+    expect(createSandboxDaytonaBackend).toHaveBeenCalledWith(
       expect.objectContaining({
         agentInstall: {
           enabled: true,
@@ -1193,20 +1193,20 @@ describe("startCommand", () => {
       closeSession: vi.fn(async () => undefined)
     };
 
-    const createDaytonaBackend = vi.fn(() => terminalBackend);
+    const createSandboxDaytonaBackend = vi.fn(() => terminalBackend);
 
     const result = await startCommand(
       {
         killOnExit: false,
         noQr: true,
         tunnel: "cloudflare",
-        backend: "daytona",
-        daytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+        backend: "sandbox-daytona",
+        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
       },
       {
         createServer,
         createAuth: () => auth,
-        createDaytonaBackend,
+        createSandboxDaytonaBackend,
         createTerminalRegistry: () => createTerminalRegistryStub(),
         createTunnelProvider: () => ({
           start: vi.fn(async () => ({ publicUrl: "https://tunnel" })),
@@ -1214,7 +1214,7 @@ describe("startCommand", () => {
         }),
         process: {
           env: {
-            TERMBRIDGE_DAYTONA_AGENT_AUTH_PATHS: "/tmp/auth.json,/tmp/auth.json"
+            TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTH_PATHS: "/tmp/auth.json,/tmp/auth.json"
           },
           on: vi.fn()
         } as unknown as NodeJS.Process,
@@ -1222,7 +1222,7 @@ describe("startCommand", () => {
       }
     );
 
-    expect(createDaytonaBackend).toHaveBeenCalledWith(
+    expect(createSandboxDaytonaBackend).toHaveBeenCalledWith(
       expect.objectContaining({
         agentAuth: {
           specs: [{ source: "/tmp/auth.json" }]
@@ -1233,7 +1233,7 @@ describe("startCommand", () => {
     await result.stop();
   });
 
-  const localClaudeAuth = join(homedir(), ".claude.json");
+  const localClaudeAuth = join(homedir(), ".claude", ".credentials.json");
   const localCodexAuth = join(homedir(), ".codex", "auth.json");
   const localOpenCodeAuth = join(homedir(), ".config", "opencode", "opencode.json");
   const hasLocalAgents =
@@ -1268,20 +1268,20 @@ describe("startCommand", () => {
         closeSession: vi.fn(async () => undefined)
       };
 
-      const createDaytonaBackend = vi.fn(() => terminalBackend);
+      const createSandboxDaytonaBackend = vi.fn(() => terminalBackend);
 
       const result = await startCommand(
         {
           killOnExit: false,
           noQr: true,
           tunnel: "cloudflare",
-          backend: "daytona",
-          daytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+          backend: "sandbox-daytona",
+          sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
         },
         {
           createServer,
           createAuth: () => auth,
-          createDaytonaBackend,
+          createSandboxDaytonaBackend,
           createTerminalRegistry: () => createTerminalRegistryStub(),
           createTunnelProvider: () => ({
             start: vi.fn(async () => ({ publicUrl: "https://tunnel" })),
@@ -1289,7 +1289,7 @@ describe("startCommand", () => {
           }),
           process: {
             env: {
-              TERMBRIDGE_DAYTONA_AGENTS: "claude,codex,opencode"
+              TERMBRIDGE_SANDBOX_DAYTONA_AGENTS: "claude,codex,opencode"
             },
             on: vi.fn()
           } as unknown as NodeJS.Process,
@@ -1297,7 +1297,7 @@ describe("startCommand", () => {
         }
       );
 
-      expect(createDaytonaBackend).toHaveBeenCalledWith(
+      expect(createSandboxDaytonaBackend).toHaveBeenCalledWith(
         expect.objectContaining({
           agentInstall: {
             enabled: true,
@@ -1349,20 +1349,20 @@ describe("startCommand", () => {
         closeSession: vi.fn(async () => undefined)
       };
 
-      const createDaytonaBackend = vi.fn(() => terminalBackend);
+      const createSandboxDaytonaBackend = vi.fn(() => terminalBackend);
 
       const result = await startCommand(
         {
           killOnExit: false,
           noQr: true,
           tunnel: "cloudflare",
-          backend: "daytona",
-          daytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+          backend: "sandbox-daytona",
+          sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
         },
         {
           createServer,
           createAuth: () => auth,
-          createDaytonaBackend,
+          createSandboxDaytonaBackend,
           createTerminalRegistry: () => createTerminalRegistryStub(),
           createTunnelProvider: () => ({
             start: vi.fn(async () => ({ publicUrl: "https://tunnel" })),
@@ -1370,8 +1370,8 @@ describe("startCommand", () => {
           }),
           process: {
             env: {
-              TERMBRIDGE_DAYTONA_AGENTS: "codex",
-              TERMBRIDGE_DAYTONA_AGENT_AUTH_PATHS: localCodexAuth
+              TERMBRIDGE_SANDBOX_DAYTONA_AGENTS: "codex",
+              TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTH_PATHS: localCodexAuth
             },
             on: vi.fn()
           } as unknown as NodeJS.Process,
@@ -1379,7 +1379,7 @@ describe("startCommand", () => {
         }
       );
 
-      expect(createDaytonaBackend).toHaveBeenCalledWith(
+      expect(createSandboxDaytonaBackend).toHaveBeenCalledWith(
         expect.objectContaining({
           agentAuth: {
             specs: [{ source: localCodexAuth }]
@@ -1419,20 +1419,20 @@ describe("startCommand", () => {
       closeSession: vi.fn(async () => undefined)
     };
 
-    const createDaytonaBackend = vi.fn(() => terminalBackend);
+    const createSandboxDaytonaBackend = vi.fn(() => terminalBackend);
 
     const result = await startCommand(
       {
         killOnExit: false,
         noQr: true,
         tunnel: "cloudflare",
-        backend: "daytona",
-        daytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+        backend: "sandbox-daytona",
+        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
       },
       {
         createServer,
         createAuth: () => auth,
-        createDaytonaBackend,
+        createSandboxDaytonaBackend,
         createTerminalRegistry: () => createTerminalRegistryStub(),
         createTunnelProvider: () => ({
           start: vi.fn(async () => ({ publicUrl: "https://tunnel" })),
@@ -1440,7 +1440,7 @@ describe("startCommand", () => {
         }),
         process: {
           env: {
-            TERMBRIDGE_DAYTONA_AGENT_AUTO: "1"
+            TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTO: "1"
           },
           on: vi.fn()
         } as unknown as NodeJS.Process,
@@ -1448,7 +1448,7 @@ describe("startCommand", () => {
       }
     );
 
-    expect(createDaytonaBackend).toHaveBeenCalledWith(
+    expect(createSandboxDaytonaBackend).toHaveBeenCalledWith(
       expect.objectContaining({
         agentInstall: {
           enabled: true,
@@ -1468,23 +1468,23 @@ describe("startCommand", () => {
       token: "token-agent",
       stop: vi.fn(async () => undefined)
     }));
-    daytonaDirectMocks.createDaytonaSandboxProvider.mockReturnValue({ start });
+    sandboxDaytonaDirectMocks.createSandboxDaytonaServerProvider.mockReturnValue({ start });
 
     await startCommand(
       {
         killOnExit: false,
         noQr: true,
         tunnel: "cloudflare",
-        backend: "daytona",
-        daytonaDirect: true
+        backend: "sandbox-daytona",
+        sandboxDaytonaDirect: true
       },
       {
         process: {
           env: {
             ANTHROPIC_API_KEY: "anthropic-key",
-            TERMBRIDGE_DAYTONA_AGENT_INSTALL: "0",
-            TERMBRIDGE_DAYTONA_AGENT_PACKAGES: "codex,opencode",
-            TERMBRIDGE_DAYTONA_AGENT_AUTH_MAPS: "/tmp/auth.json=/home/daytona/.config/claude/auth.json"
+            TERMBRIDGE_SANDBOX_DAYTONA_AGENT_INSTALL: "0",
+            TERMBRIDGE_SANDBOX_DAYTONA_AGENT_PACKAGES: "codex,opencode",
+            TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTH_MAPS: "/tmp/auth.json=/home/daytona/.config/claude/auth.json"
           },
           on: vi.fn()
         } as unknown as NodeJS.Process,
@@ -1536,7 +1536,7 @@ describe("startCommand", () => {
       closeSession: vi.fn(async () => undefined)
     };
 
-    const createDaytonaBackend = vi.fn(() => terminalBackend);
+    const createSandboxDaytonaBackend = vi.fn(() => terminalBackend);
     const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 
     const result = await startCommand(
@@ -1544,13 +1544,13 @@ describe("startCommand", () => {
         killOnExit: false,
         noQr: true,
         tunnel: "cloudflare",
-        backend: "daytona",
-        daytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+        backend: "sandbox-daytona",
+        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
       },
       {
         createServer,
         createAuth: () => auth,
-        createDaytonaBackend,
+        createSandboxDaytonaBackend,
         createTerminalRegistry: () => createTerminalRegistryStub(),
         createTunnelProvider: () => ({
           start: vi.fn(async () => ({ publicUrl: "https://tunnel" })),
@@ -1558,7 +1558,7 @@ describe("startCommand", () => {
         }),
         process: {
           env: {
-            TERMBRIDGE_DAYTONA_AGENT_AUTH_MAPS: "missing"
+            TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTH_MAPS: "missing"
           },
           on: vi.fn()
         } as unknown as NodeJS.Process,
@@ -1567,7 +1567,7 @@ describe("startCommand", () => {
     );
 
     expect(logger.warn).toHaveBeenCalledWith("Skipping invalid auth mapping: missing");
-    expect(createDaytonaBackend).toHaveBeenCalledWith(
+    expect(createSandboxDaytonaBackend).toHaveBeenCalledWith(
       expect.not.objectContaining({
         agentAuth: expect.anything()
       })
@@ -1604,7 +1604,7 @@ describe("startCommand", () => {
       closeSession: vi.fn(async () => undefined)
     };
 
-    const createDaytonaBackend = vi.fn(() => terminalBackend);
+    const createSandboxDaytonaBackend = vi.fn(() => terminalBackend);
     const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 
     const result = await startCommand(
@@ -1612,13 +1612,13 @@ describe("startCommand", () => {
         killOnExit: false,
         noQr: true,
         tunnel: "cloudflare",
-        backend: "daytona",
-        daytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+        backend: "sandbox-daytona",
+        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
       },
       {
         createServer,
         createAuth: () => auth,
-        createDaytonaBackend,
+        createSandboxDaytonaBackend,
         createTerminalRegistry: () => createTerminalRegistryStub(),
         createTunnelProvider: () => ({
           start: vi.fn(async () => ({ publicUrl: "https://tunnel" })),
@@ -1626,7 +1626,7 @@ describe("startCommand", () => {
         }),
         process: {
           env: {
-            TERMBRIDGE_DAYTONA_AGENT_AUTH_MAPS: "foo=   "
+            TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTH_MAPS: "foo=   "
           },
           on: vi.fn()
         } as unknown as NodeJS.Process,
@@ -1635,7 +1635,7 @@ describe("startCommand", () => {
     );
 
     expect(logger.warn).toHaveBeenCalledWith("Skipping invalid auth mapping: foo=");
-    expect(createDaytonaBackend).toHaveBeenCalledWith(
+    expect(createSandboxDaytonaBackend).toHaveBeenCalledWith(
       expect.not.objectContaining({
         agentAuth: expect.anything()
       })
@@ -1672,7 +1672,7 @@ describe("startCommand", () => {
       closeSession: vi.fn(async () => undefined)
     };
 
-    daytonaMocks.createDaytonaBackend.mockReturnValue(terminalBackend);
+    daytonaMocks.createSandboxDaytonaBackend.mockReturnValue(terminalBackend);
 
     const tunnelProvider: TunnelProvider = {
       start: vi.fn(async (_url: string, _options?: unknown) => ({ publicUrl: "https://tunnel" })),
@@ -1688,8 +1688,8 @@ describe("startCommand", () => {
         killOnExit: false,
         noQr: true,
         tunnel: "cloudflare",
-        backend: "daytona",
-        daytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+        backend: "sandbox-daytona",
+        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
       },
       {
         createServer,
@@ -1703,7 +1703,7 @@ describe("startCommand", () => {
 
     await result.stop();
 
-    expect(daytonaMocks.createDaytonaBackend).toHaveBeenCalledWith(
+    expect(daytonaMocks.createSandboxDaytonaBackend).toHaveBeenCalledWith(
       expect.objectContaining({ repoPath: "termbridge-test-app" })
     );
   });
@@ -1748,20 +1748,20 @@ describe("startCommand", () => {
       on: vi.fn()
     } as unknown as NodeJS.Process;
 
-    const createDaytonaBackend = vi.fn(() => terminalBackend);
+    const createSandboxDaytonaBackend = vi.fn(() => terminalBackend);
 
     const result = await startCommand(
       {
         killOnExit: false,
         noQr: true,
         tunnel: "cloudflare",
-        backend: "daytona",
-        daytonaRepo: "/"
+        backend: "sandbox-daytona",
+        sandboxDaytonaRepo: "/"
       },
       {
         createServer,
         createAuth: () => auth,
-        createDaytonaBackend,
+        createSandboxDaytonaBackend,
         createTerminalRegistry: () => terminalRegistry,
         createTunnelProvider: () => tunnelProvider,
         process: processRef,
@@ -1771,7 +1771,7 @@ describe("startCommand", () => {
 
     await result.stop();
 
-    expect(createDaytonaBackend).toHaveBeenCalledWith(
+    expect(createSandboxDaytonaBackend).toHaveBeenCalledWith(
       expect.objectContaining({ repoPath: "repo" })
     );
     expect(terminalBackend.shutdown).toHaveBeenCalled();
@@ -1820,21 +1820,21 @@ describe("startCommand", () => {
       on: vi.fn()
     } as unknown as NodeJS.Process;
 
-    const createDaytonaBackend = vi.fn(() => terminalBackend);
+    const createSandboxDaytonaBackend = vi.fn(() => terminalBackend);
 
     const result = await startCommand(
       {
         killOnExit: false,
         noQr: true,
         tunnel: "cloudflare",
-        backend: "daytona",
-        daytonaRepo: "https://github.com/inline0/termbridge-test-app.git",
-        daytonaPreviewPort: 5173
+        backend: "sandbox-daytona",
+        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git",
+        sandboxDaytonaPreviewPort: 5173
       },
       {
         createServer,
         createAuth: () => auth,
-        createDaytonaBackend,
+        createSandboxDaytonaBackend,
         createTerminalRegistry: () => terminalRegistry,
         createTunnelProvider: () => tunnelProvider,
         process: processRef,
@@ -1896,21 +1896,21 @@ describe("startCommand", () => {
       on: vi.fn()
     } as unknown as NodeJS.Process;
 
-    const createDaytonaBackend = vi.fn(() => terminalBackend);
+    const createSandboxDaytonaBackend = vi.fn(() => terminalBackend);
 
     const result = await startCommand(
       {
         killOnExit: false,
         noQr: true,
         tunnel: "cloudflare",
-        backend: "daytona",
-        daytonaRepo: "https://github.com/inline0/termbridge-test-app.git",
-        daytonaPreviewPort: 5173
+        backend: "sandbox-daytona",
+        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git",
+        sandboxDaytonaPreviewPort: 5173
       },
       {
         createServer,
         createAuth: () => auth,
-        createDaytonaBackend,
+        createSandboxDaytonaBackend,
         createTerminalRegistry: () => terminalRegistry,
         createTunnelProvider: () => tunnelProvider,
         process: processRef,
@@ -1964,24 +1964,24 @@ describe("startCommand", () => {
     const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 
     const processRef = {
-      env: { TERMBRIDGE_DAYTONA_PREVIEW_PORT: "5173" },
+      env: { TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT: "5173" },
       on: vi.fn()
     } as unknown as NodeJS.Process;
 
-    const createDaytonaBackend = vi.fn(() => terminalBackend);
+    const createSandboxDaytonaBackend = vi.fn(() => terminalBackend);
 
     const result = await startCommand(
       {
         killOnExit: false,
         noQr: true,
         tunnel: "cloudflare",
-        backend: "daytona",
-        daytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+        backend: "sandbox-daytona",
+        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
       },
       {
         createServer,
         createAuth: () => auth,
-        createDaytonaBackend,
+        createSandboxDaytonaBackend,
         createTerminalRegistry: () => terminalRegistry,
         createTunnelProvider: () => tunnelProvider,
         process: processRef,
@@ -1991,7 +1991,7 @@ describe("startCommand", () => {
 
     await result.stop();
 
-    expect(logger.warn).toHaveBeenCalledWith("Daytona: preview URL unavailable");
+    expect(logger.warn).toHaveBeenCalledWith("Sandbox (Daytona): preview URL unavailable");
   });
 
   it("ignores invalid preview port values from env", async () => {
@@ -2031,24 +2031,24 @@ describe("startCommand", () => {
     };
 
     const processRef = {
-      env: { TERMBRIDGE_DAYTONA_PREVIEW_PORT: "not-a-number" },
+      env: { TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT: "not-a-number" },
       on: vi.fn()
     } as unknown as NodeJS.Process;
 
-    const createDaytonaBackend = vi.fn(() => terminalBackend);
+    const createSandboxDaytonaBackend = vi.fn(() => terminalBackend);
 
     const result = await startCommand(
       {
         killOnExit: false,
         noQr: true,
         tunnel: "cloudflare",
-        backend: "daytona",
-        daytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+        backend: "sandbox-daytona",
+        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
       },
       {
         createServer,
         createAuth: () => auth,
-        createDaytonaBackend,
+        createSandboxDaytonaBackend,
         createTerminalRegistry: () => terminalRegistry,
         createTunnelProvider: () => tunnelProvider,
         process: processRef,
@@ -2096,12 +2096,12 @@ describe("startCommand", () => {
       stop: vi.fn(async () => undefined)
     };
 
-    const createDaytonaBackend = vi.fn(() => terminalBackend);
+    const createSandboxDaytonaBackend = vi.fn(() => terminalBackend);
 
     for (const value of ["1", "true", "yes"]) {
-      createDaytonaBackend.mockClear();
+      createSandboxDaytonaBackend.mockClear();
       const processRef = {
-        env: { TERMBRIDGE_DAYTONA_PUBLIC: value },
+        env: { TERMBRIDGE_SANDBOX_DAYTONA_PUBLIC: value },
         on: vi.fn()
       } as unknown as NodeJS.Process;
 
@@ -2110,13 +2110,13 @@ describe("startCommand", () => {
           killOnExit: false,
           noQr: true,
           tunnel: "cloudflare",
-          backend: "daytona",
-          daytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+          backend: "sandbox-daytona",
+          sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
         },
         {
           createServer,
           createAuth: () => auth,
-          createDaytonaBackend,
+          createSandboxDaytonaBackend,
           createTerminalRegistry: () => terminalRegistry,
           createTunnelProvider: () => tunnelProvider,
           process: processRef,
@@ -2126,7 +2126,7 @@ describe("startCommand", () => {
 
       await result.stop();
 
-      expect(createDaytonaBackend).toHaveBeenCalledWith(
+      expect(createSandboxDaytonaBackend).toHaveBeenCalledWith(
         expect.objectContaining({ public: true })
       );
     }
@@ -2168,24 +2168,24 @@ describe("startCommand", () => {
     };
 
     const processRef = {
-      env: { TERMBRIDGE_DAYTONA_DELETE_ON_EXIT: "true" },
+      env: { TERMBRIDGE_SANDBOX_DAYTONA_DELETE_ON_EXIT: "true" },
       on: vi.fn()
     } as unknown as NodeJS.Process;
 
-    const createDaytonaBackend = vi.fn(() => terminalBackend);
+    const createSandboxDaytonaBackend = vi.fn(() => terminalBackend);
 
     const result = await startCommand(
       {
         killOnExit: false,
         noQr: true,
         tunnel: "cloudflare",
-        backend: "daytona",
-        daytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+        backend: "sandbox-daytona",
+        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
       },
       {
         createServer,
         createAuth: () => auth,
-        createDaytonaBackend,
+        createSandboxDaytonaBackend,
         createTerminalRegistry: () => terminalRegistry,
         createTunnelProvider: () => tunnelProvider,
         process: processRef,
@@ -2195,7 +2195,7 @@ describe("startCommand", () => {
 
     await result.stop();
 
-    expect(createDaytonaBackend).toHaveBeenCalledWith(
+    expect(createSandboxDaytonaBackend).toHaveBeenCalledWith(
       expect.objectContaining({ deleteOnExit: true })
     );
   });

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { installAgents } from "./agent-install";
-import type { Logger } from "../server/server";
+import type { Logger } from "../../server/server";
 
 const createSandbox = () => ({
   process: {
@@ -51,7 +51,7 @@ describe("installAgents", () => {
 
     expect(result.success).toBe(true);
     expect(result.installed).toContain("script:curl install.sh");
-    expect(logger.warn).toHaveBeenCalledWith("Daytona: npm not available; skipping npm packages");
+    expect(logger.warn).toHaveBeenCalledWith("Sandbox (Daytona): npm not available; skipping npm packages");
   });
 
   it("returns error when all installs fail", async () => {
@@ -95,7 +95,7 @@ describe("installAgents", () => {
     const result = await installAgents(sandbox as any, { enabled: true, packages: ["codex"], installScripts: [] }, logger);
 
     expect(result).toEqual({ success: true, installed: ["codex"] });
-    expect(logger.info).toHaveBeenCalledWith("Daytona: installing coding agents");
+    expect(logger.info).toHaveBeenCalledWith("Sandbox (Daytona): installing coding agents");
     expect(sandbox.process.executeCommand).toHaveBeenCalledWith("printf $HOME");
     expect(sandbox.process.executeCommand).toHaveBeenCalledWith("command -v npm");
     expect(sandbox.process.executeCommand).toHaveBeenCalledWith("mkdir -p /home/daytona/.local");
@@ -135,7 +135,7 @@ describe("installAgents", () => {
     const result = await installAgents(sandbox as any, { enabled: true, packages: ["codex"], installScripts: [] }, logger);
 
     expect(result.success).toBe(false);
-    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("unknown error"));
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("codex install failed"));
   });
 
   it("handles script failures with missing result", async () => {
@@ -152,7 +152,7 @@ describe("installAgents", () => {
     );
 
     expect(result.success).toBe(false);
-    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("unknown error"));
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("script failed: install.sh"));
   });
 
   it("extracts script name from path with pipes", async () => {
@@ -223,5 +223,70 @@ describe("installAgents", () => {
 
     expect(result.success).toBe(true);
     expect(result.installed[0]).toBe("script:| bash");
+  });
+
+  it("downloads and executes curl scripts", async () => {
+    const sandbox = createSandbox();
+    const logger = createLogger();
+    sandbox.process.executeCommand
+      .mockResolvedValueOnce({ exitCode: 0, result: "/home/daytona" })
+      .mockResolvedValueOnce({ exitCode: 0, result: "" }) // curl download
+      .mockResolvedValueOnce({ exitCode: 0, result: "" }); // bash execute
+
+    const result = await installAgents(
+      sandbox as any,
+      { enabled: true, packages: [], installScripts: ["curl -fsSL https://example.com/install.sh | bash"] },
+      logger
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.installed[0]).toBe("script:install.sh");
+    expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
+      expect.stringMatching(/curl -fsSL https:\/\/example\.com\/install\.sh -o \/tmp\/install-\d+\.sh && chmod \+x/),
+      undefined,
+      undefined,
+      60
+    );
+  });
+
+  it("reports curl download failure", async () => {
+    const sandbox = createSandbox();
+    const logger = createLogger();
+    sandbox.process.executeCommand
+      .mockResolvedValueOnce({ exitCode: 0, result: "/home/daytona" })
+      .mockResolvedValueOnce({ exitCode: 1, result: "curl: (22) HTTP 404" }); // curl download fails
+
+    const result = await installAgents(
+      sandbox as any,
+      { enabled: true, packages: [], installScripts: ["curl -fsSL https://example.com/missing.sh | bash"] },
+      logger
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("script:missing.sh");
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining("Sandbox (Daytona): failed to download script")
+    );
+  });
+
+  it("reports curl script execution failure", async () => {
+    const sandbox = createSandbox();
+    const logger = createLogger();
+    sandbox.process.executeCommand
+      .mockResolvedValueOnce({ exitCode: 0, result: "/home/daytona" })
+      .mockResolvedValueOnce({ exitCode: 0, result: "" }) // curl download ok
+      .mockResolvedValueOnce({ exitCode: 1, result: "script error" }); // bash execute fails
+
+    const result = await installAgents(
+      sandbox as any,
+      { enabled: true, packages: [], installScripts: ["curl -fsSL https://example.com/bad.sh | bash"] },
+      logger
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("script:bad.sh");
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining("Sandbox (Daytona): script failed")
+    );
   });
 });

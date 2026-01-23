@@ -2,11 +2,11 @@ import { randomBytes } from "node:crypto";
 import { Daytona, type PtyHandle, type Sandbox } from "@daytonaio/sdk";
 import type { TerminalBackend, TerminalSession } from "@termbridge/terminal";
 import type { TerminalControlKey } from "@termbridge/shared";
-import type { Logger } from "../server/server";
+import type { Logger } from "../../server/server";
 import { installAgents } from "./agent-install";
 import { syncAgentAuth } from "./agent-auth";
 
-type DaytonaSessionEntry = {
+type SandboxDaytonaSessionEntry = {
   session: TerminalSession;
   handle: PtyHandle | null;
   subscribers: Set<(data: string) => void>;
@@ -14,7 +14,7 @@ type DaytonaSessionEntry = {
   rows: number;
 };
 
-export type DaytonaBackendOptions = {
+export type SandboxDaytonaBackendOptions = {
   apiKey?: string;
   apiUrl?: string;
   target?: string;
@@ -57,9 +57,9 @@ const deriveRepoPath = (repoUrl: string) => {
   return last.endsWith(".git") ? last.slice(0, -4) : last;
 };
 
-export const createDaytonaBackend = (options: DaytonaBackendOptions): TerminalBackend => {
+export const createSandboxDaytonaBackend = (options: SandboxDaytonaBackendOptions): TerminalBackend => {
   const logger = options.logger ?? noopLogger;
-  const sessions = new Map<string, DaytonaSessionEntry>();
+  const sessions = new Map<string, SandboxDaytonaSessionEntry>();
   const daytona = new Daytona({
     apiKey: options.apiKey,
     apiUrl: options.apiUrl,
@@ -74,11 +74,11 @@ export const createDaytonaBackend = (options: DaytonaBackendOptions): TerminalBa
       sandboxInit = (async () => {
         try {
           const name = options.sandboxName ?? `termbridge-${randomBytes(4).toString("hex")}`;
-          logger.info(`Daytona: creating sandbox ${name}`);
+          logger.info(`Sandbox (Daytona): creating sandbox ${name}`);
           const sandbox = await daytona.create({ name, public: options.public });
           await sandbox.start();
           const repoPath = options.repoPath ?? deriveRepoPath(options.repoUrl);
-          logger.info(`Daytona: cloning ${options.repoUrl}`);
+          logger.info(`Sandbox (Daytona): cloning ${options.repoUrl}`);
           await sandbox.git.clone(
             options.repoUrl,
             repoPath,
@@ -90,11 +90,11 @@ export const createDaytonaBackend = (options: DaytonaBackendOptions): TerminalBa
           await installAgents(sandbox, options.agentInstall, logger);
           await syncAgentAuth(sandbox, options.agentAuth, logger);
           sandboxRef = sandbox;
-          logger.info(`Daytona: repo ready at ${repoPath}`);
+          logger.info(`Sandbox (Daytona): repo ready at ${repoPath}`);
           return { sandbox, repoPath };
         } catch (error) {
           const message = error instanceof Error ? error.message : "unknown error";
-          logger.error(`Daytona: sandbox init failed (${message})`);
+          logger.error(`Sandbox (Daytona): sandbox init failed (${message})`);
           throw error;
         }
       })();
@@ -103,7 +103,7 @@ export const createDaytonaBackend = (options: DaytonaBackendOptions): TerminalBa
     return sandboxInit;
   };
 
-  const ensurePty = async (entry: DaytonaSessionEntry) => {
+  const ensurePty = async (entry: SandboxDaytonaSessionEntry) => {
     if (entry.handle) {
       return entry.handle;
     }
@@ -144,7 +144,7 @@ export const createDaytonaBackend = (options: DaytonaBackendOptions): TerminalBa
       return existing.session;
     }
 
-    const entry: DaytonaSessionEntry = {
+    const entry: SandboxDaytonaSessionEntry = {
       session: { name, createdAt: new Date() },
       handle: null,
       subscribers: new Set(),
@@ -244,7 +244,7 @@ export const createDaytonaBackend = (options: DaytonaBackendOptions): TerminalBa
       await sandboxRef.stop();
     } catch (error) {
       const message = error instanceof Error ? error.message : "unknown error";
-      logger.warn(`Daytona: stop failed (${message})`);
+      logger.warn(`Sandbox (Daytona): stop failed (${message})`);
     }
 
     if (options.deleteOnExit) {
@@ -252,7 +252,7 @@ export const createDaytonaBackend = (options: DaytonaBackendOptions): TerminalBa
         await daytona.delete(sandboxRef);
       } catch (error) {
         const message = error instanceof Error ? error.message : "unknown error";
-        logger.warn(`Daytona: delete failed (${message})`);
+        logger.warn(`Sandbox (Daytona): delete failed (${message})`);
       }
     }
   };
@@ -281,7 +281,7 @@ export const createDaytonaBackend = (options: DaytonaBackendOptions): TerminalBa
         return { url: preview.url, headers };
       } catch (error) {
         const message = error instanceof Error ? error.message : "unknown error";
-        logger.warn(`Daytona: preview failed (${message})`);
+        logger.warn(`Sandbox (Daytona): preview failed (${message})`);
         return null;
       }
     }

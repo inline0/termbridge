@@ -1,16 +1,16 @@
 import { randomBytes } from "node:crypto";
 import { stat } from "node:fs/promises";
 import { Daytona, type Sandbox } from "@daytonaio/sdk";
-import type { Logger } from "../server/server";
+import type { Logger } from "../../server/server";
 import type {
   SandboxServerProvider,
   SandboxServerStartOptions,
   SandboxServerStartResult
-} from "../sandbox/server-provider";
+} from "../server-provider";
 import { installAgents } from "./agent-install";
 import { syncAgentAuth } from "./agent-auth";
 
-export type DaytonaSandboxProviderOptions = {
+export type SandboxDaytonaProviderOptions = {
   apiKey?: string;
   apiUrl?: string;
   target?: string;
@@ -37,17 +37,17 @@ const installLocalTermbridge = async (
   try {
     const cliStats = await stat(startOptions.localCliPackPath);
     if (!cliStats.isFile()) {
-      logger.warn("Daytona: local CLI pack missing; falling back to npx");
+      logger.warn("Sandbox (Daytona): local CLI pack missing; falling back to npx");
       return null;
     }
   } catch {
-    logger.warn("Daytona: local CLI pack missing; falling back to npx");
+    logger.warn("Sandbox (Daytona): local CLI pack missing; falling back to npx");
     return null;
   }
 
   const npmCheck = await sandbox.process.executeCommand("command -v npm");
   if (npmCheck.exitCode !== 0) {
-    logger.warn("Daytona: npm not available; falling back to npx");
+    logger.warn("Sandbox (Daytona): npm not available; falling back to npx");
     return null;
   }
 
@@ -57,11 +57,11 @@ const installLocalTermbridge = async (
     `npm install -g ${shellEscape(remotePackPath)}`
   );
   if (install.exitCode !== 0) {
-    logger.warn("Daytona: local CLI install failed; falling back to npx");
+    logger.warn("Sandbox (Daytona): local CLI install failed; falling back to npx");
     return null;
   }
 
-  logger.info("Daytona: installed local termbridge package");
+  logger.info("Sandbox (Daytona): installed local termbridge package");
   return { useLocal: true };
 };
 
@@ -99,7 +99,7 @@ const ensureTmux = async (sandbox: Sandbox, logger: Logger) => {
     return;
   }
 
-  logger.info("Daytona: installing tmux");
+  logger.info("Sandbox (Daytona): installing tmux");
 
   const sudoCheck = await sandbox.process.executeCommand("command -v sudo");
   const sudoPrefix = sudoCheck.exitCode === 0 ? "sudo -E " : "";
@@ -229,8 +229,8 @@ const buildEnv = (values: Record<string, string | undefined>): Record<string, st
     Object.entries(values).filter(([, value]) => typeof value === "string" && value.length > 0)
   ) as Record<string, string>;
 
-export const createDaytonaSandboxServerProvider = (
-  options: DaytonaSandboxProviderOptions = {}
+export const createSandboxDaytonaServerProvider = (
+  options: SandboxDaytonaProviderOptions = {}
 ): SandboxServerProvider => {
   const baseLogger = options.logger ?? noopLogger;
   const daytona = new Daytona({
@@ -247,13 +247,13 @@ export const createDaytonaSandboxServerProvider = (
       try {
         const name =
           startOptions.sandboxName ?? `termbridge-${randomBytes(4).toString("hex")}`;
-        logger.info(`Daytona: creating sandbox ${name}`);
+        logger.info(`Sandbox (Daytona): creating sandbox ${name}`);
         const sandbox = await daytona.create({ name, public: startOptions.public });
         sandboxRef = sandbox;
         await sandbox.start();
 
         const repoPath = startOptions.repoPath ?? deriveRepoPath(startOptions.repoUrl);
-        logger.info(`Daytona: cloning ${startOptions.repoUrl}`);
+        logger.info(`Sandbox (Daytona): cloning ${startOptions.repoUrl}`);
         await sandbox.git.clone(
           startOptions.repoUrl,
           repoPath,
@@ -325,7 +325,7 @@ export const createDaytonaSandboxServerProvider = (
         const startCommand = `nohup ${args.join(" ")} > ${logFile} 2>&1 & echo $! > ${pidFile}`;
         await sandbox.process.executeCommand(startCommand, repoDir, env);
 
-        logger.info("Daytona: waiting for share url");
+        logger.info("Sandbox (Daytona): waiting for share url");
         const shareUrl = await readShareUrl(sandbox, shareFile, 90_000);
         let parsed: { publicUrl: string; token: string };
         try {
@@ -347,7 +347,7 @@ export const createDaytonaSandboxServerProvider = (
             await sandbox.stop();
           } catch (error) {
             const message = error instanceof Error ? error.message : "unknown error";
-            logger.warn(`Daytona: stop failed (${message})`);
+            logger.warn(`Sandbox (Daytona): stop failed (${message})`);
           }
 
           if (startOptions.deleteOnExit) {
@@ -355,7 +355,7 @@ export const createDaytonaSandboxServerProvider = (
               await daytona.delete(sandbox);
             } catch (error) {
               const message = error instanceof Error ? error.message : "unknown error";
-              logger.warn(`Daytona: delete failed (${message})`);
+              logger.warn(`Sandbox (Daytona): delete failed (${message})`);
             }
           }
         };
@@ -368,13 +368,13 @@ export const createDaytonaSandboxServerProvider = (
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : "unknown error";
-        logger.error(`Daytona: sandbox start failed (${message})`);
+        logger.error(`Sandbox (Daytona): sandbox start failed (${message})`);
         if (sandboxRef) {
           try {
             await sandboxRef.stop();
           } catch (stopError) {
             const message = stopError instanceof Error ? stopError.message : "unknown error";
-            baseLogger.warn(`Daytona: stop failed (${message})`);
+            baseLogger.warn(`Sandbox (Daytona): stop failed (${message})`);
           }
 
           if (startOptions.deleteOnExit) {
@@ -382,7 +382,7 @@ export const createDaytonaSandboxServerProvider = (
               await daytona.delete(sandboxRef);
             } catch (deleteError) {
               const message = deleteError instanceof Error ? deleteError.message : "unknown error";
-              baseLogger.warn(`Daytona: delete failed (${message})`);
+              baseLogger.warn(`Sandbox (Daytona): delete failed (${message})`);
             }
           }
         }

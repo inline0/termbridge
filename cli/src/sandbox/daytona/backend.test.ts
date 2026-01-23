@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Logger } from "../server/server";
+import type { Logger } from "../../server/server";
 
 const mocks = vi.hoisted(() => {
   const daytonaCreate = vi.fn();
@@ -43,7 +43,7 @@ vi.mock("@daytonaio/sdk", () => ({
   Daytona: DaytonaMock
 }));
 
-import { createDaytonaBackend } from "./daytona-backend";
+import { createSandboxDaytonaBackend } from "./backend";
 
 const createLogger = (): Logger => ({
   info: vi.fn(),
@@ -51,7 +51,7 @@ const createLogger = (): Logger => ({
   error: vi.fn()
 });
 
-describe("createDaytonaBackend", () => {
+describe("createSandboxDaytonaBackend", () => {
   let onData: ((data: Uint8Array) => void) | null;
   let ptyHandle: {
     waitForConnection: ReturnType<typeof vi.fn>;
@@ -88,7 +88,7 @@ describe("createDaytonaBackend", () => {
 
   it("creates a sandbox, clones the repo, and streams output", async () => {
     const logger = createLogger();
-    const backend = createDaytonaBackend({
+    const backend = createSandboxDaytonaBackend({
       repoUrl: "https://github.com/inline0/termbridge-test-app.git",
       repoBranch: "main",
       logger
@@ -135,7 +135,7 @@ describe("createDaytonaBackend", () => {
 
   it("handles missing entries, deferred pty creation, and shutdown", async () => {
     const logger = createLogger();
-    const backend = createDaytonaBackend({
+    const backend = createSandboxDaytonaBackend({
       repoUrl: "/",
       logger
     });
@@ -201,7 +201,7 @@ describe("createDaytonaBackend", () => {
   });
 
   it("executes noop logger paths", async () => {
-    const backend = createDaytonaBackend({
+    const backend = createSandboxDaytonaBackend({
       repoUrl: "https://github.com/inline0/termbridge-test-app.git"
     });
 
@@ -211,14 +211,14 @@ describe("createDaytonaBackend", () => {
     await backend.shutdown?.();
 
     mocks.sandbox.git.clone.mockRejectedValueOnce(new Error("clone failed"));
-    const failingBackend = createDaytonaBackend({
+    const failingBackend = createSandboxDaytonaBackend({
       repoUrl: "https://example.com/repo.git"
     });
 
     await expect(failingBackend.createSession("session-error")).rejects.toThrow("clone failed");
 
     mocks.sandbox.git.clone.mockRejectedValueOnce("clone failure");
-    const failingBackendNonError = createDaytonaBackend({
+    const failingBackendNonError = createSandboxDaytonaBackend({
       repoUrl: "https://example.com/other.git"
     });
     await expect(failingBackendNonError.createSession("session-error-2")).rejects.toBe(
@@ -228,7 +228,7 @@ describe("createDaytonaBackend", () => {
 
   it("deletes the sandbox when deleteOnExit is enabled", async () => {
     const logger = createLogger();
-    const backend = createDaytonaBackend({
+    const backend = createSandboxDaytonaBackend({
       repoUrl: "https://github.com/inline0/termbridge-test-app.git",
       deleteOnExit: true,
       logger
@@ -243,7 +243,7 @@ describe("createDaytonaBackend", () => {
 
   it("logs when sandbox delete fails", async () => {
     const logger = createLogger();
-    const backend = createDaytonaBackend({
+    const backend = createSandboxDaytonaBackend({
       repoUrl: "https://github.com/inline0/termbridge-test-app.git",
       deleteOnExit: true,
       logger
@@ -254,12 +254,12 @@ describe("createDaytonaBackend", () => {
     mocks.daytonaDelete.mockRejectedValueOnce(new Error("delete fail"));
     await backend.shutdown?.();
 
-    expect(logger.warn).toHaveBeenCalledWith("Daytona: delete failed (delete fail)");
+    expect(logger.warn).toHaveBeenCalledWith("Sandbox (Daytona): delete failed (delete fail)");
   });
 
   it("logs non-error sandbox delete failures", async () => {
     const logger = createLogger();
-    const backend = createDaytonaBackend({
+    const backend = createSandboxDaytonaBackend({
       repoUrl: "https://github.com/inline0/termbridge-test-app.git",
       deleteOnExit: true,
       logger
@@ -270,12 +270,12 @@ describe("createDaytonaBackend", () => {
     mocks.daytonaDelete.mockRejectedValueOnce("delete boom");
     await backend.shutdown?.();
 
-    expect(logger.warn).toHaveBeenCalledWith("Daytona: delete failed (unknown error)");
+    expect(logger.warn).toHaveBeenCalledWith("Sandbox (Daytona): delete failed (unknown error)");
   });
 
   it("returns null and logs when preview URL fails", async () => {
     const logger = createLogger();
-    const backend = createDaytonaBackend({
+    const backend = createSandboxDaytonaBackend({
       repoUrl: "https://github.com/inline0/termbridge-test-app.git",
       logger
     });
@@ -291,7 +291,7 @@ describe("createDaytonaBackend", () => {
 
   it("returns null when the preview response has no url", async () => {
     const logger = createLogger();
-    const backend = createDaytonaBackend({
+    const backend = createSandboxDaytonaBackend({
       repoUrl: "https://github.com/inline0/termbridge-test-app.git",
       logger
     });
@@ -309,7 +309,7 @@ describe("createDaytonaBackend", () => {
   });
 
   it("attaches the preview token header when present", async () => {
-    const backend = createDaytonaBackend({
+    const backend = createSandboxDaytonaBackend({
       repoUrl: "https://github.com/inline0/termbridge-test-app.git",
       logger: createLogger()
     });
@@ -333,7 +333,7 @@ describe("createDaytonaBackend", () => {
   });
 
   it("returns preview info even when the url is not parseable", async () => {
-    const backend = createDaytonaBackend({
+    const backend = createSandboxDaytonaBackend({
       repoUrl: "https://github.com/inline0/termbridge-test-app.git",
       logger: createLogger()
     });
@@ -357,7 +357,7 @@ describe("createDaytonaBackend", () => {
   });
 
   it("returns the preview url when no token is provided", async () => {
-    const backend = createDaytonaBackend({
+    const backend = createSandboxDaytonaBackend({
       repoUrl: "https://github.com/inline0/termbridge-test-app.git",
       logger: createLogger()
     });
@@ -379,7 +379,7 @@ describe("createDaytonaBackend", () => {
 
   it("logs non-error preview failures", async () => {
     const logger = createLogger();
-    const backend = createDaytonaBackend({
+    const backend = createSandboxDaytonaBackend({
       repoUrl: "https://github.com/inline0/termbridge-test-app.git",
       logger
     });
@@ -390,11 +390,11 @@ describe("createDaytonaBackend", () => {
     const previewUrl = await backend.getPreviewUrl?.(4000);
 
     expect(previewUrl).toBe(null);
-    expect(logger.warn).toHaveBeenCalledWith("Daytona: preview failed (unknown error)");
+    expect(logger.warn).toHaveBeenCalledWith("Sandbox (Daytona): preview failed (unknown error)");
   });
 
   it("derives repo names without .git suffix", async () => {
-    const backend = createDaytonaBackend({
+    const backend = createSandboxDaytonaBackend({
       repoUrl: "https://example.com/repo",
       logger: createLogger()
     });
@@ -412,7 +412,7 @@ describe("createDaytonaBackend", () => {
   });
 
   it("passes the public flag to sandbox creation", async () => {
-    const backend = createDaytonaBackend({
+    const backend = createSandboxDaytonaBackend({
       repoUrl: "https://github.com/inline0/termbridge-test-app.git",
       public: true,
       logger: createLogger()

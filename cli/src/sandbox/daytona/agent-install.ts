@@ -1,6 +1,6 @@
 import type { Sandbox } from "@daytonaio/sdk";
-import type { Logger } from "../server/server";
-import type { AgentInstallOptions } from "../sandbox/server-provider";
+import type { Logger } from "../../server/server";
+import type { AgentInstallOptions } from "../server-provider";
 
 export type AgentInstallResult = {
   success: boolean;
@@ -20,7 +20,7 @@ export const installAgents = async (
     return { success: true, installed: [] };
   }
 
-  logger.info("Daytona: installing coding agents");
+  logger.info("Sandbox (Daytona): installing coding agents");
 
   const homeResult = await sandbox.process.executeCommand("printf $HOME");
   const home = homeResult.exitCode === 0 ? homeResult.result.trim() : "/home/daytona";
@@ -32,25 +32,25 @@ export const installAgents = async (
   if (hasPackages) {
     const npmCheck = await sandbox.process.executeCommand("command -v npm");
     if (npmCheck.exitCode !== 0) {
-      logger.warn("Daytona: npm not available; skipping npm packages");
+      logger.warn("Sandbox (Daytona): npm not available; skipping npm packages");
     } else {
       await sandbox.process.executeCommand(`mkdir -p ${localPrefix}`);
 
       for (const pkg of options.packages) {
         const installCmd = `npm install -g --prefix ${localPrefix} ${pkg}`;
-        logger.info(`Daytona: installing ${pkg}`);
+        logger.info(`Sandbox (Daytona): installing ${pkg}`);
 
         for (let attempt = 1; attempt <= 2; attempt += 1) {
           const install = await sandbox.process.executeCommand(installCmd, undefined, undefined, 180);
           if (install.exitCode === 0) {
-            logger.info(`Daytona: installed ${pkg}`);
+            logger.info(`Sandbox (Daytona): installed ${pkg}`);
             installedItems.push(pkg);
             break;
           }
           if (attempt === 1) {
             await new Promise((resolve) => setTimeout(resolve, 2000));
           } else {
-            logger.warn(`Daytona: ${pkg} install failed`);
+            logger.warn(`Sandbox (Daytona): ${pkg} install failed`);
             failedItems.push(pkg);
           }
         }
@@ -61,7 +61,7 @@ export const installAgents = async (
   if (hasScripts) {
     for (const script of options.installScripts) {
       const shortName = script.split("/").pop()!.split("|")[0].trim() || script.slice(0, 30);
-      logger.info(`Daytona: running install script: ${shortName}`);
+      logger.info(`Sandbox (Daytona): running install script: ${shortName}`);
 
       if (script.includes("curl") && script.includes("|")) {
         const urlMatch = script.match(/curl\s+[^\s]+\s+(https?:\/\/[^\s|]+)/);
@@ -77,7 +77,7 @@ export const installAgents = async (
           );
 
           if (download.exitCode !== 0) {
-            logger.warn(`Daytona: failed to download script: ${shortName}`);
+            logger.warn(`Sandbox (Daytona): failed to download script: ${shortName}`);
             failedItems.push(`script:${shortName}`);
             continue;
           }
@@ -92,7 +92,7 @@ export const installAgents = async (
           if (result.exitCode === 0) {
             installedItems.push(`script:${shortName}`);
           } else {
-            logger.warn(`Daytona: script failed: ${shortName}`);
+            logger.warn(`Sandbox (Daytona): script failed: ${shortName}`);
             failedItems.push(`script:${shortName}`);
           }
           continue;
@@ -103,14 +103,14 @@ export const installAgents = async (
       if (result.exitCode === 0) {
         installedItems.push(`script:${shortName}`);
       } else {
-        logger.warn(`Daytona: script failed: ${shortName}`);
+        logger.warn(`Sandbox (Daytona): script failed: ${shortName}`);
         failedItems.push(`script:${shortName}`);
       }
     }
   }
 
   const totalItems = (options.packages?.length ?? 0) + (options.installScripts?.length ?? 0);
-  logger.info(`Daytona: installed ${installedItems.length}/${totalItems} agent items`);
+  logger.info(`Sandbox (Daytona): installed ${installedItems.length}/${totalItems} agent items`);
 
   if (installedItems.length === 0 && totalItems > 0) {
     return { success: false, installed: [], error: `all items failed: ${failedItems.join(", ")}` };

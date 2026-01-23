@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { chromium, type Browser, type Page } from "playwright";
+import { chromium, type Browser } from "playwright";
 import {
   redeemShareUrl,
   sendTerminalInputAndWait,
@@ -21,13 +21,11 @@ import {
   waitForMatch as waitForMatchUtil,
   withTimeout,
   stopCli,
-  clickSheetOption,
-  testPreviewCounter
+  clickSheetOption
 } from "./cli-test-utils";
 import {
   getSandboxPathPrefix,
-  runSandboxCommand as runSandboxCommandUtil,
-  testAgentCLIs
+  runSandboxCommand as runSandboxCommandUtil
 } from "./sandbox-utils";
 import { Daytona } from "@daytonaio/sdk";
 
@@ -41,7 +39,7 @@ const buildCli = () => buildCliUtil(rootDir);
 const logStep = (label: string) => logStepUtil("daytona integration", label);
 const daytonaFailPatterns = [/Daytona: sandbox start failed/i];
 
-const hasCloudflared = commandExists("cloudflared");
+const _hasCloudflared = commandExists("cloudflared");
 const hasClaudeCli = commandExists("claude");
 const hasCodexCli = commandExists("codex");
 const hasOpenCodeCli = commandExists("opencode");

@@ -9,14 +9,14 @@ export type CliOptions = {
   tunnelToken?: string;
   tunnelUrl?: string;
   publicUrl?: string;
-  backend?: "tmux" | "daytona";
-  daytonaDirect?: boolean;
-  daytonaRepo?: string;
-  daytonaBranch?: string;
-  daytonaPath?: string;
-  daytonaSandboxName?: string;
-  daytonaPreviewPort?: number;
-  daytonaPublic?: boolean;
+  backend?: "tmux" | "sandbox-daytona";
+  sandboxDaytonaDirect?: boolean;
+  sandboxDaytonaRepo?: string;
+  sandboxDaytonaBranch?: string;
+  sandboxDaytonaPath?: string;
+  sandboxDaytonaName?: string;
+  sandboxDaytonaPreviewPort?: number;
+  sandboxDaytonaPublic?: boolean;
 };
 
 export type ParsedArgs = {
@@ -169,7 +169,7 @@ export const parseArgs = (argv: string[]): ParsedArgs => {
         throw new Error("missing backend");
       }
 
-      if (backend !== "tmux" && backend !== "daytona") {
+      if (backend !== "tmux" && backend !== "sandbox-daytona") {
         throw new Error("invalid backend");
       }
 
@@ -177,68 +177,68 @@ export const parseArgs = (argv: string[]): ParsedArgs => {
       continue;
     }
 
-    if (current === "--daytona-repo") {
+    if (current === "--sandbox-daytona-repo") {
       const repo = args.shift();
 
       if (!repo) {
-        throw new Error("missing daytona repo");
+        throw new Error("missing sandbox daytona repo");
       }
 
-      options.daytonaRepo = repo;
+      options.sandboxDaytonaRepo = repo;
       continue;
     }
 
-    if (current === "--daytona-branch") {
+    if (current === "--sandbox-daytona-branch") {
       const branch = args.shift();
 
       if (!branch) {
-        throw new Error("missing daytona branch");
+        throw new Error("missing sandbox daytona branch");
       }
 
-      options.daytonaBranch = branch;
+      options.sandboxDaytonaBranch = branch;
       continue;
     }
 
-    if (current === "--daytona-path") {
+    if (current === "--sandbox-daytona-path") {
       const path = args.shift();
 
       if (!path) {
-        throw new Error("missing daytona path");
+        throw new Error("missing sandbox daytona path");
       }
 
-      options.daytonaPath = path;
+      options.sandboxDaytonaPath = path;
       continue;
     }
 
-    if (current === "--daytona-name") {
+    if (current === "--sandbox-daytona-name") {
       const name = args.shift();
 
       if (!name) {
-        throw new Error("missing daytona name");
+        throw new Error("missing sandbox daytona name");
       }
 
-      options.daytonaSandboxName = name;
+      options.sandboxDaytonaName = name;
       continue;
     }
 
-    if (current === "--daytona-preview-port") {
+    if (current === "--sandbox-daytona-preview-port") {
       const port = parseNumber(args.shift());
 
       if (!port || port <= 0) {
-        throw new Error("missing daytona preview port");
+        throw new Error("missing sandbox daytona preview port");
       }
 
-      options.daytonaPreviewPort = port;
+      options.sandboxDaytonaPreviewPort = port;
       continue;
     }
 
-    if (current === "--daytona-public") {
-      options.daytonaPublic = true;
+    if (current === "--sandbox-daytona-public") {
+      options.sandboxDaytonaPublic = true;
       continue;
     }
 
-    if (current === "--daytona-direct") {
-      options.daytonaDirect = true;
+    if (current === "--sandbox-daytona-direct") {
+      options.sandboxDaytonaDirect = true;
       options.tunnel = "none";
       continue;
     }

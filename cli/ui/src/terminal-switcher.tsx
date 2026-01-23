@@ -14,7 +14,7 @@ type TerminalSwitcherProps = {
 const getStatusLabel = (terminal: TerminalListItem) => {
   const statusLabel = terminal.status === "running" ? "Running" : "Closed";
   const sourceLabel =
-    terminal.source === "tmux" ? "Tmux" : terminal.source === "daytona" ? "Daytona" : "Mock";
+    terminal.source === "tmux" ? "Tmux" : terminal.source === "sandbox" ? "Sandbox" : "Mock";
   return `${statusLabel} - ${sourceLabel}`;
 };
 

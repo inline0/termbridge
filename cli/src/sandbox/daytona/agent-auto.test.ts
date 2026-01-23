@@ -21,10 +21,11 @@ describe("resolveAutoAgents", () => {
 
   it("collects agent auth files from a custom home", async () => {
     const home = await mkdtemp(join(tmpdir(), "termbridge-agent-"));
-    const claudeAuth = join(home, ".claude.json");
+    const claudeAuth = join(home, ".claude", ".credentials.json");
     const codexAuth = join(home, ".codex", "auth.json");
     const opencodeAuth = join(home, ".config", "opencode", "opencode.json");
 
+    await mkdir(join(home, ".claude"), { recursive: true });
     await writeFile(claudeAuth, "{}");
     await mkdir(join(home, ".codex"), { recursive: true });
     await writeFile(codexAuth, "{}");
@@ -101,7 +102,7 @@ describe("resolveAutoAgents", () => {
     const result = resolveAutoAgents(["codex"], logger, { home: "/tmp" });
 
     expect(result.authSpecs).toEqual([]);
-    expect(logger.warn).toHaveBeenCalledWith("Daytona: no auth files found for codex");
+    expect(logger.warn).toHaveBeenCalledWith("Sandbox (Daytona): no auth files found for codex");
   });
 
   it("warns on unknown agent names", () => {

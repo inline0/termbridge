@@ -31,7 +31,7 @@ const buildCli = () => buildCliUtil(rootDir);
 const logStep = (label: string) => logStepUtil("cli integration", label);
 const waitForMatch = waitForMatchUtil;
 
-const hasDeps = commandExists("tmux") && commandExists("cloudflared");
+const _hasDeps = commandExists("tmux") && commandExists("cloudflared");
 const maybeDescribe = describe;
 
 maybeDescribe("cli integration", () => {
