@@ -1,0 +1,12 @@
+{
+  "title": "Usage",
+  "defaultOpen": true,
+  "pages": [
+    "index",
+    "mobile-controls",
+    "multiple-terminals",
+    "dev-server-preview",
+    "named-tunnels",
+    "ai-coding-tools"
+  ]
+}

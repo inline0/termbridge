@@ -1,0 +1,106 @@
+---
+title: Named Tunnels
+description: Use your own Cloudflare tunnel to avoid rate limits.
+---
+
+# Named Tunnels
+
+By default, Termbridge uses Cloudflare's account-less Quick Tunnels (`trycloudflare.com`). These are convenient but can be rate-limited with heavy use.
+
+If you use Termbridge frequently, set up a named tunnel with your Cloudflare account.
+
+## Why use a named tunnel?
+
+- **No rate limits**: Quick Tunnels can return 429 errors under heavy use
+- **Consistent URL**: Get a stable subdomain instead of random strings
+- **Custom domain**: Use your own domain like `term.example.com`
+- **Better reliability**: Named tunnels are more stable for long sessions
+
+## Setup
+
+### 1. Create a Cloudflare account
+
+Sign up at [cloudflare.com](https://cloudflare.com) if you don't have one.
+
+### 2. Create a tunnel in Zero Trust
+
+1. Go to [Cloudflare Zero Trust](https://one.dash.cloudflare.com/)
+2. Navigate to **Networks** → **Tunnels**
+3. Click **Create a tunnel**
+4. Choose **Cloudflared** as the connector
+5. Name your tunnel (e.g., `termbridge`)
+6. Copy the tunnel token
+
+### 3. Add a public hostname
+
+1. In the tunnel settings, go to **Public Hostname**
+2. Add a hostname that points to `http://localhost:8080` (or your chosen port)
+3. Use a subdomain like `term.example.com`
+
+### 4. Run Termbridge with your token
+
+```bash
+termbridge --port 8080 --tunnel-token <TOKEN> --tunnel-url https://term.example.com
+```
+
+Or use environment variables:
+
+```bash
+export TERMBRIDGE_TUNNEL_TOKEN=<TOKEN>
+export TERMBRIDGE_TUNNEL_URL=https://term.example.com
+
+termbridge --port 8080
+```
+
+<Callout type="info">
+  The `--port` flag is required with named tunnels because the hostname is configured to point to a specific port.
+</Callout>
+
+## Configuration options
+
+| Flag | Environment Variable | Description |
+|------|---------------------|-------------|
+| `--port <port>` | - | Local port (required with named tunnels) |
+| `--tunnel-token <token>` | `TERMBRIDGE_TUNNEL_TOKEN` | Your tunnel token |
+| `--tunnel-url <url>` | `TERMBRIDGE_TUNNEL_URL` | Your public hostname URL |
+
+## Disabling the tunnel entirely
+
+If you have your own reverse proxy or public URL:
+
+```bash
+termbridge --no-tunnel --public-url https://your-server.com
+```
+
+Or:
+
+```bash
+export TERMBRIDGE_TUNNEL=none
+export TERMBRIDGE_PUBLIC_URL=https://your-server.com
+
+termbridge
+```
+
+Termbridge will skip starting a tunnel and use your provided URL for the QR code.
+
+## Troubleshooting
+
+### "429 Too Many Requests"
+
+This means Quick Tunnels are rate-limited. Solutions:
+
+1. Wait a few minutes and retry
+2. Kill any stale `cloudflared` processes: `pkill cloudflared`
+3. Switch to a named tunnel (recommended)
+
+### Tunnel starts but URL doesn't work
+
+- Verify the hostname in Cloudflare matches `--tunnel-url`
+- Check that the port in Cloudflare matches `--port`
+- Ensure cloudflared is up to date: `cloudflared update`
+
+### Named tunnel won't connect
+
+- Verify your token is correct
+- Check Cloudflare Zero Trust dashboard for errors
+- Try running `cloudflared tunnel run <TOKEN>` directly to see error messages

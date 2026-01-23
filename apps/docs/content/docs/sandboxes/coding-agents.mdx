@@ -18,13 +18,13 @@ Termbridge can prepare coding agents inside Daytona sandboxes by installing thei
 Enable automatic setup by selecting agents explicitly:
 
 ```bash
-TERMBRIDGE_DAYTONA_AGENTS=claude,codex,opencode
+export TERMBRIDGE_SANDBOX_DAYTONA_AGENTS=claude,codex,opencode
 ```
 
 Or enable all known agents:
 
 ```bash
-TERMBRIDGE_DAYTONA_AGENT_AUTO=true
+export TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTO=true
 ```
 
 When automatic setup is enabled, Termbridge will:
@@ -35,7 +35,7 @@ When automatic setup is enabled, Termbridge will:
 
 Local auth files are discovered from these defaults:
 
-- `~/.claude.json`
+- `~/.claude/.credentials.json`
 - `~/.codex/auth.json`
 - `~/.config/opencode/opencode.json`
 
@@ -44,13 +44,13 @@ Local auth files are discovered from these defaults:
 If you prefer manual control, you can specify auth paths directly:
 
 ```bash
-TERMBRIDGE_DAYTONA_AGENT_AUTH_PATHS=~/.claude.json,~/.codex/auth.json,~/.config/opencode/opencode.json
+export TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTH_PATHS=~/.claude/.credentials.json,~/.codex/auth.json,~/.config/opencode/opencode.json
 ```
 
 Need custom destinations inside the sandbox? Use explicit mappings:
 
 ```bash
-TERMBRIDGE_DAYTONA_AGENT_AUTH_MAPS=~/.claude.json=/home/daytona/.config/claude/auth.json
+export TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTH_MAPS=~/.claude/.credentials.json=/home/daytona/.claude/.credentials.json
 ```
 
 ## API keys and extra env vars
@@ -58,7 +58,7 @@ TERMBRIDGE_DAYTONA_AGENT_AUTH_MAPS=~/.claude.json=/home/daytona/.config/claude/a
 Termbridge forwards common agent API keys automatically. Add additional env var names via:
 
 ```bash
-TERMBRIDGE_DAYTONA_AGENT_ENV=CUSTOM_TOKEN,ANOTHER_SECRET
+export TERMBRIDGE_SANDBOX_DAYTONA_AGENT_ENV=CUSTOM_TOKEN,ANOTHER_SECRET
 ```
 
 ## Controlling installation
@@ -66,17 +66,17 @@ TERMBRIDGE_DAYTONA_AGENT_ENV=CUSTOM_TOKEN,ANOTHER_SECRET
 If you want to skip installing CLIs in the sandbox, set:
 
 ```bash
-TERMBRIDGE_DAYTONA_AGENT_INSTALL=false
+export TERMBRIDGE_SANDBOX_DAYTONA_AGENT_INSTALL=false
 ```
 
 To override the install packages entirely:
 
 ```bash
-TERMBRIDGE_DAYTONA_AGENT_PACKAGES=@anthropic-ai/claude-code,@openai/codex,opencode
+export TERMBRIDGE_SANDBOX_DAYTONA_AGENT_PACKAGES=@anthropic-ai/claude-code,@openai/codex,opencode
 ```
 
 <Callout type="info">
-  Auth sync copies local credentials into the sandbox. Only use this with sandboxes you trust, and prefer ephemeral sandboxes with `TERMBRIDGE_DAYTONA_DELETE_ON_EXIT=true`.
+  Auth sync copies local credentials into the sandbox. Only use this with sandboxes you trust, and prefer ephemeral sandboxes with `TERMBRIDGE_SANDBOX_DAYTONA_DELETE_ON_EXIT=true`.
 </Callout>
 
 ## Related docs

@@ -35,16 +35,16 @@ termbridge start --port 8080 --proxy 5173 --session dev --kill-on-exit --no-qr -
 | `--no-tunnel` | Disable the tunnel (requires `--public-url`) | Off |
 | `--public-url <url>` | Public URL when tunnel is disabled | - |
 | `--tunnel cloudflare` | Tunnel provider (cloudflare or none) | cloudflare |
-| `--backend <backend>` | Terminal backend (tmux or daytona) | tmux |
+| `--backend <backend>` | Terminal backend (`tmux` or `sandbox-daytona`) | tmux |
 | `--tunnel-token <token>` | Use a named Cloudflare Tunnel token (requires `--port`) | - |
 | `--tunnel-url <url>` | Public URL for the named tunnel (required with `--tunnel-token`) | - |
-| `--daytona-repo <url>` | Repo URL for Daytona | - |
-| `--daytona-branch <branch>` | Branch for Daytona | - |
-| `--daytona-path <path>` | Repo path in the sandbox | - |
-| `--daytona-name <name>` | Sandbox name | - |
-| `--daytona-preview-port <port>` | Preview port in the sandbox | - |
-| `--daytona-public` | Create a public sandbox | Off |
-| `--daytona-direct` | Run the server inside the Daytona sandbox (no tunnel) | Off |
+| `--sandbox-daytona-repo <url>` | Repo URL for Daytona sandbox | - |
+| `--sandbox-daytona-branch <branch>` | Branch for Daytona sandbox | - |
+| `--sandbox-daytona-path <path>` | Repo path in the sandbox | - |
+| `--sandbox-daytona-name <name>` | Sandbox name | - |
+| `--sandbox-daytona-preview-port <port>` | Preview port in the sandbox | - |
+| `--sandbox-daytona-public` | Create a public sandbox | Off |
+| `--sandbox-daytona-direct` | Run the server inside the Daytona sandbox (no tunnel) | Off |
 
 ## Examples
 
@@ -102,28 +102,35 @@ termbridge --no-tunnel --public-url https://example.com
 
 ## Environment variables
 
-For development and testing:
+### Core settings
 
 | Variable | What it does |
 |----------|--------------|
 | `TERMBRIDGE_SESSIONS=2` | Create multiple tmux sessions on startup |
-| `TERMBRIDGE_INSECURE_COOKIE=1` | Allow HTTP cookies (local dev only) |
-| `TERMBRIDGE_PROXY_PORT=5173` | Proxy port for dev:beam:proxy script |
-| `TERMBRIDGE_DEV_UI=http://127.0.0.1:5000` | Override Vite dev UI URL |
-| `TERMBRIDGE_DEV_PORT=3000` | Override Termbridge server port in dev |
 | `TERMBRIDGE_PUBLIC_URL=https://example.com` | Public URL when tunnel is disabled |
 | `TERMBRIDGE_TUNNEL=none` | Disable the tunnel |
 | `TERMBRIDGE_TUNNEL_TOKEN=<token>` | Named tunnel token (requires `TERMBRIDGE_TUNNEL_URL`) |
 | `TERMBRIDGE_TUNNEL_URL=https://term.example.com` | Public URL for the named tunnel |
-| `TERMBRIDGE_DAYTONA_DIRECT=true` | Run Termbridge inside the Daytona sandbox |
-| `TERMBRIDGE_DAYTONA_SERVER_PORT=8080` | Port for the sandboxed Termbridge server |
-| `TERMBRIDGE_DAYTONA_AGENTS=claude,codex` | Auto-install + sync auth for selected agents |
-| `TERMBRIDGE_DAYTONA_AGENT_AUTO=true` | Auto-install + sync auth for all known agents |
-| `TERMBRIDGE_DAYTONA_AGENT_INSTALL=true` | Install coding agents in the sandbox |
-| `TERMBRIDGE_DAYTONA_AGENT_PACKAGES=...` | NPM packages to install for agents |
-| `TERMBRIDGE_DAYTONA_AGENT_ENV=...` | Extra env vars to forward into the sandbox |
-| `TERMBRIDGE_DAYTONA_AGENT_AUTH_PATHS=...` | Local auth files/dirs to sync into the sandbox |
-| `TERMBRIDGE_DAYTONA_AGENT_AUTH_MAPS=...` | Explicit auth mappings in `local=remote` form |
+
+### Development
+
+| Variable | What it does |
+|----------|--------------|
+| `TERMBRIDGE_INSECURE_COOKIE=1` | Allow HTTP cookies (local dev only) |
+| `TERMBRIDGE_PROXY_PORT=5173` | Proxy port for dev:beam:proxy script |
+| `TERMBRIDGE_DEV_UI=http://127.0.0.1:5000` | Override Vite dev UI URL |
+| `TERMBRIDGE_DEV_PORT=3000` | Override Termbridge server port in dev |
+
+### Sandbox (Daytona)
+
+| Variable | What it does |
+|----------|--------------|
+| `TERMBRIDGE_BACKEND=sandbox-daytona` | Use the Daytona sandbox backend |
+| `TERMBRIDGE_SANDBOX_DAYTONA_DIRECT=true` | Run Termbridge inside the sandbox |
+| `TERMBRIDGE_SANDBOX_DAYTONA_SERVER_PORT=8080` | Port for the sandboxed server |
+| `TERMBRIDGE_SANDBOX_DAYTONA_AGENTS=claude,codex` | Auto-install + sync auth for agents |
+| `TERMBRIDGE_SANDBOX_DAYTONA_AGENT_ENV=...` | Extra env vars to forward |
+| `TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTH_PATHS=...` | Local auth files to sync |
 
 For full Daytona configuration, see the [Daytona guide](/docs/sandboxes/daytona).
 

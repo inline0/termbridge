@@ -1,0 +1,39 @@
+---
+title: Usage
+description: Learn how to get the most out of Termbridge.
+---
+
+# Usage
+
+Once you're up and running, these guides will help you unlock Termbridge's full potential.
+
+<Cards>
+  <Card title="Mobile Controls" href="/docs/usage/mobile-controls">
+    On-screen buttons and tips for phone/tablet use
+  </Card>
+  <Card title="Multiple Terminals" href="/docs/usage/multiple-terminals">
+    Run several sessions and switch between them
+  </Card>
+  <Card title="Dev Server Preview" href="/docs/usage/dev-server-preview">
+    Preview your Vite app alongside the terminal
+  </Card>
+  <Card title="Named Tunnels" href="/docs/usage/named-tunnels">
+    Use your own Cloudflare tunnel to avoid rate limits
+  </Card>
+  <Card title="AI Coding Tools" href="/docs/usage/ai-coding-tools">
+    Monitor Claude Code, Codex, and other agents remotely
+  </Card>
+</Cards>
+
+## Quick tips
+
+- **Landscape mode**: Rotate your phone for more screen space with TUIs
+- **tmux commands work**: `Ctrl+B` shortcuts function as normal
+- **Auto-reconnect**: If you lose connection, just refresh the page
+- **Session persistence**: tmux sessions survive Termbridge restarts (unless you use `--kill-on-exit`)
+
+## Limitations
+
+- **Single PTY**: Multiple viewers see the same terminal and can all type
+- **Tunnel required**: Without a tunnel (or sandbox direct mode), you need your own public URL
+- **Cloudflare only**: Currently the only tunnel provider (or use `--no-tunnel` / sandbox direct mode)

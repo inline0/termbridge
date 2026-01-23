@@ -1,0 +1,134 @@
+---
+title: AI Coding Tools
+description: Monitor Claude Code, Codex, and other AI coding agents remotely.
+---
+
+# AI Coding Tools
+
+Termbridge works great for monitoring AI coding assistants. Start an agent in your terminal, then watch it work from your phone while you're away from your desk.
+
+## Why use Termbridge with AI tools?
+
+- **Monitor remotely**: Watch Claude Code or Codex work from your couch
+- **Stay informed**: See when agents need input or hit errors
+- **Quick intervention**: Send commands or cancel processes from your phone
+- **No VPN needed**: Secure access from anywhere
+
+## Supported tools
+
+Any CLI-based AI coding tool works:
+
+- **Claude Code** (`claude`)
+- **Codex** (`codex`)
+- **OpenCode** (`opencode`)
+- **Aider** (`aider`)
+- **Cursor** (terminal mode)
+- Any other terminal-based agent
+
+## Local workflow
+
+### Watch Claude Code from your phone
+
+```bash
+# Start Termbridge with a named session
+termbridge --session claude
+
+# In the terminal (via UI or locally), start Claude
+claude
+```
+
+Scan the QR code and watch Claude work from anywhere.
+
+### Start the agent first
+
+If you prefer to start the agent before Termbridge:
+
+```bash
+# Create a tmux session and start the agent
+tmux new-session -d -s claude "claude"
+
+# Then attach Termbridge to it
+termbridge --session claude
+```
+
+### Codex workflow
+
+```bash
+tmux new-session -d -s codex
+tmux send-keys -t codex "codex" Enter
+termbridge --session codex
+```
+
+## Sandbox workflow
+
+For isolated environments, run agents in a Daytona sandbox. Termbridge can install agent CLIs and sync your auth automatically.
+
+### Quick setup
+
+```bash
+export TERMBRIDGE_BACKEND=sandbox-daytona
+export TERMBRIDGE_SANDBOX_DAYTONA_AGENTS=claude,codex
+
+termbridge
+```
+
+This will:
+
+1. Create a Daytona sandbox
+2. Install the agent CLIs
+3. Sync your local auth files so agents are ready to use
+
+See the [Coding Agents guide](/docs/sandboxes/coding-agents) for full details.
+
+## Tips
+
+### Named sessions
+
+Use meaningful session names so you know what's running:
+
+```bash
+termbridge --session claude-refactor
+termbridge --session codex-tests
+```
+
+### Multiple agents
+
+Run different agents in different terminals:
+
+```bash
+TERMBRIDGE_SESSIONS=2 termbridge
+```
+
+Start Claude in one, Codex in another, and switch between them.
+
+### Long-running tasks
+
+AI agents can run for a long time. Termbridge handles this well:
+
+- Your session persists even if you close the browser
+- Reconnect anytime by refreshing the page
+- tmux keeps the agent running even if Termbridge restarts
+
+### Intervention
+
+Need to stop or redirect an agent?
+
+1. Use the `Ctrl+C` button to interrupt
+2. Type new instructions in the input field
+3. The agent receives your input just like a local terminal
+
+## Sandbox vs local
+
+| Feature | Local (tmux) | Sandbox (Daytona) |
+|---------|--------------|-------------------|
+| Setup | Just tmux | Daytona account + API key |
+| Environment | Your machine | Isolated container |
+| Persistence | Survives restarts | Survives laptop sleep |
+| Auth | Already configured | Auto-synced by Termbridge |
+| Best for | Quick monitoring | Isolated experiments |
+
+For most users, local mode is simpler. Use sandbox mode when you want:
+
+- A clean, disposable environment
+- To keep your laptop free while agents work
+- To run experiments without affecting your local setup

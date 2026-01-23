@@ -1,0 +1,128 @@
+---
+title: Dev Server Preview
+description: Preview your local dev server alongside the terminal.
+---
+
+# Dev Server Preview
+
+Termbridge can proxy your local dev server and show it in a preview pane. This is perfect for mobile testing or watching your app while running terminal commands.
+
+## Quick start
+
+```bash
+# Start your dev server (e.g., Vite on port 5173)
+cd my-app && npm run dev
+
+# In another terminal, start Termbridge with proxy
+termbridge --proxy 5173
+```
+
+Now you can switch between **Terminal** and **Preview** views in the UI.
+
+## How it works
+
+When you pass `--proxy <port>`:
+
+1. All Termbridge routes stay under `/__tb/`
+2. All other requests are proxied to your dev server
+3. The UI shows a **Views** button to toggle between Terminal and Preview
+4. Preview loads your app in an iframe through the proxy
+
+```
+Browser → Termbridge → Your dev server (localhost:5173)
+```
+
+## Switching views
+
+1. Tap the **Views** button in the bottom bar
+2. Choose **Switch to Terminal** or **Switch to Preview**
+3. The view updates instantly
+
+Both views stay connected - your terminal session continues while you're viewing the preview.
+
+## Hot Module Replacement (HMR)
+
+Vite's HMR works through the proxy. WebSocket connections to `/_vite/ws` are forwarded to your dev server automatically.
+
+Edit your code and see changes in the Preview view instantly - no refresh needed.
+
+## Supported frameworks
+
+Any dev server that runs on a local port works:
+
+| Framework | Command | Default Port |
+|-----------|---------|--------------|
+| Vite | `npm run dev` | 5173 |
+| Next.js | `npm run dev` | 3000 |
+| Create React App | `npm start` | 3000 |
+| Nuxt | `npm run dev` | 3000 |
+| SvelteKit | `npm run dev` | 5173 |
+
+Just match the `--proxy` port to your dev server's port.
+
+## Use cases
+
+### Mobile testing
+
+Test your responsive design on a real phone:
+
+```bash
+termbridge --proxy 5173
+```
+
+Scan the QR code and see your app exactly as it renders on mobile Safari or Chrome.
+
+### Full-stack development
+
+Run commands in the terminal while watching your app:
+
+1. Watch build output in Terminal view
+2. See your app in Preview view
+3. Switch between them with a tap
+4. Keep working from your phone or tablet
+
+### Demo your work
+
+Share the public URL with someone to show them:
+
+- Your running app (Preview)
+- Your terminal session (Terminal)
+
+Great for remote pairing or quick demos.
+
+## Sandbox mode
+
+When using Daytona sandboxes, set the preview port:
+
+```bash
+export TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT=5173
+```
+
+Make sure your dev server binds to all interfaces:
+
+```bash
+npm run dev -- --host 0.0.0.0 --port 5173
+```
+
+Termbridge proxies the Daytona preview URL through the UI.
+
+## Troubleshooting
+
+### Preview shows blank page
+
+- Make sure your dev server is running
+- Check that the port matches `--proxy`
+- For sandbox mode, use `--host 0.0.0.0` so the port is reachable
+
+### HMR not working
+
+- Verify your dev server supports HMR
+- Check browser console for WebSocket errors
+- Some frameworks need explicit HMR configuration
+
+### CORS errors
+
+The proxy handles most CORS issues, but if your app makes requests to other origins:
+
+- Configure your dev server's CORS settings
+- Or use a browser extension to bypass CORS (for development only)
