@@ -1,10 +1,8 @@
-import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createServer, type Server } from "node:http";
-import { existsSync } from "node:fs";
-import { resolve, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { chromium, type Browser, type Page } from "playwright";
+import { chromium, type Browser } from "playwright";
 import {
   redeemShareUrl,
   sendTerminalInputAndWait,
@@ -13,170 +11,28 @@ import {
   waitForTerminalText
 } from "./terminal-utils";
 import { buildUrl, parseShareUrl } from "./share-utils";
+import {
+  resolveRepoRoot,
+  resolveNodePath,
+  commandExists,
+  buildCli as buildCliUtil,
+  logStep as logStepUtil,
+  waitForMatch as waitForMatchUtil,
+  withTimeout,
+  stopCli,
+  clickSheetOption
+} from "./cli-test-utils";
 
-const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const rootDir = resolveRepoRoot();
 const cliDir = resolve(rootDir, "cli");
 const distBin = resolve(cliDir, "dist/bin.js");
 
-const commandExists = (name: string) =>
-  spawnSync("which", [name], { stdio: "ignore" }).status === 0;
+const buildCli = () => buildCliUtil(rootDir);
+const logStep = (label: string) => logStepUtil("cli integration", label);
+const waitForMatch = waitForMatchUtil;
 
 const hasDeps = commandExists("tmux") && commandExists("cloudflared");
 const maybeDescribe = describe;
-
-const resolveNodePath = () => {
-  const result = spawnSync("which", ["node"], { encoding: "utf8" });
-  if (result.status === 0 && result.stdout.trim()) {
-    return result.stdout.trim();
-  }
-
-  if (existsSync(process.execPath)) {
-    return process.execPath;
-  }
-
-  return "node";
-};
-
-const buildCli = () => {
-  const result = spawnSync("bun", ["run", "build"], { cwd: rootDir, stdio: "inherit" });
-
-  if (result.status !== 0) {
-    throw new Error("cli build failed");
-  }
-};
-
-const failFastPatterns = [/Tunnel failed/i, /tmux install failed/i];
-
-const waitForMatch = (
-  child: ChildProcessWithoutNullStreams,
-  output: { stdout: string; stderr: string },
-  regex: RegExp,
-  timeoutMs: number
-) =>
-  new Promise<RegExpMatchArray>((resolvePromise, reject) => {
-    const deadline = Date.now() + timeoutMs;
-
-    const check = () => {
-      const failMatch = failFastPatterns.find(
-        (pattern) => pattern.test(output.stdout) || pattern.test(output.stderr)
-      );
-
-      if (failMatch) {
-        cleanup();
-        const summary = [
-          `fail fast: ${failMatch.source}`,
-          output.stdout ? `stdout:\n${output.stdout}` : "",
-          output.stderr ? `stderr:\n${output.stderr}` : ""
-        ]
-          .filter(Boolean)
-          .join("\n");
-        reject(new Error(summary));
-        return;
-      }
-
-      const match = output.stdout.match(regex) ?? output.stderr.match(regex);
-
-      if (match) {
-        cleanup();
-        resolvePromise(match);
-        return;
-      }
-
-      if (Date.now() > deadline) {
-        cleanup();
-        const summary = [
-          `timeout waiting for ${regex.source}`,
-          output.stdout ? `stdout:\n${output.stdout}` : "",
-          output.stderr ? `stderr:\n${output.stderr}` : ""
-        ]
-          .filter(Boolean)
-          .join("\n");
-        reject(new Error(summary));
-      }
-    };
-
-    const handleExit = (code: number | null, signal: NodeJS.Signals | null) => {
-      const match = output.stdout.match(regex) ?? output.stderr.match(regex);
-      if (match) {
-        cleanup();
-        resolvePromise(match);
-        return;
-      }
-      cleanup();
-      const summary = [
-        `cli exited (${code ?? "unknown"}) ${signal ?? ""}`.trim(),
-        output.stdout ? `stdout:\n${output.stdout}` : "",
-        output.stderr ? `stderr:\n${output.stderr}` : ""
-      ]
-        .filter(Boolean)
-        .join("\n");
-      reject(new Error(summary));
-    };
-
-    const handleError = (error: Error) => {
-      cleanup();
-      reject(error);
-    };
-
-    const cleanup = () => {
-      clearInterval(intervalId);
-      child.off("exit", handleExit);
-      child.off("error", handleError);
-    };
-
-    const intervalId = setInterval(check, 50);
-    child.once("exit", handleExit);
-    child.once("error", handleError);
-    check();
-  });
-
-const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, label: string) =>
-  new Promise<T>((resolvePromise, reject) => {
-    const timeoutId = setTimeout(() => {
-      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
-
-    promise.then(
-      (value) => {
-        clearTimeout(timeoutId);
-        resolvePromise(value);
-      },
-      (error) => {
-        clearTimeout(timeoutId);
-        reject(error);
-      }
-    );
-  });
-
-const logStep = (label: string) => {
-  if (process.env.TERMBRIDGE_TEST_DEBUG) {
-    process.stdout.write(`[cli integration] ${label}\n`);
-  }
-};
-
-const stopCli = async (child: ChildProcessWithoutNullStreams | null) => {
-  if (!child) {
-    return;
-  }
-
-  if (child.exitCode !== null) {
-    return;
-  }
-
-  await new Promise<void>((resolvePromise) => {
-    const timeoutId = setTimeout(() => {
-      child.kill("SIGKILL");
-      resolvePromise();
-    }, 10_000);
-
-    child.once("exit", () => {
-      clearTimeout(timeoutId);
-      resolvePromise();
-    });
-
-    child.kill("SIGTERM");
-  });
-};
 
 maybeDescribe("cli integration", () => {
   let child: ChildProcessWithoutNullStreams | null = null;
@@ -426,22 +282,6 @@ const getAvailablePort = () =>
       }
     });
   });
-
-const clickSheetOption = async (page: Page, name: string) => {
-  for (let attempt = 0; attempt < 6; attempt += 1) {
-    const option = page.getByRole("button", { name });
-    try {
-      await option.scrollIntoViewIfNeeded();
-      await option.click({ force: true });
-      return;
-    } catch (error) {
-      if (attempt >= 5) {
-        throw error;
-      }
-      await page.waitForTimeout(250);
-    }
-  }
-};
 
 maybeDescribe("cli integration (proxy mode)", () => {
   let child: ChildProcessWithoutNullStreams | null = null;

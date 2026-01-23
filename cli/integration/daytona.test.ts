@@ -1,31 +1,35 @@
-import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { resolve, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { resolve } from "node:path";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
 import {
   redeemShareUrl,
   sendTerminalInputAndWait,
-  waitForLocatorText,
   waitForTerminalConnected,
-  waitForTerminalText
+  waitForTerminalText,
+  waitForLocatorText
 } from "./terminal-utils";
 import { buildUrl, parseShareUrl } from "./share-utils";
+import {
+  resolveRepoRoot,
+  resolveNodePath,
+  commandExists,
+  buildCli as buildCliUtil,
+  logStep as logStepUtil,
+  waitForMatch as waitForMatchUtil,
+  withTimeout,
+  stopCli,
+  clickSheetOption,
+  testPreviewCounter
+} from "./cli-test-utils";
+import {
+  getSandboxPathPrefix,
+  runSandboxCommand as runSandboxCommandUtil,
+  testAgentCLIs
+} from "./sandbox-utils";
 import { Daytona } from "@daytonaio/sdk";
-
-const resolveRepoRoot = () => {
-  const cwd = process.cwd();
-  if (existsSync(resolve(cwd, "cli", "package.json"))) {
-    return cwd;
-  }
-  const parent = resolve(cwd, "..");
-  if (existsSync(resolve(parent, "cli", "package.json"))) {
-    return parent;
-  }
-  return resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-};
 
 const rootDir = resolveRepoRoot();
 const cliDir = resolve(rootDir, "cli");
@@ -33,8 +37,9 @@ const distBin = resolve(cliDir, "dist/bin.js");
 const testAppDir = resolve(rootDir, "../termbridge-test-app");
 const envPath = resolve(testAppDir, ".env");
 
-const commandExists = (name: string) =>
-  spawnSync("which", [name], { stdio: "ignore" }).status === 0;
+const buildCli = () => buildCliUtil(rootDir);
+const logStep = (label: string) => logStepUtil("daytona integration", label);
+const daytonaFailPatterns = [/Daytona: sandbox start failed/i];
 
 const hasCloudflared = commandExists("cloudflared");
 const hasClaudeCli = commandExists("claude");
@@ -99,135 +104,12 @@ const shouldTestAgents = hasDaytonaConfig && hasAgentClis && hasAgentAuth;
 const describeDaytonaDirect = describe.sequential;
 const describeDaytonaTunnel = describe.sequential;
 
-const resolveNodePath = () => {
-  const result = spawnSync("which", ["node"], { encoding: "utf8" });
-  if (result.status === 0 && result.stdout.trim()) {
-    return result.stdout.trim();
-  }
-
-  if (existsSync(process.execPath)) {
-    return process.execPath;
-  }
-
-  return "node";
-};
-
-const buildCli = () => {
-  const result = spawnSync("bun", ["run", "build"], { cwd: rootDir, stdio: "inherit" });
-
-  if (result.status !== 0) {
-    throw new Error("cli build failed");
-  }
-};
-
-const failFastPatterns = [/tmux install failed/i, /Daytona: sandbox start failed/i, /Tunnel failed/i];
-
 const waitForMatch = (
   child: ChildProcessWithoutNullStreams,
   output: { stdout: string; stderr: string },
   regex: RegExp,
   timeoutMs: number
-) =>
-  new Promise<RegExpMatchArray>((resolvePromise, reject) => {
-    const deadline = Date.now() + timeoutMs;
-
-    const check = () => {
-      const failMatch = failFastPatterns.find(
-        (pattern) => pattern.test(output.stdout) || pattern.test(output.stderr)
-      );
-
-      if (failMatch) {
-        cleanup();
-        const summary = [
-          `fail fast: ${failMatch.source}`,
-          output.stdout ? `stdout:\n${output.stdout}` : "",
-          output.stderr ? `stderr:\n${output.stderr}` : ""
-        ]
-          .filter(Boolean)
-          .join("\n");
-        reject(new Error(summary));
-        return;
-      }
-
-      const match = output.stdout.match(regex) ?? output.stderr.match(regex);
-
-      if (match) {
-        cleanup();
-        resolvePromise(match);
-        return;
-      }
-
-      if (Date.now() > deadline) {
-        cleanup();
-        const summary = [
-          `timeout waiting for ${regex.source}`,
-          output.stdout ? `stdout:\n${output.stdout}` : "",
-          output.stderr ? `stderr:\n${output.stderr}` : ""
-        ]
-          .filter(Boolean)
-          .join("\n");
-        reject(new Error(summary));
-      }
-    };
-
-    const handleExit = (code: number | null, signal: NodeJS.Signals | null) => {
-      const match = output.stdout.match(regex) ?? output.stderr.match(regex);
-      if (match) {
-        cleanup();
-        resolvePromise(match);
-        return;
-      }
-      cleanup();
-      const summary = [
-        `cli exited (${code ?? "unknown"}) ${signal ?? ""}`.trim(),
-        output.stdout ? `stdout:\n${output.stdout}` : "",
-        output.stderr ? `stderr:\n${output.stderr}` : ""
-      ]
-        .filter(Boolean)
-        .join("\n");
-      reject(new Error(summary));
-    };
-
-    const handleError = (error: Error) => {
-      cleanup();
-      reject(error);
-    };
-
-    const cleanup = () => {
-      clearInterval(intervalId);
-      child.off("exit", handleExit);
-      child.off("error", handleError);
-    };
-
-    const intervalId = setInterval(check, 50);
-    child.once("exit", handleExit);
-    child.once("error", handleError);
-    check();
-  });
-
-const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, label: string) =>
-  new Promise<T>((resolvePromise, reject) => {
-    const timeoutId = setTimeout(() => {
-      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
-
-    promise.then(
-      (value) => {
-        clearTimeout(timeoutId);
-        resolvePromise(value);
-      },
-      (error) => {
-        clearTimeout(timeoutId);
-        reject(error);
-      }
-    );
-  });
-
-const logStep = (label: string) => {
-  if (process.env.TERMBRIDGE_TEST_DEBUG) {
-    process.stdout.write(`[daytona integration] ${label}\n`);
-  }
-};
+) => waitForMatchUtil(child, output, regex, timeoutMs, daytonaFailPatterns);
 
 
 const sandboxPrefix = "termbridge-test-";
@@ -307,81 +189,13 @@ const waitForSandboxByName = async (name: string, timeoutMs = 60_000) => {
   );
 };
 
-const getSandboxPathPrefix = async (
-  sandbox: Awaited<ReturnType<typeof waitForSandboxByName>>
-) => {
-  const homeResult = await sandbox.process.executeCommand("printf $HOME");
-  const home = homeResult.exitCode === 0 ? homeResult.result.trim() : "/home/daytona";
-  const localBin = `${home}/.local/bin`;
-  const opencodeBin = `${home}/.opencode/bin`;
-
-  const npmBin = await sandbox.process.executeCommand("npm bin -g");
-  const globalBin = npmBin.exitCode === 0 ? npmBin.result.trim() : "";
-
-  const paths = [localBin, opencodeBin, globalBin].filter(Boolean).join(":");
-  return paths ? `PATH="${paths}:$PATH"` : "";
-};
-
 const runSandboxCommand = async (
   sandbox: Awaited<ReturnType<typeof waitForSandboxByName>>,
   command: string,
   label: string,
   timeoutSec = 120,
   pathPrefix = ""
-) => {
-  logStep(`run ${label}`);
-  const prefixedCommand = pathPrefix ? `${pathPrefix} ${command}` : command;
-  const result = await withTimeout(
-    sandbox.process.executeCommand(prefixedCommand, undefined, undefined, timeoutSec),
-    (timeoutSec + 10) * 1000,
-    label
-  );
-  if (result.exitCode !== 0) {
-    const output = `${result.result ?? ""}`.slice(0, 400);
-    throw new Error(`${label} failed (${result.exitCode}): ${output}`);
-  }
-  return `${result.result ?? ""}`;
-};
-
-const clickSheetOption = async (page: Page, name: string) => {
-  for (let attempt = 0; attempt < 6; attempt += 1) {
-    const option = page.getByRole("button", { name });
-    try {
-      await option.scrollIntoViewIfNeeded();
-      await option.click({ force: true });
-      return;
-    } catch (error) {
-      if (attempt >= 5) {
-        throw error;
-      }
-      await page.waitForTimeout(250);
-    }
-  }
-};
-
-const stopCli = async (child: ChildProcessWithoutNullStreams | null) => {
-  if (!child) {
-    return;
-  }
-
-  if (child.exitCode !== null) {
-    return;
-  }
-
-  await new Promise<void>((resolvePromise) => {
-    const timeoutId = setTimeout(() => {
-      child.kill("SIGKILL");
-      resolvePromise();
-    }, 10_000);
-
-    child.once("exit", () => {
-      clearTimeout(timeoutId);
-      resolvePromise();
-    });
-
-    child.kill("SIGTERM");
-  });
-};
+) => runSandboxCommandUtil(sandbox, command, label, timeoutSec, pathPrefix, logStep);
 
 describeDaytonaTunnel("daytona integration (tunnel)", () => {
   let child: ChildProcessWithoutNullStreams | null = null;
