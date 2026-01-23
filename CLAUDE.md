@@ -240,10 +240,10 @@ bun run lint             # Biome lint
 bun run typecheck        # TypeScript check
 bun run format           # Biome format
 
-# Daytona Debugging
-bun run daytona:debug           # Debug Daytona sandbox
-bun run daytona:debug:direct    # Debug direct mode
-bun run daytona:debug:claude    # Debug with Claude agent
+# Sandbox Debugging
+bun run sandbox:daytona:debug           # Debug Daytona sandbox
+bun run sandbox:daytona:debug:direct    # Debug direct mode
+bun run sandbox:daytona:debug:claude    # Debug with Claude agent
 ```
 
 ---

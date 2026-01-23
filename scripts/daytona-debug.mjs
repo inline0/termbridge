@@ -9,7 +9,7 @@ const testAppDir = resolve(rootDir, "..", "termbridge-test-app");
 const envPath = resolve(testAppDir, ".env");
 
 const usage = () => {
-  console.log("Usage: bun run daytona:debug [--direct] [--agent <name>] [--agents <list>] [--preview-port <port>]");
+  console.log("Usage: bun run sandbox:daytona:debug [--direct] [--agent <name>] [--agents <list>] [--preview-port <port>]");
   console.log("  --direct           Run Termbridge inside the sandbox (no tunnel)");
   console.log("  --agent <name>     Single agent (claude|codex|opencode)");
   console.log("  --agents <list>    Comma/space list of agents (default: claude,codex,opencode)");
@@ -71,37 +71,37 @@ const daytonaEnv = parseEnvFile(envPath);
 const direct = args.includes("--direct");
 const agent = getArg("--agent");
 const agents = getArg("--agents");
-const previewPort = getArg("--preview-port") ?? daytonaEnv.TERMBRIDGE_DAYTONA_PREVIEW_PORT ?? "5173";
+const previewPort = getArg("--preview-port") ?? daytonaEnv.TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT ?? "5173";
 const sandboxName = `termbridge-debug-${Date.now()}`;
 
 const env = {
   ...process.env,
   ...daytonaEnv,
   NODE_ENV: "production",
-  TERMBRIDGE_BACKEND: "daytona",
-  TERMBRIDGE_DAYTONA_PREVIEW_PORT: previewPort,
-  TERMBRIDGE_DAYTONA_DELETE_ON_EXIT: "true",
-  TERMBRIDGE_DAYTONA_NAME: sandboxName
+  TERMBRIDGE_BACKEND: "sandbox-daytona",
+  TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT: previewPort,
+  TERMBRIDGE_SANDBOX_DAYTONA_DELETE_ON_EXIT: "true",
+  TERMBRIDGE_SANDBOX_DAYTONA_NAME: sandboxName
 };
 
 if (direct) {
-  env.TERMBRIDGE_DAYTONA_DIRECT = "true";
+  env.TERMBRIDGE_SANDBOX_DAYTONA_DIRECT = "true";
 }
 
 if (agent) {
-  env.TERMBRIDGE_DAYTONA_AGENTS = agent;
+  env.TERMBRIDGE_SANDBOX_DAYTONA_AGENTS = agent;
 } else if (agents) {
-  env.TERMBRIDGE_DAYTONA_AGENTS = agents;
+  env.TERMBRIDGE_SANDBOX_DAYTONA_AGENTS = agents;
 } else {
-  env.TERMBRIDGE_DAYTONA_AGENTS = env.TERMBRIDGE_DAYTONA_AGENTS ?? "claude,codex,opencode";
+  env.TERMBRIDGE_SANDBOX_DAYTONA_AGENTS = env.TERMBRIDGE_SANDBOX_DAYTONA_AGENTS ?? "claude,codex,opencode";
 }
 
-console.log("Starting Daytona debug session");
+console.log("Starting Daytona sandbox debug session");
 console.log(`- Sandbox: ${sandboxName}`);
 console.log(`- Direct mode: ${direct ? "on" : "off"}`);
-console.log(`- Agents: ${env.TERMBRIDGE_DAYTONA_AGENTS ?? "(none)"}`);
-console.log(`- Preview port: ${env.TERMBRIDGE_DAYTONA_PREVIEW_PORT}`);
-console.log(`- Repo: ${env.TERMBRIDGE_DAYTONA_REPO ?? "(from env)"}`);
+console.log(`- Agents: ${env.TERMBRIDGE_SANDBOX_DAYTONA_AGENTS ?? "(none)"}`);
+console.log(`- Preview port: ${env.TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT}`);
+console.log(`- Repo: ${env.TERMBRIDGE_SANDBOX_DAYTONA_REPO ?? "(from env)"}`);
 
 const child = spawn("node", [cliDist], {
   cwd: testAppDir,
