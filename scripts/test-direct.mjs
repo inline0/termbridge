@@ -28,11 +28,14 @@ const env = {
   TERMBRIDGE_SANDBOX_DIRECT: "true",
   TERMBRIDGE_SANDBOX_NAME: sandboxName,
   TERMBRIDGE_SANDBOX_DELETE_ON_EXIT: "true",
+  TERMBRIDGE_SANDBOX_AGENTS: "claude-code,codex",
 };
 
 console.log("Starting Daytona direct mode test...");
 console.log(`- Working dir: ${testAppDir}`);
 console.log(`- Sandbox: ${sandboxName}`);
+console.log(`- Agents: claude-code, codex`);
+console.log(`- Preview: port 5173 (from .env)`);
 console.log("");
 
 const child = spawn("node", [distBin], {
