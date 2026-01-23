@@ -7,6 +7,7 @@ dist/
 .output/
 .source/
 .tanstack/
+*.tgz
 
 # Environment
 .env
