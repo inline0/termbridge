@@ -177,7 +177,7 @@ Termbridge can auto-install and configure coding agents in Daytona sandboxes:
 ### Auto Setup
 
 ```bash
-export TERMBRIDGE_SANDBOX_AGENTS=claude,codex,opencode
+export TERMBRIDGE_SANDBOX_AGENTS=claude-code,codex,opencode
 ```
 
 This will:
@@ -188,7 +188,7 @@ This will:
 
 | Variable | Description |
 |----------|-------------|
-| `TERMBRIDGE_SANDBOX_AGENTS` | Agents to install: `claude`, `codex`, `opencode`, or `all` |
+| `TERMBRIDGE_SANDBOX_AGENTS` | Agents to install: `claude-code`, `codex`, `opencode`, or `all` |
 | `TERMBRIDGE_SANDBOX_AGENT_ENV` | Extra env vars to pass to agents (comma-separated keys) |
 | `TERMBRIDGE_SANDBOX_AGENT_AUTH_PATHS` | Additional auth files to sync |
 | `TERMBRIDGE_SANDBOX_AGENT_AUTH_MAPS` | Auth file mappings (`local=remote`) |

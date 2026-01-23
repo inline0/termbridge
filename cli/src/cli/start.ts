@@ -190,7 +190,6 @@ const collectAgentEnv = (env: Record<string, string | undefined>) => {
 };
 
 const packageAliasMap: Record<string, string> = {
-  claude: "@anthropic-ai/claude-code",
   "claude-code": "@anthropic-ai/claude-code",
   codex: "@openai/codex",
   opencode: "opencode"

@@ -224,7 +224,7 @@ describeDaytonaTunnel("daytona integration (tunnel)", () => {
       TERMBRIDGE_SANDBOX_NAME: sandboxName,
       ...(shouldTestAgents
         ? {
-            TERMBRIDGE_SANDBOX_AGENTS: "claude,codex,opencode"
+            TERMBRIDGE_SANDBOX_AGENTS: "claude-code,codex,opencode"
           }
         : {})
     };
@@ -578,7 +578,7 @@ describeDaytonaDirect("daytona integration (direct)", () => {
       TERMBRIDGE_SANDBOX_PREVIEW_PORT: daytonaEnv.TERMBRIDGE_SANDBOX_PREVIEW_PORT ?? "5173",
       ...(shouldTestAgents
         ? {
-            TERMBRIDGE_SANDBOX_AGENTS: "claude,codex,opencode"
+            TERMBRIDGE_SANDBOX_AGENTS: "claude-code,codex,opencode"
           }
         : {})
     };

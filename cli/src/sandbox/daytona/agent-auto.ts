@@ -4,7 +4,7 @@ import { statSync } from "node:fs";
 import type { Logger } from "../../server/server";
 import type { AgentAuthSpec } from "../server-provider";
 
-export type AgentId = "claude" | "codex" | "opencode";
+export type AgentId = "claude-code" | "codex" | "opencode";
 
 type AgentDefinition = {
   packages: string[];
@@ -14,7 +14,7 @@ type AgentDefinition = {
 };
 
 const agentDefinitions: Record<AgentId, AgentDefinition> = {
-  claude: {
+  "claude-code": {
     packages: ["@anthropic-ai/claude-code"],
     authFiles: ["~/.claude/.credentials.json"],
     authDirs: ["~/.config/claude"]
@@ -33,9 +33,8 @@ const agentDefinitions: Record<AgentId, AgentDefinition> = {
 };
 
 const agentAliasMap: Record<string, AgentId> = {
-  claude: "claude",
-  "claude-code": "claude",
-  "@anthropic-ai/claude-code": "claude",
+  "claude-code": "claude-code",
+  "@anthropic-ai/claude-code": "claude-code",
   codex: "codex",
   "@openai/codex": "codex",
   opencode: "opencode"

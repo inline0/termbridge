@@ -1144,7 +1144,7 @@ describe("startCommand", () => {
         }),
         process: {
           env: {
-            TERMBRIDGE_SANDBOX_AGENTS: "claude"
+            TERMBRIDGE_SANDBOX_AGENTS: "claude-code"
           },
           on: vi.fn()
         } as unknown as NodeJS.Process,
@@ -1289,7 +1289,7 @@ describe("startCommand", () => {
           }),
           process: {
             env: {
-              TERMBRIDGE_SANDBOX_AGENTS: "claude,codex,opencode"
+              TERMBRIDGE_SANDBOX_AGENTS: "claude-code,codex,opencode"
             },
             on: vi.fn()
           } as unknown as NodeJS.Process,

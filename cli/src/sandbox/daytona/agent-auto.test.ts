@@ -33,7 +33,7 @@ describe("resolveAutoAgents", () => {
     await writeFile(opencodeAuth, "{}");
 
     const logger = createLogger();
-    const result = resolveAutoAgents(["claude", "codex", "opencode"], logger, { home });
+    const result = resolveAutoAgents(["claude-code", "codex", "opencode"], logger, { home });
 
     expect(result.packages).toEqual([
       "@anthropic-ai/claude-code",
@@ -54,12 +54,12 @@ describe("resolveAutoAgents", () => {
     const home = await mkdtemp(join(tmpdir(), "termbridge-agent-tilde-"));
     const logger = createLogger();
     const result = resolveAutoAgents(
-      ["claude"],
+      ["claude-code"],
       logger,
       {
         home,
         definitions: {
-          claude: { packages: ["@anthropic-ai/claude-code"], authFiles: [], authDirs: ["~"] },
+          "claude-code": { packages: ["@anthropic-ai/claude-code"], authFiles: [], authDirs: ["~"] },
           codex: { packages: ["@openai/codex"], authFiles: [], authDirs: [] },
           opencode: { packages: [], authFiles: [], authDirs: [] }
         }
@@ -80,7 +80,7 @@ describe("resolveAutoAgents", () => {
       {
         home,
         definitions: {
-          claude: { packages: ["@anthropic-ai/claude-code"], authFiles: [], authDirs: [] },
+          "claude-code": { packages: ["@anthropic-ai/claude-code"], authFiles: [], authDirs: [] },
           codex: { packages: ["@openai/codex"], authFiles: [absAuth], authDirs: [] },
           opencode: { packages: [], authFiles: [], authDirs: [] }
         }
@@ -94,7 +94,7 @@ describe("resolveAutoAgents", () => {
     const logger = createLogger();
     const result = resolveAutoAgents(["all"], logger, { home: "/tmp" });
 
-    expect(result.agents.sort()).toEqual(["claude", "codex", "opencode"]);
+    expect(result.agents.sort()).toEqual(["claude-code", "codex", "opencode"]);
   });
 
   it("warns when auth files are missing for a selected agent", () => {

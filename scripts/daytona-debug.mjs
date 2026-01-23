@@ -93,7 +93,7 @@ if (agent) {
 } else if (agents) {
   env.TERMBRIDGE_SANDBOX_AGENTS = agents;
 } else {
-  env.TERMBRIDGE_SANDBOX_AGENTS = env.TERMBRIDGE_SANDBOX_AGENTS ?? "claude,codex,opencode";
+  env.TERMBRIDGE_SANDBOX_AGENTS = env.TERMBRIDGE_SANDBOX_AGENTS ?? "claude-code,codex,opencode";
 }
 
 console.log("Starting Daytona sandbox debug session");

@@ -145,7 +145,7 @@ termbridge/
 
 | Variable | Description |
 |----------|-------------|
-| `TERMBRIDGE_SANDBOX_AGENTS` | Agents to install: `claude`, `codex`, `opencode`, or `all` |
+| `TERMBRIDGE_SANDBOX_AGENTS` | Agents to install: `claude-code`, `codex`, `opencode`, or `all` |
 | `TERMBRIDGE_SANDBOX_AGENT_AUTO=true` | Auto-detect agents from local auth |
 | `TERMBRIDGE_SANDBOX_AGENT_INSTALL=true` | Enable agent installation |
 | `TERMBRIDGE_SANDBOX_AGENT_PACKAGES` | NPM packages to install (comma-separated) |
