@@ -18,6 +18,7 @@
     "sandbox:daytona:debug:claude": "node scripts/daytona-debug.mjs --agent claude",
     "sandbox:daytona:debug:codex": "node scripts/daytona-debug.mjs --agent codex",
     "sandbox:daytona:debug:opencode": "node scripts/daytona-debug.mjs --agent opencode",
+    "test:direct": "bun run build && node scripts/test-direct.mjs",
     "test": "bun run test:mocked && bun run test:cli",
     "test:mocked": "vitest run --coverage --config vitest.config.ts",
     "test:cli": "vitest run --config vitest.cli.config.ts",

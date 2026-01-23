@@ -90,6 +90,66 @@ describe("runInkCli", () => {
     );
   });
 
+  it("handles publicUrl with query string", async () => {
+    const rerender = vi.fn();
+    const unmount = vi.fn();
+    renderMock.mockReturnValue({ rerender, unmount } as never);
+
+    const qrSpy = vi.spyOn(qrcode, "generate");
+    const resultWithQuery: StartResult = {
+      localUrl: "http://127.0.0.1:4000",
+      publicUrl: "https://proxy.daytona.works/prefix?token=auth123",
+      token: "redeem-token",
+      stop: async () => undefined
+    };
+    const startCommandMock = vi.fn().mockResolvedValue(resultWithQuery);
+
+    await runInkCli(
+      { killOnExit: false, noQr: false, tunnel: "cloudflare" },
+      {
+        startCommand: startCommandMock,
+        process: { stdout: createStream(), stderr: createStream() } as unknown as NodeJS.Process,
+        logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+      }
+    );
+
+    expect(qrSpy).toHaveBeenCalledWith(
+      "https://proxy.daytona.works/prefix/__tb/s/redeem-token?token=auth123",
+      { small: true },
+      expect.any(Function)
+    );
+  });
+
+  it("handles publicUrl with trailing slash", async () => {
+    const rerender = vi.fn();
+    const unmount = vi.fn();
+    renderMock.mockReturnValue({ rerender, unmount } as never);
+
+    const qrSpy = vi.spyOn(qrcode, "generate");
+    const resultWithSlash: StartResult = {
+      localUrl: "http://127.0.0.1:4000",
+      publicUrl: "https://tunnel.example/",
+      token: "slash-token",
+      stop: async () => undefined
+    };
+    const startCommandMock = vi.fn().mockResolvedValue(resultWithSlash);
+
+    await runInkCli(
+      { killOnExit: false, noQr: false, tunnel: "cloudflare" },
+      {
+        startCommand: startCommandMock,
+        process: { stdout: createStream(), stderr: createStream() } as unknown as NodeJS.Process,
+        logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+      }
+    );
+
+    expect(qrSpy).toHaveBeenCalledWith(
+      "https://tunnel.example/__tb/s/slash-token",
+      { small: true },
+      expect.any(Function)
+    );
+  });
+
   it("covers ink view states", () => {
     const options = { killOnExit: false, noQr: false, tunnel: "cloudflare" as const };
 
