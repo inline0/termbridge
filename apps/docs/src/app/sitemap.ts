@@ -1,11 +1,16 @@
 import { generateSitemap } from "onedocs/seo";
-import meta from "../../content/docs/meta.json";
+import { source } from "@/lib/source";
 
 const baseUrl = "https://termbridge.dev";
 
 export default function sitemap() {
+  const pages = source
+    .getPages()
+    .map((page) => page.url.replace(/^\/docs\/?/, ""))
+    .map((slug) => (slug.length === 0 ? "index" : slug));
+
   return generateSitemap({
     baseUrl,
-    pages: meta.pages ?? [],
+    pages,
   });
 }

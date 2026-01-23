@@ -1,0 +1,46 @@
+---
+title: Sandboxes
+description: Run Termbridge against cloud sandboxes for terminals and previews.
+---
+
+# Sandboxes
+
+Termbridge can use a sandbox instead of a local tmux session. This is useful when you want a terminal and preview that run in the cloud but keep the same Termbridge UI and sharing workflow.
+
+## When to use sandboxes
+
+- You want a terminal in a disposable cloud environment.
+- You need a preview that runs in a sandbox, not on your laptop.
+- You are running CI or integration tests against a remote environment.
+
+If you just need to share your local terminal, use the default tmux backend.
+
+## Sandbox providers
+
+Termbridge currently supports:
+
+- **Daytona** - Cloud sandboxes with repo cloning and preview ports. See the [Daytona guide](/docs/sandboxes/daytona).
+
+More providers are coming.
+
+## Quick start
+
+1. Pick a provider and follow its setup guide.
+2. Set the sandbox backend and repository configuration.
+3. Run Termbridge as usual:
+
+```bash
+npx termbridge
+```
+
+For Daytona, follow the [Daytona quick start](/docs/sandboxes/daytona#quick-start).
+
+## Coding agents
+
+Termbridge can install coding agents inside the sandbox and sync your local auth so they are ready immediately.
+
+See the [Coding agents](/docs/sandboxes/coding-agents) guide for the full setup, automatic mode, and security details.
+
+## Preview mode
+
+Sandbox providers can expose a preview port that Termbridge proxies into the UI. See your provider guide for the exact flags and environment variables.

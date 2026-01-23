@@ -97,7 +97,10 @@ describe("syncAgentAuth", () => {
       logger
     );
 
-    const uploads = sandbox.fs.uploadFiles.mock.calls[0]?.[0] ?? [];
+    const calls = sandbox.fs.uploadFiles.mock.calls as unknown as Array<
+      [Array<{ source: string; destination: string }>]
+    >;
+    const uploads = calls[0]?.[0] ?? [];
     expect(uploads).toEqual(
       expect.arrayContaining([
         { source: fileA, destination: "/home/daytona/.config/agents/a.json" },

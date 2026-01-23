@@ -188,7 +188,7 @@ const resolveAgentAuth = (
 ) => {
   const paths = parseList(env.TERMBRIDGE_DAYTONA_AGENT_AUTH_PATHS);
   const maps = parseList(env.TERMBRIDGE_DAYTONA_AGENT_AUTH_MAPS);
-  const specs = [
+  const specs: Array<{ source: string; destination?: string }> = [
     ...paths.map((source) => ({ source })),
     ...maps.flatMap((entry) => {
       const [rawSource, rawDestination = ""] = entry.split("=", 2);

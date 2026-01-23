@@ -50,7 +50,7 @@ const collectFiles = async (root: string): Promise<string[]> => {
   return files;
 };
 
-const shellEscape = (value: string) => `'${value.replace(/'/g, `'\"'\"'`)}'`;
+const shellEscape = (value: string) => `'${value.replace(/'/g, `'"'"'`)}'`;
 
 const resolveRemoteHome = async (sandbox: Sandbox) => {
   const response = await sandbox.process.executeCommand("printf $HOME");

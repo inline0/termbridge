@@ -96,7 +96,9 @@ export const resolveAutoAgents = (
   }
 
   if (useAll) {
-    (Object.keys(agentDefinitions) as AgentId[]).forEach((agent) => selected.add(agent));
+    for (const agent of Object.keys(agentDefinitions) as AgentId[]) {
+      selected.add(agent);
+    }
   }
 
   const agents = Array.from(selected);
@@ -111,7 +113,9 @@ export const resolveAutoAgents = (
 
   for (const agent of agents) {
     const definition = definitions[agent];
-    definition.packages.forEach((pkg) => packages.add(pkg));
+    for (const pkg of definition.packages) {
+      packages.add(pkg);
+    }
 
     const foundFiles: string[] = [];
     const foundDirs: string[] = [];
@@ -138,7 +142,9 @@ export const resolveAutoAgents = (
       continue;
     }
 
-    sources.forEach((source) => authSpecs.push({ source }));
+    for (const source of sources) {
+      authSpecs.push({ source });
+    }
   }
 
   return { agents, packages: Array.from(packages), authSpecs };
