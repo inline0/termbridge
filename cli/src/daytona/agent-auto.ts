@@ -16,8 +16,6 @@ type AgentDefinition = {
 const agentDefinitions: Record<AgentId, AgentDefinition> = {
   claude: {
     packages: ["@anthropic-ai/claude-code"],
-    // OAuth credentials are stored in macOS Keychain, extract with:
-    // security find-generic-password -s "Claude Code-credentials" -w > ~/.claude/.credentials.json
     authFiles: ["~/.claude/.credentials.json"],
     authDirs: ["~/.config/claude"]
   },

@@ -96,8 +96,8 @@ const hasAgentAuth =
 const hasAgentClis = hasClaudeCli && hasCodexCli && hasOpenCodeCli;
 const shouldTestAgents = hasDaytonaConfig && hasAgentClis && hasAgentAuth;
 
-const maybeDescribe = describe;
-const maybeDescribeTunnel = describe.skip; // Skip tunnel tests for now (cloudflare rate limiting)
+const describeDaytonaDirect = describe.sequential;
+const describeDaytonaTunnel = describe.sequential;
 
 const resolveNodePath = () => {
   const result = spawnSync("which", ["node"], { encoding: "utf8" });
@@ -313,7 +313,7 @@ const getSandboxPathPrefix = async (
   const homeResult = await sandbox.process.executeCommand("printf $HOME");
   const home = homeResult.exitCode === 0 ? homeResult.result.trim() : "/home/daytona";
   const localBin = `${home}/.local/bin`;
-  const opencodeBin = `${home}/.opencode/bin`; // opencode installs here
+  const opencodeBin = `${home}/.opencode/bin`;
 
   const npmBin = await sandbox.process.executeCommand("npm bin -g");
   const globalBin = npmBin.exitCode === 0 ? npmBin.result.trim() : "";
@@ -383,7 +383,7 @@ const stopCli = async (child: ChildProcessWithoutNullStreams | null) => {
   });
 };
 
-maybeDescribeTunnel("daytona integration (tunnel)", () => {
+describeDaytonaTunnel("daytona integration (tunnel)", () => {
   let child: ChildProcessWithoutNullStreams | null = null;
   let localUrl = "";
   let shareUrl = "";
@@ -480,12 +480,7 @@ maybeDescribeTunnel("daytona integration (tunnel)", () => {
     if (browser) {
       await browser.close();
     }
-  });
-
-  afterEach(async () => {
-    if (!shouldTestAgents) {
-      await cleanupSandboxes();
-    }
+    await cleanupSandboxes();
   });
 
   it(
@@ -673,8 +668,7 @@ maybeDescribeTunnel("daytona integration (tunnel)", () => {
     240_000
   );
 
-  const maybeAgentIt = it;
-  maybeAgentIt(
+  it(
     "runs coding agent CLIs in the sandbox with synced auth",
     async () => {
       const agentLogs = cliOutput.stdout.split("\n").filter((line) => /agent|daytona.*install|npm|prefix|home/i.test(line));
@@ -684,26 +678,7 @@ maybeDescribeTunnel("daytona integration (tunnel)", () => {
       const pathPrefix = await getSandboxPathPrefix(sandbox);
       logStep(`path prefix: ${pathPrefix}`);
 
-      const lsLocal = await sandbox.process.executeCommand("ls -la ~/.local 2>&1 || echo 'dir not found'");
-      logStep(`~/.local: ${lsLocal.result?.slice(-400) ?? "none"}`);
 
-      const lsLocalBin = await sandbox.process.executeCommand("ls -la ~/.local/bin 2>&1 || echo 'dir not found'");
-      logStep(`~/.local/bin: ${lsLocalBin.result?.slice(-400) ?? "none"}`);
-
-      const lsOpencodeBin = await sandbox.process.executeCommand("ls -la ~/.opencode/bin 2>&1 || echo 'dir not found'");
-      logStep(`~/.opencode/bin: ${lsOpencodeBin.result?.slice(-400) ?? "none"}`);
-
-      const whichOpencode = await sandbox.process.executeCommand("which opencode 2>&1 || echo 'not found'");
-      logStep(`which opencode: ${whichOpencode.result?.trim() ?? "none"}`);
-
-      // Check if auth files were synced
-      const lsClaudeAuth = await sandbox.process.executeCommand("ls -la ~/.claude.json 2>&1 || echo 'not found'");
-      logStep(`~/.claude.json: ${lsClaudeAuth.result?.trim() ?? "none"}`);
-
-      const catClaudeAuth = await sandbox.process.executeCommand("cat ~/.claude.json 2>&1 | head -c 100 || echo 'not found'");
-      logStep(`~/.claude.json content: ${catClaudeAuth.result?.slice(0, 100) ?? "none"}`);
-
-      // Check which agents are available (claude and codex should always work)
       const claudeCheck = await sandbox.process.executeCommand(
         `${pathPrefix ? `${pathPrefix} ` : ""}command -v claude`
       );
@@ -714,20 +689,14 @@ maybeDescribeTunnel("daytona integration (tunnel)", () => {
         `${pathPrefix ? `${pathPrefix} ` : ""}command -v opencode`
       );
 
-      logStep(`claude available: ${claudeCheck.exitCode === 0}`);
-      logStep(`codex available: ${codexCheck.exitCode === 0}`);
-      logStep(`opencode available: ${opencodeCheck.exitCode === 0}`);
+      logStep(`claude: ${claudeCheck.exitCode === 0}, codex: ${codexCheck.exitCode === 0}, opencode: ${opencodeCheck.exitCode === 0}`);
 
-      // Require at least claude and codex
       if (claudeCheck.exitCode !== 0 || codexCheck.exitCode !== 0) {
         throw new Error(
-          `Required agent CLIs not available. ` +
-            `claude: ${claudeCheck.exitCode === 0 ? "yes" : "no"}, ` +
-            `codex: ${codexCheck.exitCode === 0 ? "yes" : "no"}`
+          `Required agent CLIs not available. claude: ${claudeCheck.exitCode === 0}, codex: ${codexCheck.exitCode === 0}`
         );
       }
 
-      // Test claude
       const claudeOutput = await runSandboxCommand(
         sandbox,
         'claude -p "Respond with exactly OK." --no-session-persistence',
@@ -736,9 +705,8 @@ maybeDescribeTunnel("daytona integration (tunnel)", () => {
         pathPrefix
       );
       expect(claudeOutput).toMatch(/ok/i);
-      logStep("claude CLI test passed");
+      logStep("claude passed");
 
-      // Test codex
       const codexOutput = await runSandboxCommand(
         sandbox,
         'codex exec --full-auto --skip-git-repo-check "Respond with exactly OK."',
@@ -747,9 +715,8 @@ maybeDescribeTunnel("daytona integration (tunnel)", () => {
         pathPrefix
       );
       expect(codexOutput).toMatch(/ok/i);
-      logStep("codex CLI test passed");
+      logStep("codex passed");
 
-      // Test opencode if available (install script is currently broken)
       if (opencodeCheck.exitCode === 0) {
         const opencodeOutput = await runSandboxCommand(
           sandbox,
@@ -759,16 +726,16 @@ maybeDescribeTunnel("daytona integration (tunnel)", () => {
           pathPrefix
         );
         expect(opencodeOutput).toMatch(/ok/i);
-        logStep("opencode CLI test passed");
+        logStep("opencode passed");
       } else {
-        logStep("opencode not available, skipping (install script issue)");
+        logStep("opencode skipped");
       }
     },
     300_000
   );
 });
 
-maybeDescribe("daytona integration (direct)", () => {
+describeDaytonaDirect("daytona integration (direct)", () => {
   let child: ChildProcessWithoutNullStreams | null = null;
   let shareUrl = "";
   let publicBase: URL | null = null;
@@ -851,12 +818,7 @@ maybeDescribe("daytona integration (direct)", () => {
     if (browser) {
       await browser.close();
     }
-  });
-
-  afterEach(async () => {
-    if (!shouldTestAgents) {
-      await cleanupSandboxes();
-    }
+    await cleanupSandboxes();
   });
 
   it(
@@ -1026,8 +988,7 @@ maybeDescribe("daytona integration (direct)", () => {
     240_000
   );
 
-  const maybeAgentIt = it;
-  maybeAgentIt(
+  it(
     "runs coding agent CLIs in the sandbox with synced auth",
     async () => {
       const agentLogs = cliOutput.stdout.split("\n").filter((line) => /agent|daytona.*install|npm|prefix|home/i.test(line));
@@ -1037,26 +998,7 @@ maybeDescribe("daytona integration (direct)", () => {
       const pathPrefix = await getSandboxPathPrefix(sandbox);
       logStep(`path prefix: ${pathPrefix}`);
 
-      const lsLocal = await sandbox.process.executeCommand("ls -la ~/.local 2>&1 || echo 'dir not found'");
-      logStep(`~/.local: ${lsLocal.result?.slice(-400) ?? "none"}`);
 
-      const lsLocalBin = await sandbox.process.executeCommand("ls -la ~/.local/bin 2>&1 || echo 'dir not found'");
-      logStep(`~/.local/bin: ${lsLocalBin.result?.slice(-400) ?? "none"}`);
-
-      const lsOpencodeBin = await sandbox.process.executeCommand("ls -la ~/.opencode/bin 2>&1 || echo 'dir not found'");
-      logStep(`~/.opencode/bin: ${lsOpencodeBin.result?.slice(-400) ?? "none"}`);
-
-      const whichOpencode = await sandbox.process.executeCommand("which opencode 2>&1 || echo 'not found'");
-      logStep(`which opencode: ${whichOpencode.result?.trim() ?? "none"}`);
-
-      // Check if auth files were synced
-      const lsClaudeAuth = await sandbox.process.executeCommand("ls -la ~/.claude.json 2>&1 || echo 'not found'");
-      logStep(`~/.claude.json: ${lsClaudeAuth.result?.trim() ?? "none"}`);
-
-      const catClaudeAuth = await sandbox.process.executeCommand("cat ~/.claude.json 2>&1 | head -c 100 || echo 'not found'");
-      logStep(`~/.claude.json content: ${catClaudeAuth.result?.slice(0, 100) ?? "none"}`);
-
-      // Check which agents are available (claude and codex should always work)
       const claudeCheck = await sandbox.process.executeCommand(
         `${pathPrefix ? `${pathPrefix} ` : ""}command -v claude`
       );
@@ -1067,20 +1009,14 @@ maybeDescribe("daytona integration (direct)", () => {
         `${pathPrefix ? `${pathPrefix} ` : ""}command -v opencode`
       );
 
-      logStep(`claude available: ${claudeCheck.exitCode === 0}`);
-      logStep(`codex available: ${codexCheck.exitCode === 0}`);
-      logStep(`opencode available: ${opencodeCheck.exitCode === 0}`);
+      logStep(`claude: ${claudeCheck.exitCode === 0}, codex: ${codexCheck.exitCode === 0}, opencode: ${opencodeCheck.exitCode === 0}`);
 
-      // Require at least claude and codex
       if (claudeCheck.exitCode !== 0 || codexCheck.exitCode !== 0) {
         throw new Error(
-          `Required agent CLIs not available. ` +
-            `claude: ${claudeCheck.exitCode === 0 ? "yes" : "no"}, ` +
-            `codex: ${codexCheck.exitCode === 0 ? "yes" : "no"}`
+          `Required agent CLIs not available. claude: ${claudeCheck.exitCode === 0}, codex: ${codexCheck.exitCode === 0}`
         );
       }
 
-      // Test claude
       const claudeOutput = await runSandboxCommand(
         sandbox,
         'claude -p "Respond with exactly OK." --no-session-persistence',
@@ -1089,9 +1025,8 @@ maybeDescribe("daytona integration (direct)", () => {
         pathPrefix
       );
       expect(claudeOutput).toMatch(/ok/i);
-      logStep("claude CLI test passed");
+      logStep("claude passed");
 
-      // Test codex
       const codexOutput = await runSandboxCommand(
         sandbox,
         'codex exec --full-auto --skip-git-repo-check "Respond with exactly OK."',
@@ -1100,9 +1035,8 @@ maybeDescribe("daytona integration (direct)", () => {
         pathPrefix
       );
       expect(codexOutput).toMatch(/ok/i);
-      logStep("codex CLI test passed");
+      logStep("codex passed");
 
-      // Test opencode if available (install script is currently broken)
       if (opencodeCheck.exitCode === 0) {
         const opencodeOutput = await runSandboxCommand(
           sandbox,
@@ -1112,9 +1046,9 @@ maybeDescribe("daytona integration (direct)", () => {
           pathPrefix
         );
         expect(opencodeOutput).toMatch(/ok/i);
-        logStep("opencode CLI test passed");
+        logStep("opencode passed");
       } else {
-        logStep("opencode not available, skipping (install script issue)");
+        logStep("opencode skipped");
       }
     },
     300_000

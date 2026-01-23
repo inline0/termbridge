@@ -15,7 +15,6 @@ export const installAgents = async (
 ): Promise<AgentInstallResult> => {
   const hasPackages = (options?.packages?.length ?? 0) > 0;
   const hasScripts = (options?.installScripts?.length ?? 0) > 0;
-  logger.info(`Daytona: agent install options: enabled=${options?.enabled}, packages=${options?.packages?.join(",") ?? "none"}, scripts=${hasScripts ? options?.installScripts?.length : 0}`);
 
   if (!options?.enabled || (!hasPackages && !hasScripts)) {
     return { success: true, installed: [] };
@@ -49,10 +48,9 @@ export const installAgents = async (
             break;
           }
           if (attempt === 1) {
-            logger.warn(`Daytona: ${pkg} install attempt 1 failed; retrying`);
             await new Promise((resolve) => setTimeout(resolve, 2000));
           } else {
-            logger.warn(`Daytona: ${pkg} install failed: ${install.result?.slice(-200) ?? "unknown error"}`);
+            logger.warn(`Daytona: ${pkg} install failed`);
             failedItems.push(pkg);
           }
         }
@@ -65,13 +63,11 @@ export const installAgents = async (
       const shortName = script.split("/").pop()!.split("|")[0].trim() || script.slice(0, 30);
       logger.info(`Daytona: running install script: ${shortName}`);
 
-      // For curl|bash scripts, download first then run for better error capture
       if (script.includes("curl") && script.includes("|")) {
         const urlMatch = script.match(/curl\s+[^\s]+\s+(https?:\/\/[^\s|]+)/);
         if (urlMatch) {
           const url = urlMatch[1];
           const scriptPath = `/tmp/install-${Date.now()}.sh`;
-          logger.info(`Daytona: downloading script from ${url}`);
 
           const download = await sandbox.process.executeCommand(
             `curl -fsSL ${url} -o ${scriptPath} && chmod +x ${scriptPath}`,
@@ -81,23 +77,19 @@ export const installAgents = async (
           );
 
           if (download.exitCode !== 0) {
-            logger.warn(`Daytona: failed to download script: ${download.result?.slice(-200) ?? "unknown"}`);
+            logger.warn(`Daytona: failed to download script: ${shortName}`);
             failedItems.push(`script:${shortName}`);
             continue;
           }
 
-          logger.info(`Daytona: running downloaded script`);
           const result = await sandbox.process.executeCommand(
-            `bash -x ${scriptPath} 2>&1`,
+            `bash ${scriptPath} 2>&1`,
             undefined,
             undefined,
             180
           );
-          logger.info(`Daytona: script exit code: ${result.exitCode}, output (last 800): ${result.result?.slice(-800) ?? "none"}`);
 
           if (result.exitCode === 0) {
-            const verifyResult = await sandbox.process.executeCommand("ls -la ~/.opencode/bin 2>&1 || echo 'opencode bin not found'");
-            logger.info(`Daytona: opencode bin after install: ${verifyResult.result?.slice(-300) ?? "none"}`);
             installedItems.push(`script:${shortName}`);
           } else {
             logger.warn(`Daytona: script failed: ${shortName}`);
@@ -107,13 +99,11 @@ export const installAgents = async (
         }
       }
 
-      // Fallback for other scripts
       const result = await sandbox.process.executeCommand(script, undefined, undefined, 180);
       if (result.exitCode === 0) {
-        logger.info(`Daytona: script succeeded: ${shortName}`);
         installedItems.push(`script:${shortName}`);
       } else {
-        logger.warn(`Daytona: script failed: ${shortName} - ${result.result?.slice(-200) ?? "unknown error"}`);
+        logger.warn(`Daytona: script failed: ${shortName}`);
         failedItems.push(`script:${shortName}`);
       }
     }

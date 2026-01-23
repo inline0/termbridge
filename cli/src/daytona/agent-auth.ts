@@ -65,35 +65,27 @@ export const syncAgentAuth = async (
   options: AgentAuthOptions | undefined,
   logger: Logger
 ) => {
-  logger.info(`Daytona: syncAgentAuth called, options: ${JSON.stringify(options)}`);
   if (!options || options.specs.length === 0) {
-    logger.info("Daytona: no auth specs to sync");
     return;
   }
 
   const localHome = homedir();
   const remoteHome = await resolveRemoteHome(sandbox);
-  logger.info(`Daytona: auth sync - localHome=${localHome}, remoteHome=${remoteHome}`);
   const uploads: Array<{ source: string; destination: string }> = [];
   const mkdirs = new Set<string>();
 
   for (const spec of options.specs) {
     const sourcePath = resolve(expandHome(spec.source, localHome));
-    logger.info(`Daytona: checking auth source: ${sourcePath}`);
     let stats: Awaited<ReturnType<typeof stat>>;
     try {
       stats = await stat(sourcePath);
-      logger.info(`Daytona: auth source exists, isFile=${stats.isFile()}, isDir=${stats.isDirectory()}`);
-    } catch (error) {
-      logger.warn(`Daytona: auth path missing (${spec.source}): ${error}`);
+    } catch {
       continue;
     }
 
     const destinationRoot = resolveDestination(spec, sourcePath, localHome, remoteHome);
-    logger.info(`Daytona: auth destination: ${destinationRoot}`);
     if (stats.isDirectory()) {
       const files = await collectFiles(sourcePath);
-      logger.info(`Daytona: collected ${files.length} files from directory`);
       for (const file of files) {
         const rel = relative(sourcePath, file);
         const destination = join(destinationRoot, rel);
@@ -107,19 +99,14 @@ export const syncAgentAuth = async (
     mkdirs.add(dirname(destinationRoot));
   }
 
-  logger.info(`Daytona: prepared ${uploads.length} uploads, ${mkdirs.size} directories`);
-
   if (uploads.length === 0) {
-    logger.info("Daytona: no auth files to upload");
     return;
   }
 
   for (const dir of mkdirs) {
-    logger.info(`Daytona: creating directory: ${dir}`);
     await sandbox.process.executeCommand(`mkdir -p ${shellEscape(dir)}`);
   }
 
-  logger.info(`Daytona: uploading auth files...`);
   try {
     await sandbox.fs.uploadFiles(uploads);
     logger.info(`Daytona: synced ${uploads.length} auth file${uploads.length === 1 ? "" : "s"}`);
