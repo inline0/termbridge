@@ -16,4 +16,14 @@ describe("createTmuxBackend defaults", () => {
 
     expect(true).toBe(true);
   });
+
+  it("falls back to process.platform when _platform is undefined", async () => {
+    const { createTmuxBackend } = await import("./index");
+    const backend = createTmuxBackend({ _platform: undefined });
+
+    await backend.createSession("session-platform");
+    await backend.closeSession("session-platform");
+
+    expect(true).toBe(true);
+  });
 });

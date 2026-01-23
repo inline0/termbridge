@@ -193,6 +193,7 @@ const resolveAgentInstall = (
   env: Record<string, string | undefined>,
   agentEnv: Record<string, string>,
   autoPackages: string[],
+  autoInstallScripts: string[],
   hasAutoAgents: boolean
 ) => {
   const installRaw = env.TERMBRIDGE_DAYTONA_AGENT_INSTALL;
@@ -203,7 +204,8 @@ const resolveAgentInstall = (
   const packages = parseList(env.TERMBRIDGE_DAYTONA_AGENT_PACKAGES);
   return {
     enabled,
-    packages: packages.length > 0 ? packages : autoPackages.length > 0 ? autoPackages : defaultAgentPackages
+    packages: packages.length > 0 ? packages : autoPackages.length > 0 ? autoPackages : defaultAgentPackages,
+    installScripts: autoInstallScripts
   };
 };
 
@@ -380,7 +382,7 @@ export const startCommand = async (
   const agentEnv = collectAgentEnv(env);
   const autoAgentNames = resolveAutoAgentNames(env);
   const autoAgents = resolveAutoAgents(autoAgentNames, logger);
-  const agentInstall = resolveAgentInstall(env, agentEnv, autoAgents.packages, autoAgents.agents.length > 0);
+  const agentInstall = resolveAgentInstall(env, agentEnv, autoAgents.packages, autoAgents.installScripts, autoAgents.agents.length > 0);
   const agentAuth = resolveAgentAuth(env, logger, autoAgents.authSpecs);
   const daytonaRepo =
     options.daytonaRepo ??

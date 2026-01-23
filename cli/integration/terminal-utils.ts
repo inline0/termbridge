@@ -238,3 +238,20 @@ export const sendTerminalInputAndWait = async (
     throw new Error([message, detail].filter(Boolean).join("\n"));
   }
 };
+
+export const waitForLocatorText = async (
+  locator: ReturnType<Page["locator"]>,
+  expected: string,
+  timeoutMs = 5_000
+) => {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const text = await locator.textContent().catch(() => null);
+    if (text === expected) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  const actual = await locator.textContent().catch(() => "(unavailable)");
+  throw new Error(`expected "${expected}" but got "${actual}"`);
+};

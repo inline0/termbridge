@@ -8,6 +8,7 @@ export type AgentId = "claude" | "codex" | "opencode";
 
 type AgentDefinition = {
   packages: string[];
+  installScript?: string;
   authFiles: string[];
   authDirs: string[];
 };
@@ -15,8 +16,10 @@ type AgentDefinition = {
 const agentDefinitions: Record<AgentId, AgentDefinition> = {
   claude: {
     packages: ["@anthropic-ai/claude-code"],
-    authFiles: ["~/.claude.json"],
-    authDirs: ["~/.config/claude", "~/.claude"]
+    // OAuth credentials are stored in macOS Keychain, extract with:
+    // security find-generic-password -s "Claude Code-credentials" -w > ~/.claude/.credentials.json
+    authFiles: ["~/.claude/.credentials.json"],
+    authDirs: ["~/.config/claude"]
   },
   codex: {
     packages: ["@openai/codex"],
@@ -24,7 +27,8 @@ const agentDefinitions: Record<AgentId, AgentDefinition> = {
     authDirs: ["~/.config/codex", "~/.codex"]
   },
   opencode: {
-    packages: ["opencode"],
+    packages: [],
+    installScript: "curl -fsSL https://opencode.ai/install | bash",
     authFiles: ["~/.config/opencode/opencode.json"],
     authDirs: ["~/.config/opencode"]
   }
@@ -76,7 +80,7 @@ export const resolveAutoAgents = (
   options: { home?: string; definitions?: Record<AgentId, AgentDefinition> } = {}
 ) => {
   if (names.length === 0) {
-    return { agents: [] as AgentId[], packages: [], authSpecs: [] as AgentAuthSpec[] };
+    return { agents: [] as AgentId[], packages: [], installScripts: [], authSpecs: [] as AgentAuthSpec[] };
   }
 
   const selected = new Set<AgentId>();
@@ -103,11 +107,12 @@ export const resolveAutoAgents = (
 
   const agents = Array.from(selected);
   if (agents.length === 0) {
-    return { agents, packages: [], authSpecs: [] as AgentAuthSpec[] };
+    return { agents, packages: [], installScripts: [], authSpecs: [] as AgentAuthSpec[] };
   }
 
   const definitions = options.definitions ?? agentDefinitions;
   const packages = new Set<string>();
+  const installScripts: string[] = [];
   const authSpecs: AgentAuthSpec[] = [];
   const home = options.home ?? homedir();
 
@@ -115,6 +120,9 @@ export const resolveAutoAgents = (
     const definition = definitions[agent];
     for (const pkg of definition.packages) {
       packages.add(pkg);
+    }
+    if (definition.installScript) {
+      installScripts.push(definition.installScript);
     }
 
     const foundFiles: string[] = [];
@@ -147,11 +155,10 @@ export const resolveAutoAgents = (
     }
   }
 
-  return { agents, packages: Array.from(packages), authSpecs };
+  return { agents, packages: Array.from(packages), installScripts, authSpecs };
 };
 
 export const defaultAgentPackages = [
   "@anthropic-ai/claude-code",
-  "@openai/codex",
-  "opencode"
+  "@openai/codex"
 ];

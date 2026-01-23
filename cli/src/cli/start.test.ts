@@ -1083,7 +1083,8 @@ describe("startCommand", () => {
         },
         agentInstall: {
           enabled: true,
-          packages: ["@anthropic-ai/claude-code", "@openai/codex", "opencode"]
+          packages: ["@anthropic-ai/claude-code", "@openai/codex"],
+          installScripts: []
         },
         agentAuth: {
           specs: [{ source: "/tmp/claude/auth.json" }]
@@ -1155,7 +1156,8 @@ describe("startCommand", () => {
       expect.objectContaining({
         agentInstall: {
           enabled: true,
-          packages: ["@anthropic-ai/claude-code"]
+          packages: ["@anthropic-ai/claude-code"],
+          installScripts: []
         }
       })
     );
@@ -1299,7 +1301,8 @@ describe("startCommand", () => {
         expect.objectContaining({
           agentInstall: {
             enabled: true,
-            packages: ["@anthropic-ai/claude-code", "@openai/codex", "opencode"]
+            packages: ["@anthropic-ai/claude-code", "@openai/codex"],
+            installScripts: ["curl -fsSL https://opencode.ai/install | bash"]
           },
           agentAuth: {
             specs: [
@@ -1449,7 +1452,8 @@ describe("startCommand", () => {
       expect.objectContaining({
         agentInstall: {
           enabled: true,
-          packages: ["@anthropic-ai/claude-code", "@openai/codex", "opencode"]
+          packages: ["@anthropic-ai/claude-code", "@openai/codex"],
+          installScripts: ["curl -fsSL https://opencode.ai/install | bash"]
         }
       })
     );
@@ -1491,7 +1495,7 @@ describe("startCommand", () => {
     expect(start).toHaveBeenCalledWith(
       expect.objectContaining({
         agentEnv: { ANTHROPIC_API_KEY: "anthropic-key" },
-        agentInstall: { enabled: false, packages: ["codex", "opencode"] },
+        agentInstall: { enabled: false, packages: ["codex", "opencode"], installScripts: [] },
         agentAuth: {
           specs: [
             {

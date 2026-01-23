@@ -27,7 +27,7 @@ export type DaytonaBackendOptions = {
   gitUsername?: string;
   gitPassword?: string;
   agentEnv?: Record<string, string>;
-  agentInstall?: { enabled: boolean; packages: string[] };
+  agentInstall?: { enabled: boolean; packages: string[]; installScripts: string[] };
   agentAuth?: { specs: Array<{ source: string; destination?: string }> };
   logger?: Logger;
 };

@@ -36,6 +36,7 @@ export type SandboxServerProvider = {
 export type AgentInstallOptions = {
   enabled: boolean;
   packages: string[];
+  installScripts: string[];
 };
 
 export type AgentAuthSpec = {

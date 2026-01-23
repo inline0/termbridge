@@ -4,7 +4,7 @@ import type { Logger } from "../server/server";
 
 const createSandbox = () => ({
   process: {
-    executeCommand: vi.fn(async (_command: string) => ({ exitCode: 0 }))
+    executeCommand: vi.fn(async (_command: string) => ({ exitCode: 0, result: "/home/daytona" }))
   }
 });
 
@@ -19,51 +19,209 @@ describe("installAgents", () => {
     const sandbox = createSandbox();
     const logger = createLogger();
 
-    await installAgents(sandbox as any, { enabled: false, packages: ["codex"] }, logger);
+    const result = await installAgents(sandbox as any, { enabled: false, packages: ["codex"], installScripts: [] }, logger);
 
-    expect(sandbox.process.executeCommand).not.toHaveBeenCalled();
-    expect(logger.info).not.toHaveBeenCalled();
-  });
-
-  it("skips when packages list is empty", async () => {
-    const sandbox = createSandbox();
-    const logger = createLogger();
-
-    await installAgents(sandbox as any, { enabled: true, packages: [] }, logger);
-
+    expect(result).toEqual({ success: true, installed: [] });
     expect(sandbox.process.executeCommand).not.toHaveBeenCalled();
   });
 
-  it("warns when npm is missing", async () => {
+  it("skips when packages and scripts are empty", async () => {
     const sandbox = createSandbox();
     const logger = createLogger();
-    sandbox.process.executeCommand.mockResolvedValueOnce({ exitCode: 1 });
 
-    await installAgents(sandbox as any, { enabled: true, packages: ["codex"] }, logger);
+    const result = await installAgents(sandbox as any, { enabled: true, packages: [], installScripts: [] }, logger);
 
-    expect(logger.warn).toHaveBeenCalledWith("Daytona: npm not available; skipping agent install");
-    expect(sandbox.process.executeCommand).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ success: true, installed: [] });
+    expect(sandbox.process.executeCommand).not.toHaveBeenCalled();
   });
 
-  it("warns when install fails", async () => {
+  it("skips npm when npm is missing but still runs scripts", async () => {
     const sandbox = createSandbox();
     const logger = createLogger();
-    sandbox.process.executeCommand.mockResolvedValueOnce({ exitCode: 0 });
-    sandbox.process.executeCommand.mockResolvedValueOnce({ exitCode: 1 });
+    sandbox.process.executeCommand
+      .mockResolvedValueOnce({ exitCode: 0, result: "/home/daytona" })
+      .mockResolvedValueOnce({ exitCode: 1, result: "" })
+      .mockResolvedValueOnce({ exitCode: 0, result: "" });
 
-    await installAgents(sandbox as any, { enabled: true, packages: ["codex"] }, logger);
+    const result = await installAgents(
+      sandbox as any,
+      { enabled: true, packages: ["codex"], installScripts: ["curl install.sh | bash"] },
+      logger
+    );
 
-    expect(logger.warn).toHaveBeenCalledWith("Daytona: agent install failed");
+    expect(result.success).toBe(true);
+    expect(result.installed).toContain("script:curl install.sh");
+    expect(logger.warn).toHaveBeenCalledWith("Daytona: npm not available; skipping npm packages");
   });
 
-  it("installs packages when npm is available", async () => {
+  it("returns error when all installs fail", async () => {
+    const sandbox = createSandbox();
+    const logger = createLogger();
+    sandbox.process.executeCommand
+      .mockResolvedValueOnce({ exitCode: 0, result: "/home/daytona" })
+      .mockResolvedValueOnce({ exitCode: 0, result: "" })
+      .mockResolvedValueOnce({ exitCode: 0, result: "" })
+      .mockResolvedValueOnce({ exitCode: 1, result: "npm ERR! error" })
+      .mockResolvedValueOnce({ exitCode: 1, result: "npm ERR! error" });
+
+    const result = await installAgents(sandbox as any, { enabled: true, packages: ["codex"], installScripts: [] }, logger);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("codex");
+  });
+
+  it("reports script failures in the error", async () => {
+    const sandbox = createSandbox();
+    const logger = createLogger();
+    sandbox.process.executeCommand
+      .mockResolvedValueOnce({ exitCode: 0, result: "/home/daytona" })
+      .mockResolvedValueOnce({ exitCode: 1, result: "script error" });
+
+    const result = await installAgents(
+      sandbox as any,
+      { enabled: true, packages: [], installScripts: ["curl fail.sh | bash"] },
+      logger
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("script:curl fail.sh");
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("script failed"));
+  });
+
+  it("installs packages with local prefix when npm is available", async () => {
     const sandbox = createSandbox();
     const logger = createLogger();
 
-    await installAgents(sandbox as any, { enabled: true, packages: ["codex"] }, logger);
+    const result = await installAgents(sandbox as any, { enabled: true, packages: ["codex"], installScripts: [] }, logger);
 
+    expect(result).toEqual({ success: true, installed: ["codex"] });
     expect(logger.info).toHaveBeenCalledWith("Daytona: installing coding agents");
+    expect(sandbox.process.executeCommand).toHaveBeenCalledWith("printf $HOME");
     expect(sandbox.process.executeCommand).toHaveBeenCalledWith("command -v npm");
-    expect(sandbox.process.executeCommand).toHaveBeenCalledWith("npm install -g codex");
+    expect(sandbox.process.executeCommand).toHaveBeenCalledWith("mkdir -p /home/daytona/.local");
+    expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
+      "npm install -g --prefix /home/daytona/.local codex",
+      undefined,
+      undefined,
+      180
+    );
+  });
+
+  it("falls back to default home when home detection fails", async () => {
+    const sandbox = createSandbox();
+    const logger = createLogger();
+    sandbox.process.executeCommand
+      .mockResolvedValueOnce({ exitCode: 1, result: "" })
+      .mockResolvedValueOnce({ exitCode: 0, result: "" })
+      .mockResolvedValueOnce({ exitCode: 0, result: "" })
+      .mockResolvedValueOnce({ exitCode: 0, result: "" });
+
+    const result = await installAgents(sandbox as any, { enabled: true, packages: ["codex"], installScripts: [] }, logger);
+
+    expect(result.success).toBe(true);
+    expect(sandbox.process.executeCommand).toHaveBeenCalledWith("mkdir -p /home/daytona/.local");
+  });
+
+  it("handles npm failures with missing result", async () => {
+    const sandbox = createSandbox();
+    const logger = createLogger();
+    sandbox.process.executeCommand
+      .mockResolvedValueOnce({ exitCode: 0, result: "/home/daytona" })
+      .mockResolvedValueOnce({ exitCode: 0, result: "" })
+      .mockResolvedValueOnce({ exitCode: 0, result: "" })
+      .mockResolvedValueOnce({ exitCode: 1, result: null as any })
+      .mockResolvedValueOnce({ exitCode: 1, result: null as any });
+
+    const result = await installAgents(sandbox as any, { enabled: true, packages: ["codex"], installScripts: [] }, logger);
+
+    expect(result.success).toBe(false);
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("unknown error"));
+  });
+
+  it("handles script failures with missing result", async () => {
+    const sandbox = createSandbox();
+    const logger = createLogger();
+    sandbox.process.executeCommand
+      .mockResolvedValueOnce({ exitCode: 0, result: "/home/daytona" })
+      .mockResolvedValueOnce({ exitCode: 1, result: null as any });
+
+    const result = await installAgents(
+      sandbox as any,
+      { enabled: true, packages: [], installScripts: ["install.sh"] },
+      logger
+    );
+
+    expect(result.success).toBe(false);
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("unknown error"));
+  });
+
+  it("extracts script name from path with pipes", async () => {
+    const sandbox = createSandbox();
+    const logger = createLogger();
+    sandbox.process.executeCommand
+      .mockResolvedValueOnce({ exitCode: 0, result: "/home/daytona" })
+      .mockResolvedValueOnce({ exitCode: 0, result: "" });
+
+    const result = await installAgents(
+      sandbox as any,
+      { enabled: true, packages: [], installScripts: ["https://example.com/install.sh | bash"] },
+      logger
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.installed[0]).toBe("script:install.sh");
+  });
+
+  it("handles undefined packages and scripts in options", async () => {
+    const sandbox = createSandbox();
+    const logger = createLogger();
+    sandbox.process.executeCommand
+      .mockResolvedValueOnce({ exitCode: 0, result: "/home/daytona" })
+      .mockResolvedValueOnce({ exitCode: 0, result: "" });
+
+    const result = await installAgents(
+      sandbox as any,
+      { enabled: true, packages: undefined, installScripts: ["test.sh"] } as any,
+      logger
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.installed).toContain("script:test.sh");
+  });
+
+  it("handles undefined installScripts in options", async () => {
+    const sandbox = createSandbox();
+    const logger = createLogger();
+    sandbox.process.executeCommand
+      .mockResolvedValueOnce({ exitCode: 0, result: "/home/daytona" })
+      .mockResolvedValueOnce({ exitCode: 0, result: "" })
+      .mockResolvedValueOnce({ exitCode: 0, result: "" })
+      .mockResolvedValueOnce({ exitCode: 0, result: "" });
+
+    const result = await installAgents(
+      sandbox as any,
+      { enabled: true, packages: ["codex"], installScripts: undefined } as any,
+      logger
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.installed).toContain("codex");
+  });
+
+  it("falls back to script slice for scripts with no name", async () => {
+    const sandbox = createSandbox();
+    const logger = createLogger();
+    sandbox.process.executeCommand
+      .mockResolvedValueOnce({ exitCode: 0, result: "/home/daytona" })
+      .mockResolvedValueOnce({ exitCode: 0, result: "" });
+
+    const result = await installAgents(
+      sandbox as any,
+      { enabled: true, packages: [], installScripts: ["| bash"] },
+      logger
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.installed[0]).toBe("script:| bash");
   });
 });

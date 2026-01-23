@@ -15,7 +15,7 @@ describe("resolveAutoAgents", () => {
     const logger = createLogger();
     const result = resolveAutoAgents([], logger, { home: "/tmp" });
 
-    expect(result).toEqual({ agents: [], packages: [], authSpecs: [] });
+    expect(result).toEqual({ agents: [], packages: [], installScripts: [], authSpecs: [] });
     expect(logger.warn).not.toHaveBeenCalled();
   });
 
@@ -36,8 +36,10 @@ describe("resolveAutoAgents", () => {
 
     expect(result.packages).toEqual([
       "@anthropic-ai/claude-code",
-      "@openai/codex",
-      "opencode"
+      "@openai/codex"
+    ]);
+    expect(result.installScripts).toEqual([
+      "curl -fsSL https://opencode.ai/install | bash"
     ]);
     expect(result.authSpecs).toEqual([
       { source: claudeAuth },
@@ -58,7 +60,7 @@ describe("resolveAutoAgents", () => {
         definitions: {
           claude: { packages: ["@anthropic-ai/claude-code"], authFiles: [], authDirs: ["~"] },
           codex: { packages: ["@openai/codex"], authFiles: [], authDirs: [] },
-          opencode: { packages: ["opencode"], authFiles: [], authDirs: [] }
+          opencode: { packages: [], authFiles: [], authDirs: [] }
         }
       }
     );
@@ -79,7 +81,7 @@ describe("resolveAutoAgents", () => {
         definitions: {
           claude: { packages: ["@anthropic-ai/claude-code"], authFiles: [], authDirs: [] },
           codex: { packages: ["@openai/codex"], authFiles: [absAuth], authDirs: [] },
-          opencode: { packages: ["opencode"], authFiles: [], authDirs: [] }
+          opencode: { packages: [], authFiles: [], authDirs: [] }
         }
       }
     );
