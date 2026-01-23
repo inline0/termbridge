@@ -7,6 +7,7 @@ import type {
   SandboxServerStartResult
 } from "../sandbox/server-provider";
 import { installAgents } from "./agent-install";
+import { syncAgentAuth } from "./agent-auth";
 
 export type DaytonaSandboxProviderOptions = {
   apiKey?: string;
@@ -180,6 +181,7 @@ export const createDaytonaSandboxServerProvider = (
 
         await ensureTmux(sandbox, logger);
         await installAgents(sandbox, startOptions.agentInstall, logger);
+        await syncAgentAuth(sandbox, startOptions.agentAuth, logger);
 
         const publicUrl = normalizePublicUrl(
           await resolvePreviewUrl(sandbox, startOptions.serverPort, logger)

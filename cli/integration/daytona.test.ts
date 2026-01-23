@@ -1,5 +1,6 @@
 import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -17,6 +18,9 @@ const commandExists = (name: string) =>
   spawnSync("which", [name], { stdio: "ignore" }).status === 0;
 
 const hasCloudflared = commandExists("cloudflared");
+const hasClaudeCli = commandExists("claude");
+const hasCodexCli = commandExists("codex");
+const hasOpenCodeCli = commandExists("opencode");
 
 const parseEnvFile = (path: string) => {
   if (!existsSync(path)) {
@@ -56,6 +60,14 @@ const hasDaytonaConfig =
   (daytonaEnv.TERMBRIDGE_E2E_DAYTONA === "1" || daytonaEnv.TERMBRIDGE_E2E_DAYTONA === "true") &&
   Boolean(daytonaEnv.DAYTONA_API_KEY) &&
   (!requiresGitAuth || hasGitAuth);
+
+const claudeAuthPath = resolve(homedir(), ".claude.json");
+const codexAuthPath = resolve(homedir(), ".codex", "auth.json");
+const openCodeAuthPath = resolve(homedir(), ".config", "opencode", "opencode.json");
+const hasAgentAuth =
+  existsSync(claudeAuthPath) && existsSync(codexAuthPath) && existsSync(openCodeAuthPath);
+const hasAgentClis = hasClaudeCli && hasCodexCli && hasOpenCodeCli;
+const shouldTestAgents = hasCloudflared && hasDaytonaConfig && hasAgentClis && hasAgentAuth;
 
 const maybeDescribe = hasCloudflared && hasDaytonaConfig ? describe : describe.skip;
 
@@ -204,6 +216,54 @@ const cleanupSandboxes = async () => {
   logStep(`cleanup removed ${deleted} sandboxes`);
 };
 
+const waitForSandboxByName = async (name: string, timeoutMs = 60_000) => {
+  const daytona = createDaytonaClient();
+  const deadline = Date.now() + timeoutMs;
+  let lastError: unknown = null;
+
+  while (Date.now() < deadline) {
+    try {
+      return await daytona.get(name);
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolvePromise) => setTimeout(resolvePromise, 2_000));
+    }
+  }
+
+  throw new Error(
+    `sandbox ${name} not found within ${timeoutMs}ms${lastError ? `: ${String(lastError)}` : ""}`
+  );
+};
+
+const getSandboxPathPrefix = async (
+  sandbox: Awaited<ReturnType<typeof waitForSandboxByName>>
+) => {
+  const npmBin = await sandbox.process.executeCommand("npm bin -g");
+  const binPath = npmBin.exitCode === 0 ? npmBin.result.trim() : "";
+  return binPath ? `PATH="${binPath}:$PATH"` : "";
+};
+
+const runSandboxCommand = async (
+  sandbox: Awaited<ReturnType<typeof waitForSandboxByName>>,
+  command: string,
+  label: string,
+  timeoutSec = 120,
+  pathPrefix = ""
+) => {
+  logStep(`run ${label}`);
+  const prefixedCommand = pathPrefix ? `${pathPrefix} ${command}` : command;
+  const result = await withTimeout(
+    sandbox.process.executeCommand(prefixedCommand, undefined, undefined, timeoutSec),
+    (timeoutSec + 10) * 1000,
+    label
+  );
+  if (result.exitCode !== 0) {
+    const output = `${result.result ?? ""}`.slice(0, 400);
+    throw new Error(`${label} failed (${result.exitCode}): ${output}`);
+  }
+  return `${result.result ?? ""}`;
+};
+
 const clickSheetOption = async (page: Page, name: string) => {
   for (let attempt = 0; attempt < 6; attempt += 1) {
     const option = page.getByRole("button", { name });
@@ -249,6 +309,7 @@ maybeDescribe("daytona integration", () => {
   let localUrl = "";
   let token = "";
   let browser: Browser | null = null;
+  let sandboxName = "";
 
   beforeAll(async () => {
     if (!existsSync(testAppDir)) {
@@ -261,11 +322,17 @@ maybeDescribe("daytona integration", () => {
 
     const output = { stdout: "", stderr: "" };
     const sessionName = `termbridge-daytona-${Date.now()}`;
+    sandboxName = `${sandboxPrefix}${Date.now()}`;
     const env = {
       ...process.env,
       NODE_ENV: "production",
       TERMBRIDGE_DAYTONA_DELETE_ON_EXIT: "true",
-      TERMBRIDGE_DAYTONA_NAME: `${sandboxPrefix}${Date.now()}`
+      TERMBRIDGE_DAYTONA_NAME: sandboxName,
+      ...(shouldTestAgents
+        ? {
+            TERMBRIDGE_DAYTONA_AGENTS: "claude,codex,opencode"
+          }
+        : {})
     };
     const nodePath = resolveNodePath();
 
@@ -324,7 +391,9 @@ maybeDescribe("daytona integration", () => {
   });
 
   afterEach(async () => {
-    await cleanupSandboxes();
+    if (!shouldTestAgents) {
+      await cleanupSandboxes();
+    }
   });
 
   it(
@@ -508,5 +577,49 @@ maybeDescribe("daytona integration", () => {
       }
     },
     240_000
+  );
+
+  const maybeAgentIt = shouldTestAgents ? it : it.skip;
+  maybeAgentIt(
+    "runs coding agent CLIs in the sandbox with synced auth",
+    async () => {
+      const sandbox = await waitForSandboxByName(sandboxName, 120_000);
+      const pathPrefix = await getSandboxPathPrefix(sandbox);
+      const availability = await sandbox.process.executeCommand(
+        `${pathPrefix ? `${pathPrefix} ` : ""}command -v claude && ${pathPrefix ? `${pathPrefix} ` : ""}command -v codex && ${pathPrefix ? `${pathPrefix} ` : ""}command -v opencode`
+      );
+      if (availability.exitCode !== 0) {
+        logStep("agent CLIs not available in sandbox; skipping test");
+        return;
+      }
+
+      const claudeOutput = await runSandboxCommand(
+        sandbox,
+        'claude -p "Respond with exactly OK." --no-session-persistence',
+        "claude",
+        180,
+        pathPrefix
+      );
+      expect(claudeOutput).toMatch(/ok/i);
+
+      const codexOutput = await runSandboxCommand(
+        sandbox,
+        'codex exec --full-auto "Respond with exactly OK."',
+        "codex",
+        180,
+        pathPrefix
+      );
+      expect(codexOutput).toMatch(/ok/i);
+
+      const opencodeOutput = await runSandboxCommand(
+        sandbox,
+        'opencode run "Respond with exactly OK."',
+        "opencode",
+        180,
+        pathPrefix
+      );
+      expect(opencodeOutput).toMatch(/ok/i);
+    },
+    300_000
   );
 });

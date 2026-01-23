@@ -4,6 +4,7 @@ import type { TerminalBackend, TerminalSession } from "@termbridge/terminal";
 import type { TerminalControlKey } from "@termbridge/shared";
 import type { Logger } from "../server/server";
 import { installAgents } from "./agent-install";
+import { syncAgentAuth } from "./agent-auth";
 
 type DaytonaSessionEntry = {
   session: TerminalSession;
@@ -27,6 +28,7 @@ export type DaytonaBackendOptions = {
   gitPassword?: string;
   agentEnv?: Record<string, string>;
   agentInstall?: { enabled: boolean; packages: string[] };
+  agentAuth?: { specs: Array<{ source: string; destination?: string }> };
   logger?: Logger;
 };
 
@@ -86,6 +88,7 @@ export const createDaytonaBackend = (options: DaytonaBackendOptions): TerminalBa
             options.gitPassword
           );
           await installAgents(sandbox, options.agentInstall, logger);
+          await syncAgentAuth(sandbox, options.agentAuth, logger);
           sandboxRef = sandbox;
           logger.info(`Daytona: repo ready at ${repoPath}`);
           return { sandbox, repoPath };

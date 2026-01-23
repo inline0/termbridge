@@ -15,6 +15,7 @@ import { createTerminalRegistry } from "../server/terminal-registry";
 import type { Logger, StartedServer } from "../server/server";
 import { createAppServer } from "../server/server";
 import { createDaytonaBackend, type DaytonaBackendOptions } from "../daytona/daytona-backend";
+import { defaultAgentPackages, resolveAutoAgents } from "../daytona/agent-auto";
 import {
   createDaytonaSandboxServerProvider,
   type DaytonaSandboxProviderOptions
@@ -162,19 +163,65 @@ const collectAgentEnv = (env: Record<string, string | undefined>) => {
   return Object.fromEntries(entries);
 };
 
-const resolveAgentInstall = (env: Record<string, string | undefined>, agentEnv: Record<string, string>) => {
+const resolveAgentInstall = (
+  env: Record<string, string | undefined>,
+  agentEnv: Record<string, string>,
+  autoPackages: string[],
+  hasAutoAgents: boolean
+) => {
   const installRaw = env.TERMBRIDGE_DAYTONA_AGENT_INSTALL;
   const enabled =
     typeof installRaw === "string"
       ? parseBoolean(installRaw)
-      : Object.keys(agentEnv).length > 0;
+      : hasAutoAgents || Object.keys(agentEnv).length > 0;
   const packages = parseList(env.TERMBRIDGE_DAYTONA_AGENT_PACKAGES);
   return {
     enabled,
-    packages: packages.length > 0
-      ? packages
-      : ["@anthropic-ai/claude-code", "@openai/codex", "opencode"]
+    packages: packages.length > 0 ? packages : autoPackages.length > 0 ? autoPackages : defaultAgentPackages
   };
+};
+
+const resolveAgentAuth = (
+  env: Record<string, string | undefined>,
+  logger: Logger,
+  autoSpecs: Array<{ source: string; destination?: string }> = []
+) => {
+  const paths = parseList(env.TERMBRIDGE_DAYTONA_AGENT_AUTH_PATHS);
+  const maps = parseList(env.TERMBRIDGE_DAYTONA_AGENT_AUTH_MAPS);
+  const specs = [
+    ...paths.map((source) => ({ source })),
+    ...maps.flatMap((entry) => {
+      const [rawSource, rawDestination = ""] = entry.split("=", 2);
+      const source = rawSource.trim();
+      const destination = rawDestination.trim();
+      if (!source || !destination) {
+        logger.warn(`Skipping invalid auth mapping: ${entry}`);
+        return [];
+      }
+      return [{ source, destination }];
+    })
+  ];
+  const combined = [...specs, ...autoSpecs];
+  const seen = new Set<string>();
+  const deduped = combined.filter((spec) => {
+    const key = `${spec.source}|${spec.destination ?? ""}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+
+  return deduped.length > 0 ? { specs: deduped } : undefined;
+};
+
+const resolveAutoAgentNames = (env: Record<string, string | undefined>) => {
+  const explicit = parseList(env.TERMBRIDGE_DAYTONA_AGENTS);
+  if (explicit.length > 0) {
+    return explicit;
+  }
+  const auto = parseBoolean(env.TERMBRIDGE_DAYTONA_AGENT_AUTO);
+  return auto ? ["all"] : [];
 };
 
 const resolveBackendMode = (value: string | undefined): "tmux" | "daytona" => {
@@ -277,7 +324,10 @@ export const startCommand = async (
   const hideTerminalSwitcher = parseBoolean(env.TERMBRIDGE_HIDE_TERMINAL_SWITCHER);
   const tmuxCwd = env.TERMBRIDGE_TMUX_CWD;
   const agentEnv = collectAgentEnv(env);
-  const agentInstall = resolveAgentInstall(env, agentEnv);
+  const autoAgentNames = resolveAutoAgentNames(env);
+  const autoAgents = resolveAutoAgents(autoAgentNames, logger);
+  const agentInstall = resolveAgentInstall(env, agentEnv, autoAgents.packages, autoAgents.agents.length > 0);
+  const agentAuth = resolveAgentAuth(env, logger, autoAgents.authSpecs);
   const daytonaRepo =
     options.daytonaRepo ??
     env.TERMBRIDGE_DAYTONA_REPO ??
@@ -300,6 +350,7 @@ export const startCommand = async (
     gitPassword: env.TERMBRIDGE_DAYTONA_GIT_PASSWORD ?? env.TERMBRIDGE_DAYTONA_GIT_TOKEN,
     agentEnv,
     agentInstall,
+    agentAuth,
     logger
   };
 
@@ -325,6 +376,7 @@ export const startCommand = async (
       gitPassword: daytonaConfig.gitPassword,
       agentEnv: daytonaConfig.agentEnv,
       agentInstall: daytonaConfig.agentInstall,
+      agentAuth: daytonaConfig.agentAuth,
       serverPort,
       proxyPort,
       sessionName: options.session,

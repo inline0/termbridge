@@ -11,6 +11,7 @@ export type SandboxServerStartOptions = {
   gitPassword?: string;
   agentEnv?: Record<string, string>;
   agentInstall?: AgentInstallOptions;
+  agentAuth?: AgentAuthOptions;
   serverPort: number;
   proxyPort?: number;
   sessionName?: string;
@@ -33,4 +34,13 @@ export type SandboxServerProvider = {
 export type AgentInstallOptions = {
   enabled: boolean;
   packages: string[];
+};
+
+export type AgentAuthSpec = {
+  source: string;
+  destination?: string;
+};
+
+export type AgentAuthOptions = {
+  specs: AgentAuthSpec[];
 };

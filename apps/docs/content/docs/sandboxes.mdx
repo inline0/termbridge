@@ -1,11 +1,11 @@
 ---
 title: Sandboxes
-description: Run Termbridge against Daytona sandboxes for cloud terminals and previews.
+description: Run Termbridge against cloud sandboxes for terminals and previews.
 ---
 
 # Sandboxes
 
-Termbridge can use a Daytona sandbox instead of a local tmux session. This is useful when you want a terminal and preview that run in the cloud but keep the same Termbridge UI and sharing workflow.
+Termbridge can use a sandbox instead of a local tmux session. This is useful when you want a terminal and preview that run in the cloud but keep the same Termbridge UI and sharing workflow.
 
 ## When to use sandboxes
 
@@ -14,6 +14,14 @@ Termbridge can use a Daytona sandbox instead of a local tmux session. This is us
 - You are running CI or integration tests against a remote environment.
 
 If you just need to share your local terminal, use the default tmux backend.
+
+## Sandbox providers
+
+Termbridge currently supports:
+
+- **Daytona** - Cloud sandboxes with repo cloning and preview ports.
+
+More providers are coming.
 
 ## Requirements
 
@@ -84,22 +92,9 @@ TERMBRIDGE_DAYTONA_GIT_TOKEN=your_github_token
 
 ## Coding agents
 
-If you want coding agents (Claude Code, Codex, OpenCode) ready inside the sandbox, Termbridge can install them and forward your API keys.
+Termbridge can install coding agents inside the sandbox and sync your local auth so they are ready immediately.
 
-By default, if any agent API keys are present, Termbridge will:
-- Install the agent CLIs in the sandbox (via `npm install -g`)
-- Forward the API keys into the tmux session
-
-You can override this behavior with the following variables:
-
-| Variable | Purpose |
-| --- | --- |
-| `TERMBRIDGE_DAYTONA_AGENT_INSTALL=true` | Force agent installation |
-| `TERMBRIDGE_DAYTONA_AGENT_INSTALL=false` | Skip agent installation |
-| `TERMBRIDGE_DAYTONA_AGENT_PACKAGES=...` | Comma/space separated npm packages to install |
-| `TERMBRIDGE_DAYTONA_AGENT_ENV=...` | Extra env var names to forward into the sandbox |
-
-Default agent packages are `@anthropic-ai/claude-code`, `@openai/codex`, and `opencode`.
+See the [Coding agents](/docs/coding-agents) guide for the full setup, automatic mode, and security details.
 
 ## Preview mode
 

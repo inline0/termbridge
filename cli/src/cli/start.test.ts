@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { existsSync } from "node:fs";
 import * as fsPromises from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import type { TerminalBackend } from "@termbridge/terminal";
 import type { TerminalListItem } from "@termbridge/shared";
@@ -903,7 +904,8 @@ describe("startCommand", () => {
           env: {
             OPENAI_API_KEY: "openai-key",
             TERMBRIDGE_DAYTONA_AGENT_ENV: "CUSTOM_TOKEN",
-            CUSTOM_TOKEN: "custom-value"
+            CUSTOM_TOKEN: "custom-value",
+            TERMBRIDGE_DAYTONA_AGENT_AUTH_PATHS: "/tmp/claude/auth.json"
           },
           on: vi.fn()
         } as unknown as NodeJS.Process,
@@ -917,6 +919,229 @@ describe("startCommand", () => {
           OPENAI_API_KEY: "openai-key",
           CUSTOM_TOKEN: "custom-value"
         },
+        agentInstall: {
+          enabled: true,
+          packages: ["@anthropic-ai/claude-code", "@openai/codex", "opencode"]
+        },
+        agentAuth: {
+          specs: [{ source: "/tmp/claude/auth.json" }]
+        }
+      })
+    );
+
+    await result.stop();
+  });
+
+  const localClaudeAuth = join(homedir(), ".claude.json");
+  const localCodexAuth = join(homedir(), ".codex", "auth.json");
+  const localOpenCodeAuth = join(homedir(), ".config", "opencode", "opencode.json");
+  const hasLocalAgents =
+    existsSync(localClaudeAuth) && existsSync(localCodexAuth) && existsSync(localOpenCodeAuth);
+  (hasLocalAgents ? it : it.skip)(
+    "auto configures agent packages and auth when agents list is provided",
+    async () => {
+      const listen = vi.fn(async (): Promise<StartedServer> => ({
+        port: 4033,
+        close: vi.fn(async () => undefined)
+      }));
+      const createServer = vi.fn(() => ({ listen }));
+
+      const auth: Auth = {
+        issueToken: () => ({ token: "token" }),
+        redeemToken: () => null,
+        getSession: () => null,
+        getSessionFromRequest: () => null,
+        createSessionCookie: () => "",
+        verifyCsrfToken: () => false
+      };
+
+      const terminalBackend: TerminalBackend = {
+        createSession: vi.fn(async (name) => ({ name, createdAt: new Date() })),
+        write: vi.fn(async () => undefined),
+        resize: vi.fn(async () => undefined),
+        sendControl: vi.fn(async () => undefined),
+        scroll: vi.fn(async () => undefined),
+        onOutput: () => () => undefined,
+        closeSession: vi.fn(async () => undefined)
+      };
+
+      const createDaytonaBackend = vi.fn(() => terminalBackend);
+
+      const result = await startCommand(
+        {
+          killOnExit: false,
+          noQr: true,
+          tunnel: "cloudflare",
+          backend: "daytona",
+          daytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+        },
+        {
+          createServer,
+          createAuth: () => auth,
+          createDaytonaBackend,
+          createTerminalRegistry: () => createTerminalRegistryStub(),
+          createTunnelProvider: () => ({
+            start: vi.fn(async () => ({ publicUrl: "https://tunnel" })),
+            stop: vi.fn(async () => undefined)
+          }),
+          process: {
+            env: {
+              TERMBRIDGE_DAYTONA_AGENTS: "claude,codex,opencode"
+            },
+            on: vi.fn()
+          } as unknown as NodeJS.Process,
+          logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+        }
+      );
+
+      expect(createDaytonaBackend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          agentInstall: {
+            enabled: true,
+            packages: ["@anthropic-ai/claude-code", "@openai/codex", "opencode"]
+          },
+          agentAuth: {
+            specs: [
+              { source: localClaudeAuth },
+              { source: localCodexAuth },
+              { source: localOpenCodeAuth }
+            ]
+          }
+        })
+      );
+
+      await result.stop();
+    }
+  );
+
+  const hasCodexAuth = existsSync(localCodexAuth);
+  (hasCodexAuth ? it : it.skip)(
+    "dedupes auto and manual auth specs",
+    async () => {
+      const listen = vi.fn(async (): Promise<StartedServer> => ({
+        port: 4034,
+        close: vi.fn(async () => undefined)
+      }));
+      const createServer = vi.fn(() => ({ listen }));
+
+      const auth: Auth = {
+        issueToken: () => ({ token: "token" }),
+        redeemToken: () => null,
+        getSession: () => null,
+        getSessionFromRequest: () => null,
+        createSessionCookie: () => "",
+        verifyCsrfToken: () => false
+      };
+
+      const terminalBackend: TerminalBackend = {
+        createSession: vi.fn(async (name) => ({ name, createdAt: new Date() })),
+        write: vi.fn(async () => undefined),
+        resize: vi.fn(async () => undefined),
+        sendControl: vi.fn(async () => undefined),
+        scroll: vi.fn(async () => undefined),
+        onOutput: () => () => undefined,
+        closeSession: vi.fn(async () => undefined)
+      };
+
+      const createDaytonaBackend = vi.fn(() => terminalBackend);
+
+      const result = await startCommand(
+        {
+          killOnExit: false,
+          noQr: true,
+          tunnel: "cloudflare",
+          backend: "daytona",
+          daytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+        },
+        {
+          createServer,
+          createAuth: () => auth,
+          createDaytonaBackend,
+          createTerminalRegistry: () => createTerminalRegistryStub(),
+          createTunnelProvider: () => ({
+            start: vi.fn(async () => ({ publicUrl: "https://tunnel" })),
+            stop: vi.fn(async () => undefined)
+          }),
+          process: {
+            env: {
+              TERMBRIDGE_DAYTONA_AGENTS: "codex",
+              TERMBRIDGE_DAYTONA_AGENT_AUTH_PATHS: localCodexAuth
+            },
+            on: vi.fn()
+          } as unknown as NodeJS.Process,
+          logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+        }
+      );
+
+      expect(createDaytonaBackend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          agentAuth: {
+            specs: [{ source: localCodexAuth }]
+          }
+        })
+      );
+
+      await result.stop();
+    }
+  );
+
+  it("enables agent auto mode when requested", async () => {
+    const listen = vi.fn(async (): Promise<StartedServer> => ({
+      port: 4035,
+      close: vi.fn(async () => undefined)
+    }));
+    const createServer = vi.fn(() => ({ listen }));
+
+    const auth: Auth = {
+      issueToken: () => ({ token: "token" }),
+      redeemToken: () => null,
+      getSession: () => null,
+      getSessionFromRequest: () => null,
+      createSessionCookie: () => "",
+      verifyCsrfToken: () => false
+    };
+
+    const terminalBackend: TerminalBackend = {
+      createSession: vi.fn(async (name) => ({ name, createdAt: new Date() })),
+      write: vi.fn(async () => undefined),
+      resize: vi.fn(async () => undefined),
+      sendControl: vi.fn(async () => undefined),
+      scroll: vi.fn(async () => undefined),
+      onOutput: () => () => undefined,
+      closeSession: vi.fn(async () => undefined)
+    };
+
+    const createDaytonaBackend = vi.fn(() => terminalBackend);
+
+    const result = await startCommand(
+      {
+        killOnExit: false,
+        noQr: true,
+        tunnel: "cloudflare",
+        backend: "daytona",
+        daytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+      },
+      {
+        createServer,
+        createAuth: () => auth,
+        createDaytonaBackend,
+        createTerminalRegistry: () => createTerminalRegistryStub(),
+        createTunnelProvider: () => ({
+          start: vi.fn(async () => ({ publicUrl: "https://tunnel" })),
+          stop: vi.fn(async () => undefined)
+        }),
+        process: {
+          env: {
+            TERMBRIDGE_DAYTONA_AGENT_AUTO: "1"
+          },
+          on: vi.fn()
+        } as unknown as NodeJS.Process,
+        logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+      }
+    );
+
+    expect(createDaytonaBackend).toHaveBeenCalledWith(
+      expect.objectContaining({
         agentInstall: {
           enabled: true,
           packages: ["@anthropic-ai/claude-code", "@openai/codex", "opencode"]
@@ -948,7 +1173,8 @@ describe("startCommand", () => {
           env: {
             ANTHROPIC_API_KEY: "anthropic-key",
             TERMBRIDGE_DAYTONA_AGENT_INSTALL: "0",
-            TERMBRIDGE_DAYTONA_AGENT_PACKAGES: "codex,opencode"
+            TERMBRIDGE_DAYTONA_AGENT_PACKAGES: "codex,opencode",
+            TERMBRIDGE_DAYTONA_AGENT_AUTH_MAPS: "/tmp/auth.json=/home/daytona/.config/claude/auth.json"
           },
           on: vi.fn()
         } as unknown as NodeJS.Process,
@@ -959,9 +1185,149 @@ describe("startCommand", () => {
     expect(start).toHaveBeenCalledWith(
       expect.objectContaining({
         agentEnv: { ANTHROPIC_API_KEY: "anthropic-key" },
-        agentInstall: { enabled: false, packages: ["codex", "opencode"] }
+        agentInstall: { enabled: false, packages: ["codex", "opencode"] },
+        agentAuth: {
+          specs: [
+            {
+              source: "/tmp/auth.json",
+              destination: "/home/daytona/.config/claude/auth.json"
+            }
+          ]
+        }
       })
     );
+  });
+
+  it("skips invalid agent auth mappings", async () => {
+    const listen = vi.fn(async (): Promise<StartedServer> => ({
+      port: 4031,
+      close: vi.fn(async () => undefined)
+    }));
+    const createServer = vi.fn(() => ({ listen }));
+
+    const auth: Auth = {
+      issueToken: () => ({ token: "token" }),
+      redeemToken: () => null,
+      getSession: () => null,
+      getSessionFromRequest: () => null,
+      createSessionCookie: () => "",
+      verifyCsrfToken: () => false
+    };
+
+    const terminalBackend: TerminalBackend = {
+      createSession: vi.fn(async (name) => ({ name, createdAt: new Date() })),
+      write: vi.fn(async () => undefined),
+      resize: vi.fn(async () => undefined),
+      sendControl: vi.fn(async () => undefined),
+      scroll: vi.fn(async () => undefined),
+      onOutput: () => () => undefined,
+      closeSession: vi.fn(async () => undefined)
+    };
+
+    const createDaytonaBackend = vi.fn(() => terminalBackend);
+    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+
+    const result = await startCommand(
+      {
+        killOnExit: false,
+        noQr: true,
+        tunnel: "cloudflare",
+        backend: "daytona",
+        daytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+      },
+      {
+        createServer,
+        createAuth: () => auth,
+        createDaytonaBackend,
+        createTerminalRegistry: () => createTerminalRegistryStub(),
+        createTunnelProvider: () => ({
+          start: vi.fn(async () => ({ publicUrl: "https://tunnel" })),
+          stop: vi.fn(async () => undefined)
+        }),
+        process: {
+          env: {
+            TERMBRIDGE_DAYTONA_AGENT_AUTH_MAPS: "missing"
+          },
+          on: vi.fn()
+        } as unknown as NodeJS.Process,
+        logger
+      }
+    );
+
+    expect(logger.warn).toHaveBeenCalledWith("Skipping invalid auth mapping: missing");
+    expect(createDaytonaBackend).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        agentAuth: expect.anything()
+      })
+    );
+
+    await result.stop();
+  });
+
+  it("skips auth mappings with empty destinations", async () => {
+    const listen = vi.fn(async (): Promise<StartedServer> => ({
+      port: 4032,
+      close: vi.fn(async () => undefined)
+    }));
+    const createServer = vi.fn(() => ({ listen }));
+
+    const auth: Auth = {
+      issueToken: () => ({ token: "token" }),
+      redeemToken: () => null,
+      getSession: () => null,
+      getSessionFromRequest: () => null,
+      createSessionCookie: () => "",
+      verifyCsrfToken: () => false
+    };
+
+    const terminalBackend: TerminalBackend = {
+      createSession: vi.fn(async (name) => ({ name, createdAt: new Date() })),
+      write: vi.fn(async () => undefined),
+      resize: vi.fn(async () => undefined),
+      sendControl: vi.fn(async () => undefined),
+      scroll: vi.fn(async () => undefined),
+      onOutput: () => () => undefined,
+      closeSession: vi.fn(async () => undefined)
+    };
+
+    const createDaytonaBackend = vi.fn(() => terminalBackend);
+    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+
+    const result = await startCommand(
+      {
+        killOnExit: false,
+        noQr: true,
+        tunnel: "cloudflare",
+        backend: "daytona",
+        daytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+      },
+      {
+        createServer,
+        createAuth: () => auth,
+        createDaytonaBackend,
+        createTerminalRegistry: () => createTerminalRegistryStub(),
+        createTunnelProvider: () => ({
+          start: vi.fn(async () => ({ publicUrl: "https://tunnel" })),
+          stop: vi.fn(async () => undefined)
+        }),
+        process: {
+          env: {
+            TERMBRIDGE_DAYTONA_AGENT_AUTH_MAPS: "foo=   "
+          },
+          on: vi.fn()
+        } as unknown as NodeJS.Process,
+        logger
+      }
+    );
+
+    expect(logger.warn).toHaveBeenCalledWith("Skipping invalid auth mapping: foo=");
+    expect(createDaytonaBackend).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        agentAuth: expect.anything()
+      })
+    );
+
+    await result.stop();
   });
 
   it("uses the default daytona backend factory when none is provided", async () => {
