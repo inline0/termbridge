@@ -13,7 +13,7 @@ const daytonaMocks = vi.hoisted(() => ({
   createSandboxDaytonaBackend: vi.fn()
 }));
 
-const sandboxDaytonaDirectMocks = vi.hoisted(() => ({
+const sandboxDirectMocks = vi.hoisted(() => ({
   createSandboxDaytonaServerProvider: vi.fn()
 }));
 
@@ -37,7 +37,7 @@ vi.mock("../sandbox/daytona/backend", () => ({
 }));
 
 vi.mock("../sandbox/daytona/direct", () => ({
-  createSandboxDaytonaServerProvider: sandboxDaytonaDirectMocks.createSandboxDaytonaServerProvider
+  createSandboxDaytonaServerProvider: sandboxDirectMocks.createSandboxDaytonaServerProvider
 }));
 
 import { startCommand } from "./start";
@@ -64,7 +64,7 @@ const createTerminalRegistryStub = (): TerminalRegistry => ({
 describe("startCommand", () => {
   beforeEach(() => {
     daytonaMocks.createSandboxDaytonaBackend.mockReset();
-    sandboxDaytonaDirectMocks.createSandboxDaytonaServerProvider.mockReset();
+    sandboxDirectMocks.createSandboxDaytonaServerProvider.mockReset();
     fsMocks.writeFile.mockClear();
   });
 
@@ -246,7 +246,7 @@ describe("startCommand", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDaytonaDirect: true
+        sandboxDirect: true
       },
       {
         createSandboxDaytonaProvider,
@@ -270,7 +270,7 @@ describe("startCommand", () => {
       token: "token-default",
       stop
     }));
-    sandboxDaytonaDirectMocks.createSandboxDaytonaServerProvider.mockReturnValue({ start });
+    sandboxDirectMocks.createSandboxDaytonaServerProvider.mockReturnValue({ start });
 
     const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 
@@ -280,7 +280,7 @@ describe("startCommand", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDaytonaDirect: true
+        sandboxDirect: true
       },
       {
         process: { on: vi.fn() } as unknown as NodeJS.Process,
@@ -288,7 +288,7 @@ describe("startCommand", () => {
       }
     );
 
-    expect(sandboxDaytonaDirectMocks.createSandboxDaytonaServerProvider).toHaveBeenCalled();
+    expect(sandboxDirectMocks.createSandboxDaytonaServerProvider).toHaveBeenCalled();
     expect(start).toHaveBeenCalled();
     await result.stop();
   });
@@ -317,7 +317,7 @@ describe("startCommand", () => {
         noQr: false,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDaytonaDirect: true
+        sandboxDirect: true
       },
       {
         createSandboxDaytonaProvider,
@@ -351,7 +351,7 @@ describe("startCommand", () => {
         noQr: false,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDaytonaDirect: true
+        sandboxDirect: true
       },
       {
         createSandboxDaytonaProvider,
@@ -379,7 +379,7 @@ describe("startCommand", () => {
           noQr: true,
           tunnel: "cloudflare",
           backend: "sandbox-daytona",
-          sandboxDaytonaDirect: true
+          sandboxDirect: true
         },
         {
           createSandboxDaytonaProvider,
@@ -992,7 +992,7 @@ describe("startCommand", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app"
+        sandboxRepo: "https://github.com/inline0/termbridge-test-app"
       },
       {
         createServer,
@@ -1051,7 +1051,7 @@ describe("startCommand", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+        sandboxRepo: "https://github.com/inline0/termbridge-test-app.git"
       },
       {
         createServer,
@@ -1065,9 +1065,9 @@ describe("startCommand", () => {
         process: {
           env: {
             OPENAI_API_KEY: "openai-key",
-            TERMBRIDGE_SANDBOX_DAYTONA_AGENT_ENV: "CUSTOM_TOKEN",
+            TERMBRIDGE_SANDBOX_AGENT_ENV: "CUSTOM_TOKEN",
             CUSTOM_TOKEN: "custom-value",
-            TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTH_PATHS: "/tmp/claude/auth.json"
+            TERMBRIDGE_SANDBOX_AGENT_AUTH_PATHS: "/tmp/claude/auth.json"
           },
           on: vi.fn()
         } as unknown as NodeJS.Process,
@@ -1131,7 +1131,7 @@ describe("startCommand", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+        sandboxRepo: "https://github.com/inline0/termbridge-test-app.git"
       },
       {
         createServer,
@@ -1144,7 +1144,7 @@ describe("startCommand", () => {
         }),
         process: {
           env: {
-            TERMBRIDGE_SANDBOX_DAYTONA_AGENTS: "claude"
+            TERMBRIDGE_SANDBOX_AGENTS: "claude"
           },
           on: vi.fn()
         } as unknown as NodeJS.Process,
@@ -1201,7 +1201,7 @@ describe("startCommand", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+        sandboxRepo: "https://github.com/inline0/termbridge-test-app.git"
       },
       {
         createServer,
@@ -1214,7 +1214,7 @@ describe("startCommand", () => {
         }),
         process: {
           env: {
-            TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTH_PATHS: "/tmp/auth.json,/tmp/auth.json"
+            TERMBRIDGE_SANDBOX_AGENT_AUTH_PATHS: "/tmp/auth.json,/tmp/auth.json"
           },
           on: vi.fn()
         } as unknown as NodeJS.Process,
@@ -1276,7 +1276,7 @@ describe("startCommand", () => {
           noQr: true,
           tunnel: "cloudflare",
           backend: "sandbox-daytona",
-          sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+          sandboxRepo: "https://github.com/inline0/termbridge-test-app.git"
         },
         {
           createServer,
@@ -1289,7 +1289,7 @@ describe("startCommand", () => {
           }),
           process: {
             env: {
-              TERMBRIDGE_SANDBOX_DAYTONA_AGENTS: "claude,codex,opencode"
+              TERMBRIDGE_SANDBOX_AGENTS: "claude,codex,opencode"
             },
             on: vi.fn()
           } as unknown as NodeJS.Process,
@@ -1357,7 +1357,7 @@ describe("startCommand", () => {
           noQr: true,
           tunnel: "cloudflare",
           backend: "sandbox-daytona",
-          sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+          sandboxRepo: "https://github.com/inline0/termbridge-test-app.git"
         },
         {
           createServer,
@@ -1370,8 +1370,8 @@ describe("startCommand", () => {
           }),
           process: {
             env: {
-              TERMBRIDGE_SANDBOX_DAYTONA_AGENTS: "codex",
-              TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTH_PATHS: localCodexAuth
+              TERMBRIDGE_SANDBOX_AGENTS: "codex",
+              TERMBRIDGE_SANDBOX_AGENT_AUTH_PATHS: localCodexAuth
             },
             on: vi.fn()
           } as unknown as NodeJS.Process,
@@ -1427,7 +1427,7 @@ describe("startCommand", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+        sandboxRepo: "https://github.com/inline0/termbridge-test-app.git"
       },
       {
         createServer,
@@ -1440,7 +1440,7 @@ describe("startCommand", () => {
         }),
         process: {
           env: {
-            TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTO: "1"
+            TERMBRIDGE_SANDBOX_AGENT_AUTO: "1"
           },
           on: vi.fn()
         } as unknown as NodeJS.Process,
@@ -1468,7 +1468,7 @@ describe("startCommand", () => {
       token: "token-agent",
       stop: vi.fn(async () => undefined)
     }));
-    sandboxDaytonaDirectMocks.createSandboxDaytonaServerProvider.mockReturnValue({ start });
+    sandboxDirectMocks.createSandboxDaytonaServerProvider.mockReturnValue({ start });
 
     await startCommand(
       {
@@ -1476,15 +1476,15 @@ describe("startCommand", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDaytonaDirect: true
+        sandboxDirect: true
       },
       {
         process: {
           env: {
             ANTHROPIC_API_KEY: "anthropic-key",
-            TERMBRIDGE_SANDBOX_DAYTONA_AGENT_INSTALL: "0",
-            TERMBRIDGE_SANDBOX_DAYTONA_AGENT_PACKAGES: "codex,opencode",
-            TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTH_MAPS: "/tmp/auth.json=/home/daytona/.config/claude/auth.json"
+            TERMBRIDGE_SANDBOX_AGENT_INSTALL: "0",
+            TERMBRIDGE_SANDBOX_AGENT_PACKAGES: "codex,opencode",
+            TERMBRIDGE_SANDBOX_AGENT_AUTH_MAPS: "/tmp/auth.json=/home/daytona/.config/claude/auth.json"
           },
           on: vi.fn()
         } as unknown as NodeJS.Process,
@@ -1545,7 +1545,7 @@ describe("startCommand", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+        sandboxRepo: "https://github.com/inline0/termbridge-test-app.git"
       },
       {
         createServer,
@@ -1558,7 +1558,7 @@ describe("startCommand", () => {
         }),
         process: {
           env: {
-            TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTH_MAPS: "missing"
+            TERMBRIDGE_SANDBOX_AGENT_AUTH_MAPS: "missing"
           },
           on: vi.fn()
         } as unknown as NodeJS.Process,
@@ -1613,7 +1613,7 @@ describe("startCommand", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+        sandboxRepo: "https://github.com/inline0/termbridge-test-app.git"
       },
       {
         createServer,
@@ -1626,7 +1626,7 @@ describe("startCommand", () => {
         }),
         process: {
           env: {
-            TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTH_MAPS: "foo=   "
+            TERMBRIDGE_SANDBOX_AGENT_AUTH_MAPS: "foo=   "
           },
           on: vi.fn()
         } as unknown as NodeJS.Process,
@@ -1689,7 +1689,7 @@ describe("startCommand", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+        sandboxRepo: "https://github.com/inline0/termbridge-test-app.git"
       },
       {
         createServer,
@@ -1756,7 +1756,7 @@ describe("startCommand", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDaytonaRepo: "/"
+        sandboxRepo: "/"
       },
       {
         createServer,
@@ -1828,8 +1828,8 @@ describe("startCommand", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git",
-        sandboxDaytonaPreviewPort: 5173
+        sandboxRepo: "https://github.com/inline0/termbridge-test-app.git",
+        sandboxPreviewPort: 5173
       },
       {
         createServer,
@@ -1904,8 +1904,8 @@ describe("startCommand", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git",
-        sandboxDaytonaPreviewPort: 5173
+        sandboxRepo: "https://github.com/inline0/termbridge-test-app.git",
+        sandboxPreviewPort: 5173
       },
       {
         createServer,
@@ -1964,7 +1964,7 @@ describe("startCommand", () => {
     const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 
     const processRef = {
-      env: { TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT: "5173" },
+      env: { TERMBRIDGE_SANDBOX_PREVIEW_PORT: "5173" },
       on: vi.fn()
     } as unknown as NodeJS.Process;
 
@@ -1976,7 +1976,7 @@ describe("startCommand", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+        sandboxRepo: "https://github.com/inline0/termbridge-test-app.git"
       },
       {
         createServer,
@@ -2031,7 +2031,7 @@ describe("startCommand", () => {
     };
 
     const processRef = {
-      env: { TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT: "not-a-number" },
+      env: { TERMBRIDGE_SANDBOX_PREVIEW_PORT: "not-a-number" },
       on: vi.fn()
     } as unknown as NodeJS.Process;
 
@@ -2043,7 +2043,7 @@ describe("startCommand", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+        sandboxRepo: "https://github.com/inline0/termbridge-test-app.git"
       },
       {
         createServer,
@@ -2101,7 +2101,7 @@ describe("startCommand", () => {
     for (const value of ["1", "true", "yes"]) {
       createSandboxDaytonaBackend.mockClear();
       const processRef = {
-        env: { TERMBRIDGE_SANDBOX_DAYTONA_PUBLIC: value },
+        env: { TERMBRIDGE_SANDBOX_PUBLIC: value },
         on: vi.fn()
       } as unknown as NodeJS.Process;
 
@@ -2111,7 +2111,7 @@ describe("startCommand", () => {
           noQr: true,
           tunnel: "cloudflare",
           backend: "sandbox-daytona",
-          sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+          sandboxRepo: "https://github.com/inline0/termbridge-test-app.git"
         },
         {
           createServer,
@@ -2168,7 +2168,7 @@ describe("startCommand", () => {
     };
 
     const processRef = {
-      env: { TERMBRIDGE_SANDBOX_DAYTONA_DELETE_ON_EXIT: "true" },
+      env: { TERMBRIDGE_SANDBOX_DELETE_ON_EXIT: "true" },
       on: vi.fn()
     } as unknown as NodeJS.Process;
 
@@ -2180,7 +2180,7 @@ describe("startCommand", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDaytonaRepo: "https://github.com/inline0/termbridge-test-app.git"
+        sandboxRepo: "https://github.com/inline0/termbridge-test-app.git"
       },
       {
         createServer,

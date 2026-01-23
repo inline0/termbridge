@@ -21,13 +21,13 @@ Set the backend to Daytona and provide the repo configuration:
 export TERMBRIDGE_BACKEND=sandbox-daytona
 export TERMBRIDGE_DAYTONA_API_KEY=your_key
 export TERMBRIDGE_DAYTONA_API_URL=https://app.daytona.io/api
-export TERMBRIDGE_SANDBOX_DAYTONA_REPO=https://github.com/inline0/termbridge-test-app.git
-export TERMBRIDGE_SANDBOX_DAYTONA_BRANCH=main
-export TERMBRIDGE_SANDBOX_DAYTONA_PATH=termbridge-test-app
-export TERMBRIDGE_SANDBOX_DAYTONA_NAME=termbridge-sandbox
-export TERMBRIDGE_SANDBOX_DAYTONA_PUBLIC=true
-export TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT=5173
-export TERMBRIDGE_SANDBOX_DAYTONA_DELETE_ON_EXIT=true
+export TERMBRIDGE_SANDBOX_REPO=https://github.com/inline0/termbridge-test-app.git
+export TERMBRIDGE_SANDBOX_BRANCH=main
+export TERMBRIDGE_SANDBOX_PATH=termbridge-test-app
+export TERMBRIDGE_SANDBOX_NAME=termbridge-sandbox
+export TERMBRIDGE_SANDBOX_PUBLIC=true
+export TERMBRIDGE_SANDBOX_PREVIEW_PORT=5173
+export TERMBRIDGE_SANDBOX_DELETE_ON_EXIT=true
 ```
 
 Then run Termbridge as usual:
@@ -42,11 +42,11 @@ Direct mode runs the Termbridge server inside the sandbox and skips Cloudflare e
 
 ```bash
 export TERMBRIDGE_BACKEND=sandbox-daytona
-export TERMBRIDGE_SANDBOX_DAYTONA_DIRECT=true
-export TERMBRIDGE_SANDBOX_DAYTONA_SERVER_PORT=8080
+export TERMBRIDGE_SANDBOX_DIRECT=true
+export TERMBRIDGE_SANDBOX_SERVER_PORT=8080
 ```
 
-You can still enable preview by setting `TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT`; in direct mode it is forwarded as the server `--proxy` port.
+You can still enable preview by setting `TERMBRIDGE_SANDBOX_PREVIEW_PORT`; in direct mode it is forwarded as the server `--proxy` port.
 
 ## Repository cloning
 
@@ -56,23 +56,23 @@ Use these settings:
 
 | Variable | Purpose |
 | --- | --- |
-| `TERMBRIDGE_SANDBOX_DAYTONA_REPO` | Repo URL to clone (required) |
-| `TERMBRIDGE_SANDBOX_DAYTONA_BRANCH` | Branch to check out (optional) |
-| `TERMBRIDGE_SANDBOX_DAYTONA_PATH` | Path for the repo in the sandbox (optional) |
-| `TERMBRIDGE_SANDBOX_DAYTONA_NAME` | Sandbox name (optional) |
+| `TERMBRIDGE_SANDBOX_REPO` | Repo URL to clone (required) |
+| `TERMBRIDGE_SANDBOX_BRANCH` | Branch to check out (optional) |
+| `TERMBRIDGE_SANDBOX_PATH` | Path for the repo in the sandbox (optional) |
+| `TERMBRIDGE_SANDBOX_NAME` | Sandbox name (optional) |
 
-If `TERMBRIDGE_SANDBOX_DAYTONA_PATH` is not set, Termbridge derives it from the repo name.
+If `TERMBRIDGE_SANDBOX_PATH` is not set, Termbridge derives it from the repo name.
 
 ## Private repositories
 
 Provide git credentials when cloning private repos:
 
 ```bash
-export TERMBRIDGE_SANDBOX_DAYTONA_GIT_USERNAME=your_github_username
-export TERMBRIDGE_SANDBOX_DAYTONA_GIT_TOKEN=your_github_token
+export TERMBRIDGE_SANDBOX_GIT_USERNAME=your_github_username
+export TERMBRIDGE_SANDBOX_GIT_TOKEN=your_github_token
 ```
 
-`TERMBRIDGE_SANDBOX_DAYTONA_GIT_PASSWORD` is also supported and overrides the token if set.
+`TERMBRIDGE_SANDBOX_GIT_PASSWORD` is also supported and overrides the token if set.
 
 ## Coding agents
 
@@ -82,7 +82,7 @@ See the [Coding agents](/docs/sandboxes/coding-agents) guide for the full setup,
 
 ## Preview mode
 
-To show the preview view, set `TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT` to the port your dev server uses inside the sandbox.
+To show the preview view, set `TERMBRIDGE_SANDBOX_PREVIEW_PORT` to the port your dev server uses inside the sandbox.
 
 For Vite, make sure you bind to all interfaces:
 
@@ -96,8 +96,8 @@ Termbridge fetches the Daytona preview link and proxies it through the Termbridg
 
 | Variable | What it does |
 | --- | --- |
-| `TERMBRIDGE_SANDBOX_DAYTONA_PUBLIC=true` | Creates a public sandbox |
-| `TERMBRIDGE_SANDBOX_DAYTONA_PUBLIC=false` | Creates a private sandbox |
+| `TERMBRIDGE_SANDBOX_PUBLIC=true` | Creates a public sandbox |
+| `TERMBRIDGE_SANDBOX_PUBLIC=false` | Creates a private sandbox |
 
 For private sandboxes, Termbridge forwards the preview token automatically when proxying the preview.
 
@@ -106,14 +106,14 @@ For private sandboxes, Termbridge forwards the preview token automatically when 
 To delete sandboxes when Termbridge exits:
 
 ```bash
-export TERMBRIDGE_SANDBOX_DAYTONA_DELETE_ON_EXIT=true
+export TERMBRIDGE_SANDBOX_DELETE_ON_EXIT=true
 ```
 
 For short-lived or test sandboxes, use a prefix:
 
 ```bash
-export TERMBRIDGE_SANDBOX_DAYTONA_NAME=termbridge-test-$(date +%s)
-export TERMBRIDGE_SANDBOX_DAYTONA_DELETE_ON_EXIT=true
+export TERMBRIDGE_SANDBOX_NAME=termbridge-test-$(date +%s)
+export TERMBRIDGE_SANDBOX_DELETE_ON_EXIT=true
 ```
 
 This keeps sandbox usage under control and avoids disk quota issues.
@@ -138,11 +138,11 @@ You can also configure Daytona via flags:
 **Preview view is blank**
 - Ensure the dev server is running inside the sandbox.
 - Use `--host 0.0.0.0` so the preview port is reachable.
-- Confirm `TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT` matches the dev server port.
+- Confirm `TERMBRIDGE_SANDBOX_PREVIEW_PORT` matches the dev server port.
 
 **Sandbox creation fails with quota errors**
 - Delete old sandboxes in the Daytona dashboard.
-- Use `TERMBRIDGE_SANDBOX_DAYTONA_DELETE_ON_EXIT=true` for short-lived sessions.
+- Use `TERMBRIDGE_SANDBOX_DELETE_ON_EXIT=true` for short-lived sessions.
 
 **Repo clone fails**
 - Double-check repo URL, branch, and credentials.

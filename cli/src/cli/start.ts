@@ -35,13 +35,13 @@ export type StartOptions = {
   tunnelUrl?: string;
   publicUrl?: string;
   backend?: "tmux" | "sandbox-daytona";
-  sandboxDaytonaDirect?: boolean;
-  sandboxDaytonaRepo?: string;
-  sandboxDaytonaBranch?: string;
-  sandboxDaytonaPath?: string;
-  sandboxDaytonaName?: string;
-  sandboxDaytonaPreviewPort?: number;
-  sandboxDaytonaPublic?: boolean;
+  sandboxDirect?: boolean;
+  sandboxRepo?: string;
+  sandboxBranch?: string;
+  sandboxPath?: string;
+  sandboxName?: string;
+  sandboxPreviewPort?: number;
+  sandboxPublic?: boolean;
 };
 
 export type StartDeps = {
@@ -179,7 +179,7 @@ const defaultAgentEnvKeys = [
 ];
 
 const collectAgentEnv = (env: Record<string, string | undefined>) => {
-  const extraKeys = parseList(env.TERMBRIDGE_SANDBOX_DAYTONA_AGENT_ENV);
+  const extraKeys = parseList(env.TERMBRIDGE_SANDBOX_AGENT_ENV);
   const keys = new Set([...defaultAgentEnvKeys, ...extraKeys]);
   const entries = Array.from(keys)
     .map((key) => [key, env[key]])
@@ -196,12 +196,12 @@ const resolveAgentInstall = (
   autoInstallScripts: string[],
   hasAutoAgents: boolean
 ) => {
-  const installRaw = env.TERMBRIDGE_SANDBOX_DAYTONA_AGENT_INSTALL;
+  const installRaw = env.TERMBRIDGE_SANDBOX_AGENT_INSTALL;
   const enabled =
     typeof installRaw === "string"
       ? parseBoolean(installRaw)
       : hasAutoAgents || Object.keys(agentEnv).length > 0;
-  const packages = parseList(env.TERMBRIDGE_SANDBOX_DAYTONA_AGENT_PACKAGES);
+  const packages = parseList(env.TERMBRIDGE_SANDBOX_AGENT_PACKAGES);
   return {
     enabled,
     packages: packages.length > 0 ? packages : autoPackages.length > 0 ? autoPackages : defaultAgentPackages,
@@ -214,8 +214,8 @@ const resolveAgentAuth = (
   logger: Logger,
   autoSpecs: Array<{ source: string; destination?: string }> = []
 ) => {
-  const paths = parseList(env.TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTH_PATHS);
-  const maps = parseList(env.TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTH_MAPS);
+  const paths = parseList(env.TERMBRIDGE_SANDBOX_AGENT_AUTH_PATHS);
+  const maps = parseList(env.TERMBRIDGE_SANDBOX_AGENT_AUTH_MAPS);
   const specs: Array<{ source: string; destination?: string }> = [
     ...paths.map((source) => ({ source })),
     ...maps.flatMap((entry) => {
@@ -244,11 +244,11 @@ const resolveAgentAuth = (
 };
 
 const resolveAutoAgentNames = (env: Record<string, string | undefined>) => {
-  const explicit = parseList(env.TERMBRIDGE_SANDBOX_DAYTONA_AGENTS);
+  const explicit = parseList(env.TERMBRIDGE_SANDBOX_AGENTS);
   if (explicit.length > 0) {
     return explicit;
   }
-  const auto = parseBoolean(env.TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTO);
+  const auto = parseBoolean(env.TERMBRIDGE_SANDBOX_AGENT_AUTO);
   return auto ? ["all"] : [];
 };
 
@@ -354,7 +354,7 @@ export const startCommand = async (
   const env = processRef.env ?? {};
   const insecureCookie =
     env.TERMBRIDGE_INSECURE_COOKIE === "1" || env.TERMBRIDGE_INSECURE_COOKIE === "true";
-  const sandboxDaytonaDirect = options.sandboxDaytonaDirect ?? parseBoolean(env.TERMBRIDGE_SANDBOX_DAYTONA_DIRECT);
+  const sandboxDirect = options.sandboxDirect ?? parseBoolean(env.TERMBRIDGE_SANDBOX_DIRECT);
   const cookieSameSiteRaw = env.TERMBRIDGE_COOKIE_SAMESITE?.trim().toLowerCase();
   const cookieSameSite =
     cookieSameSiteRaw === "none"
@@ -363,7 +363,7 @@ export const startCommand = async (
         ? "Strict"
         : cookieSameSiteRaw === "lax"
           ? "Lax"
-          : sandboxDaytonaDirect && !insecureCookie
+          : sandboxDirect && !insecureCookie
             ? "None"
             : "Lax";
   const auth = (deps.createAuth ?? (() =>
@@ -384,65 +384,65 @@ export const startCommand = async (
   const autoAgents = resolveAutoAgents(autoAgentNames, logger);
   const agentInstall = resolveAgentInstall(env, agentEnv, autoAgents.packages, autoAgents.installScripts, autoAgents.agents.length > 0);
   const agentAuth = resolveAgentAuth(env, logger, autoAgents.authSpecs);
-  const sandboxDaytonaRepo =
-    options.sandboxDaytonaRepo ??
-    env.TERMBRIDGE_SANDBOX_DAYTONA_REPO ??
+  const sandboxRepo =
+    options.sandboxRepo ??
+    env.TERMBRIDGE_SANDBOX_REPO ??
     "https://github.com/inline0/termbridge-test-app.git";
-  const sandboxDaytonaPreviewPort =
-    options.sandboxDaytonaPreviewPort ?? parseOptionalNumber(env.TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT);
-  const sandboxDaytonaPublicEnv = env.TERMBRIDGE_SANDBOX_DAYTONA_PUBLIC;
-  const sandboxDaytonaPublicOverride =
-    options.sandboxDaytonaPublic ??
-    (sandboxDaytonaPublicEnv ? parseBoolean(sandboxDaytonaPublicEnv) : undefined);
-  const sandboxDaytonaPublic = sandboxDaytonaDirect
-    ? (sandboxDaytonaPublicOverride ?? true)
-    : (sandboxDaytonaPublicOverride ?? false);
-  const sandboxDaytonaDeleteOnExit = parseBoolean(env.TERMBRIDGE_SANDBOX_DAYTONA_DELETE_ON_EXIT);
-  const sandboxDaytonaConfig: SandboxDaytonaBackendOptions = {
+  const sandboxPreviewPort =
+    options.sandboxPreviewPort ?? parseOptionalNumber(env.TERMBRIDGE_SANDBOX_PREVIEW_PORT);
+  const sandboxPublicEnv = env.TERMBRIDGE_SANDBOX_PUBLIC;
+  const sandboxPublicOverride =
+    options.sandboxPublic ??
+    (sandboxPublicEnv ? parseBoolean(sandboxPublicEnv) : undefined);
+  const sandboxPublic = sandboxDirect
+    ? (sandboxPublicOverride ?? true)
+    : (sandboxPublicOverride ?? false);
+  const sandboxDeleteOnExit = parseBoolean(env.TERMBRIDGE_SANDBOX_DELETE_ON_EXIT);
+  const sandboxConfig: SandboxDaytonaBackendOptions = {
     apiKey: env.TERMBRIDGE_DAYTONA_API_KEY,
     apiUrl: env.TERMBRIDGE_DAYTONA_API_URL,
     target: env.TERMBRIDGE_DAYTONA_TARGET,
-    repoUrl: sandboxDaytonaRepo,
-    repoBranch: options.sandboxDaytonaBranch ?? env.TERMBRIDGE_SANDBOX_DAYTONA_BRANCH,
-    repoPath: options.sandboxDaytonaPath ?? env.TERMBRIDGE_SANDBOX_DAYTONA_PATH ?? deriveRepoPath(sandboxDaytonaRepo),
-    sandboxName: options.sandboxDaytonaName ?? env.TERMBRIDGE_SANDBOX_DAYTONA_NAME,
-    public: sandboxDaytonaPublic,
-    deleteOnExit: sandboxDaytonaDeleteOnExit,
-    gitUsername: env.TERMBRIDGE_SANDBOX_DAYTONA_GIT_USERNAME,
-    gitPassword: env.TERMBRIDGE_SANDBOX_DAYTONA_GIT_PASSWORD ?? env.TERMBRIDGE_SANDBOX_DAYTONA_GIT_TOKEN,
+    repoUrl: sandboxRepo,
+    repoBranch: options.sandboxBranch ?? env.TERMBRIDGE_SANDBOX_BRANCH,
+    repoPath: options.sandboxPath ?? env.TERMBRIDGE_SANDBOX_PATH ?? deriveRepoPath(sandboxRepo),
+    sandboxName: options.sandboxName ?? env.TERMBRIDGE_SANDBOX_NAME,
+    public: sandboxPublic,
+    deleteOnExit: sandboxDeleteOnExit,
+    gitUsername: env.TERMBRIDGE_SANDBOX_GIT_USERNAME,
+    gitPassword: env.TERMBRIDGE_SANDBOX_GIT_PASSWORD ?? env.TERMBRIDGE_SANDBOX_GIT_TOKEN,
     agentEnv,
     agentInstall,
     agentAuth,
     logger
   };
 
-  if (backendMode === "sandbox-daytona" && sandboxDaytonaDirect) {
+  if (backendMode === "sandbox-daytona" && sandboxDirect) {
     const serverPort =
-      options.port ?? parseOptionalNumber(env.TERMBRIDGE_SANDBOX_DAYTONA_SERVER_PORT) ?? 8080;
-    const proxyPort = options.proxy ?? sandboxDaytonaPreviewPort;
+      options.port ?? parseOptionalNumber(env.TERMBRIDGE_SANDBOX_SERVER_PORT) ?? 8080;
+    const proxyPort = options.proxy ?? sandboxPreviewPort;
     const localCliPackPath = packLocalCli(logger);
     const sandboxProvider = (deps.createSandboxDaytonaProvider ?? createSandboxDaytonaServerProvider)({
-      apiKey: sandboxDaytonaConfig.apiKey,
-      apiUrl: sandboxDaytonaConfig.apiUrl,
-      target: sandboxDaytonaConfig.target,
+      apiKey: sandboxConfig.apiKey,
+      apiUrl: sandboxConfig.apiUrl,
+      target: sandboxConfig.target,
       logger
     });
 
     const result = await sandboxProvider.start({
-      repoUrl: sandboxDaytonaConfig.repoUrl,
-      repoBranch: sandboxDaytonaConfig.repoBranch,
-      repoPath: sandboxDaytonaConfig.repoPath,
-      sandboxName: sandboxDaytonaConfig.sandboxName,
-      public: sandboxDaytonaConfig.public,
-      deleteOnExit: sandboxDaytonaConfig.deleteOnExit,
-      gitUsername: sandboxDaytonaConfig.gitUsername,
-      gitPassword: sandboxDaytonaConfig.gitPassword,
-      agentEnv: sandboxDaytonaConfig.agentEnv,
-      agentInstall: sandboxDaytonaConfig.agentInstall,
-      agentAuth: sandboxDaytonaConfig.agentAuth,
+      repoUrl: sandboxConfig.repoUrl,
+      repoBranch: sandboxConfig.repoBranch,
+      repoPath: sandboxConfig.repoPath,
+      sandboxName: sandboxConfig.sandboxName,
+      public: sandboxConfig.public,
+      deleteOnExit: sandboxConfig.deleteOnExit,
+      gitUsername: sandboxConfig.gitUsername,
+      gitPassword: sandboxConfig.gitPassword,
+      agentEnv: sandboxConfig.agentEnv,
+      agentInstall: sandboxConfig.agentInstall,
+      agentAuth: sandboxConfig.agentAuth,
       localCliPackPath,
       serverPort,
-      previewPort: sandboxDaytonaPreviewPort,
+      previewPort: sandboxPreviewPort,
       proxyPort,
       sessionName: options.session,
       killOnExit: options.killOnExit,
@@ -472,7 +472,7 @@ export const startCommand = async (
   const tunnelMode = resolveTunnelMode(env.TERMBRIDGE_TUNNEL ?? options.tunnel);
   const terminalBackend =
     backendMode === "sandbox-daytona"
-      ? (deps.createSandboxDaytonaBackend ?? createSandboxDaytonaBackend)(sandboxDaytonaConfig)
+      ? (deps.createSandboxDaytonaBackend ?? createSandboxDaytonaBackend)(sandboxConfig)
       : (deps.createTerminalBackend ?? (() => createTmuxBackend({ defaultCwd: tmuxCwd })))();
   const terminalRegistry = (deps.createTerminalRegistry ?? (() => createTerminalRegistry()))();
   const tunnelProvider =
@@ -499,8 +499,8 @@ export const startCommand = async (
     publicUrl = normalizeExternalUrl(publicUrlOverride);
   }
 
-  if (!devProxyUrl && backendMode === "sandbox-daytona" && sandboxDaytonaPreviewPort) {
-    const previewInfo = await terminalBackend.getPreviewUrl?.(sandboxDaytonaPreviewPort);
+  if (!devProxyUrl && backendMode === "sandbox-daytona" && sandboxPreviewPort) {
+    const previewInfo = await terminalBackend.getPreviewUrl?.(sandboxPreviewPort);
     if (previewInfo) {
       if (typeof previewInfo === "string") {
         devProxyUrl = previewInfo;

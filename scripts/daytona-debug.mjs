@@ -71,7 +71,7 @@ const daytonaEnv = parseEnvFile(envPath);
 const direct = args.includes("--direct");
 const agent = getArg("--agent");
 const agents = getArg("--agents");
-const previewPort = getArg("--preview-port") ?? daytonaEnv.TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT ?? "5173";
+const previewPort = getArg("--preview-port") ?? daytonaEnv.TERMBRIDGE_SANDBOX_PREVIEW_PORT ?? "5173";
 const sandboxName = `termbridge-debug-${Date.now()}`;
 
 const env = {
@@ -79,29 +79,29 @@ const env = {
   ...daytonaEnv,
   NODE_ENV: "production",
   TERMBRIDGE_BACKEND: "sandbox-daytona",
-  TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT: previewPort,
-  TERMBRIDGE_SANDBOX_DAYTONA_DELETE_ON_EXIT: "true",
-  TERMBRIDGE_SANDBOX_DAYTONA_NAME: sandboxName
+  TERMBRIDGE_SANDBOX_PREVIEW_PORT: previewPort,
+  TERMBRIDGE_SANDBOX_DELETE_ON_EXIT: "true",
+  TERMBRIDGE_SANDBOX_NAME: sandboxName
 };
 
 if (direct) {
-  env.TERMBRIDGE_SANDBOX_DAYTONA_DIRECT = "true";
+  env.TERMBRIDGE_SANDBOX_DIRECT = "true";
 }
 
 if (agent) {
-  env.TERMBRIDGE_SANDBOX_DAYTONA_AGENTS = agent;
+  env.TERMBRIDGE_SANDBOX_AGENTS = agent;
 } else if (agents) {
-  env.TERMBRIDGE_SANDBOX_DAYTONA_AGENTS = agents;
+  env.TERMBRIDGE_SANDBOX_AGENTS = agents;
 } else {
-  env.TERMBRIDGE_SANDBOX_DAYTONA_AGENTS = env.TERMBRIDGE_SANDBOX_DAYTONA_AGENTS ?? "claude,codex,opencode";
+  env.TERMBRIDGE_SANDBOX_AGENTS = env.TERMBRIDGE_SANDBOX_AGENTS ?? "claude,codex,opencode";
 }
 
 console.log("Starting Daytona sandbox debug session");
 console.log(`- Sandbox: ${sandboxName}`);
 console.log(`- Direct mode: ${direct ? "on" : "off"}`);
-console.log(`- Agents: ${env.TERMBRIDGE_SANDBOX_DAYTONA_AGENTS ?? "(none)"}`);
-console.log(`- Preview port: ${env.TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT}`);
-console.log(`- Repo: ${env.TERMBRIDGE_SANDBOX_DAYTONA_REPO ?? "(from env)"}`);
+console.log(`- Agents: ${env.TERMBRIDGE_SANDBOX_AGENTS ?? "(none)"}`);
+console.log(`- Preview port: ${env.TERMBRIDGE_SANDBOX_PREVIEW_PORT}`);
+console.log(`- Repo: ${env.TERMBRIDGE_SANDBOX_REPO ?? "(from env)"}`);
 
 const child = spawn("node", [cliDist], {
   cwd: testAppDir,

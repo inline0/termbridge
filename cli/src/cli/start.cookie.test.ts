@@ -110,14 +110,14 @@ describe("startCommand cookie sameSite", () => {
   });
 
   it("defaults to SameSite=None for daytona direct", async () => {
-    await runStart({}, { sandboxDaytonaDirect: true });
+    await runStart({}, { sandboxDirect: true });
     expect(authMocks.createAuth).toHaveBeenCalledWith(
       expect.objectContaining({ cookieSameSite: "None" })
     );
   });
 
   it("defaults to SameSite=Lax otherwise", async () => {
-    await runStart({}, { sandboxDaytonaDirect: false });
+    await runStart({}, { sandboxDirect: false });
     expect(authMocks.createAuth).toHaveBeenCalledWith(
       expect.objectContaining({ cookieSameSite: "Lax" })
     );

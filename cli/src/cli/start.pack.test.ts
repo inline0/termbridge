@@ -51,7 +51,7 @@ describe("packLocalCli", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDaytonaDirect: true
+        sandboxDirect: true
       },
       {
         createSandboxDaytonaProvider: () => ({ start }),
@@ -79,7 +79,7 @@ describe("packLocalCli", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDaytonaDirect: true
+        sandboxDirect: true
       },
       {
         createSandboxDaytonaProvider: () => ({ start }),
@@ -107,7 +107,7 @@ describe("packLocalCli", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDaytonaDirect: true
+        sandboxDirect: true
       },
       {
         createSandboxDaytonaProvider: () => ({ start }),
@@ -135,7 +135,7 @@ describe("packLocalCli", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDaytonaDirect: true
+        sandboxDirect: true
       },
       {
         createSandboxDaytonaProvider: () => ({ start }),
@@ -162,7 +162,7 @@ describe("packLocalCli", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDaytonaDirect: true
+        sandboxDirect: true
       },
       {
         createSandboxDaytonaProvider: () => ({ start }),

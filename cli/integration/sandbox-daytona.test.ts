@@ -73,11 +73,11 @@ const parseEnvFile = (path: string) => {
 
 const daytonaEnv = parseEnvFile(envPath);
 const daytonaRepo =
-  daytonaEnv.TERMBRIDGE_SANDBOX_DAYTONA_REPO ?? "https://github.com/inline0/termbridge-test-app.git";
+  daytonaEnv.TERMBRIDGE_SANDBOX_REPO ?? "https://github.com/inline0/termbridge-test-app.git";
 const requiresGitAuth = daytonaRepo.includes("github.com/inline0/termbridge-test-app");
 const hasGitAuth =
-  Boolean(daytonaEnv.TERMBRIDGE_SANDBOX_DAYTONA_GIT_TOKEN ?? daytonaEnv.TERMBRIDGE_SANDBOX_DAYTONA_GIT_PASSWORD) &&
-  Boolean(daytonaEnv.TERMBRIDGE_SANDBOX_DAYTONA_GIT_USERNAME);
+  Boolean(daytonaEnv.TERMBRIDGE_SANDBOX_GIT_TOKEN ?? daytonaEnv.TERMBRIDGE_SANDBOX_GIT_PASSWORD) &&
+  Boolean(daytonaEnv.TERMBRIDGE_SANDBOX_GIT_USERNAME);
 const hasDaytonaConfig =
   (daytonaEnv.TERMBRIDGE_E2E_DAYTONA === "1" || daytonaEnv.TERMBRIDGE_E2E_DAYTONA === "true") &&
   Boolean(daytonaEnv.TERMBRIDGE_DAYTONA_API_KEY) &&
@@ -220,11 +220,11 @@ describeDaytonaTunnel("daytona integration (tunnel)", () => {
       ...process.env,
       NODE_ENV: "production",
       TERMBRIDGE_BACKEND: "sandbox-daytona",
-      TERMBRIDGE_SANDBOX_DAYTONA_DELETE_ON_EXIT: "true",
-      TERMBRIDGE_SANDBOX_DAYTONA_NAME: sandboxName,
+      TERMBRIDGE_SANDBOX_DELETE_ON_EXIT: "true",
+      TERMBRIDGE_SANDBOX_NAME: sandboxName,
       ...(shouldTestAgents
         ? {
-            TERMBRIDGE_SANDBOX_DAYTONA_AGENTS: "claude,codex,opencode"
+            TERMBRIDGE_SANDBOX_AGENTS: "claude,codex,opencode"
           }
         : {})
     };
@@ -572,13 +572,13 @@ describeDaytonaDirect("daytona integration (direct)", () => {
       ...process.env,
       NODE_ENV: "production",
       TERMBRIDGE_BACKEND: "sandbox-daytona",
-      TERMBRIDGE_SANDBOX_DAYTONA_DELETE_ON_EXIT: "true",
-      TERMBRIDGE_SANDBOX_DAYTONA_NAME: sandboxName,
-      TERMBRIDGE_SANDBOX_DAYTONA_DIRECT: "true",
-      TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT: daytonaEnv.TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT ?? "5173",
+      TERMBRIDGE_SANDBOX_DELETE_ON_EXIT: "true",
+      TERMBRIDGE_SANDBOX_NAME: sandboxName,
+      TERMBRIDGE_SANDBOX_DIRECT: "true",
+      TERMBRIDGE_SANDBOX_PREVIEW_PORT: daytonaEnv.TERMBRIDGE_SANDBOX_PREVIEW_PORT ?? "5173",
       ...(shouldTestAgents
         ? {
-            TERMBRIDGE_SANDBOX_DAYTONA_AGENTS: "claude,codex,opencode"
+            TERMBRIDGE_SANDBOX_AGENTS: "claude,codex,opencode"
           }
         : {})
     };

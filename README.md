@@ -119,14 +119,14 @@ Instead of running terminals locally, you can run them in [Daytona](https://dayt
 # Required
 export TERMBRIDGE_BACKEND=sandbox-daytona
 export TERMBRIDGE_DAYTONA_API_KEY=your_api_key
-export TERMBRIDGE_SANDBOX_DAYTONA_REPO=https://github.com/you/your-repo.git
+export TERMBRIDGE_SANDBOX_REPO=https://github.com/you/your-repo.git
 
 # Optional
 export TERMBRIDGE_DAYTONA_API_URL=https://app.daytona.io/api
-export TERMBRIDGE_SANDBOX_DAYTONA_BRANCH=main
-export TERMBRIDGE_SANDBOX_DAYTONA_NAME=my-sandbox
-export TERMBRIDGE_SANDBOX_DAYTONA_PUBLIC=true
-export TERMBRIDGE_SANDBOX_DAYTONA_DELETE_ON_EXIT=true
+export TERMBRIDGE_SANDBOX_BRANCH=main
+export TERMBRIDGE_SANDBOX_NAME=my-sandbox
+export TERMBRIDGE_SANDBOX_PUBLIC=true
+export TERMBRIDGE_SANDBOX_DELETE_ON_EXIT=true
 ```
 
 Then run:
@@ -143,25 +143,25 @@ termbridge
 | `TERMBRIDGE_DAYTONA_API_KEY` | Your Daytona API key (required) |
 | `TERMBRIDGE_DAYTONA_API_URL` | API endpoint (default: `https://app.daytona.io/api`) |
 | **Repository** | |
-| `TERMBRIDGE_SANDBOX_DAYTONA_REPO` | Git repo URL to clone (required) |
-| `TERMBRIDGE_SANDBOX_DAYTONA_BRANCH` | Branch to checkout |
-| `TERMBRIDGE_SANDBOX_DAYTONA_PATH` | Path inside sandbox (default: derived from repo name) |
+| `TERMBRIDGE_SANDBOX_REPO` | Git repo URL to clone (required) |
+| `TERMBRIDGE_SANDBOX_BRANCH` | Branch to checkout |
+| `TERMBRIDGE_SANDBOX_PATH` | Path inside sandbox (default: derived from repo name) |
 | **Sandbox Settings** | |
-| `TERMBRIDGE_SANDBOX_DAYTONA_NAME` | Name for the sandbox |
-| `TERMBRIDGE_SANDBOX_DAYTONA_PUBLIC` | Make sandbox publicly accessible (`true`/`false`) |
-| `TERMBRIDGE_SANDBOX_DAYTONA_DELETE_ON_EXIT` | Delete sandbox when termbridge exits |
-| `TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT` | Port for preview proxy (e.g., `5173`) |
+| `TERMBRIDGE_SANDBOX_NAME` | Name for the sandbox |
+| `TERMBRIDGE_SANDBOX_PUBLIC` | Make sandbox publicly accessible (`true`/`false`) |
+| `TERMBRIDGE_SANDBOX_DELETE_ON_EXIT` | Delete sandbox when termbridge exits |
+| `TERMBRIDGE_SANDBOX_PREVIEW_PORT` | Port for preview proxy (e.g., `5173`) |
 | **Git Auth** (for private repos) | |
-| `TERMBRIDGE_SANDBOX_DAYTONA_GIT_USERNAME` | Git username |
-| `TERMBRIDGE_SANDBOX_DAYTONA_GIT_TOKEN` | Git token or password |
+| `TERMBRIDGE_SANDBOX_GIT_USERNAME` | Git username |
+| `TERMBRIDGE_SANDBOX_GIT_TOKEN` | Git token or password |
 
 ### Direct Mode (No Tunnel)
 
 Run the Termbridge server **inside** the sandbox instead of locally. This skips Cloudflare and uses Daytona's built-in preview URLs:
 
 ```bash
-export TERMBRIDGE_SANDBOX_DAYTONA_DIRECT=true
-export TERMBRIDGE_SANDBOX_DAYTONA_SERVER_PORT=8080  # optional
+export TERMBRIDGE_SANDBOX_DIRECT=true
+export TERMBRIDGE_SANDBOX_SERVER_PORT=8080  # optional
 ```
 
 ---
@@ -177,7 +177,7 @@ Termbridge can auto-install and configure coding agents in Daytona sandboxes:
 ### Auto Setup
 
 ```bash
-export TERMBRIDGE_SANDBOX_DAYTONA_AGENTS=claude,codex,opencode
+export TERMBRIDGE_SANDBOX_AGENTS=claude,codex,opencode
 ```
 
 This will:
@@ -188,10 +188,10 @@ This will:
 
 | Variable | Description |
 |----------|-------------|
-| `TERMBRIDGE_SANDBOX_DAYTONA_AGENTS` | Agents to install: `claude`, `codex`, `opencode`, or `all` |
-| `TERMBRIDGE_SANDBOX_DAYTONA_AGENT_ENV` | Extra env vars to pass to agents (comma-separated keys) |
-| `TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTH_PATHS` | Additional auth files to sync |
-| `TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTH_MAPS` | Auth file mappings (`local=remote`) |
+| `TERMBRIDGE_SANDBOX_AGENTS` | Agents to install: `claude`, `codex`, `opencode`, or `all` |
+| `TERMBRIDGE_SANDBOX_AGENT_ENV` | Extra env vars to pass to agents (comma-separated keys) |
+| `TERMBRIDGE_SANDBOX_AGENT_AUTH_PATHS` | Additional auth files to sync |
+| `TERMBRIDGE_SANDBOX_AGENT_AUTH_MAPS` | Auth file mappings (`local=remote`) |
 
 ---
 

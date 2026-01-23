@@ -128,30 +128,30 @@ termbridge/
 
 | Variable | Description |
 |----------|-------------|
-| `TERMBRIDGE_SANDBOX_DAYTONA_REPO` | Git repo URL to clone |
-| `TERMBRIDGE_SANDBOX_DAYTONA_BRANCH` | Git branch |
-| `TERMBRIDGE_SANDBOX_DAYTONA_PATH` | Path inside sandbox |
-| `TERMBRIDGE_SANDBOX_DAYTONA_NAME` | Sandbox name |
-| `TERMBRIDGE_SANDBOX_DAYTONA_PUBLIC=true` | Make sandbox publicly accessible |
-| `TERMBRIDGE_SANDBOX_DAYTONA_DELETE_ON_EXIT=true` | Delete sandbox on exit |
-| `TERMBRIDGE_SANDBOX_DAYTONA_DIRECT=true` | Run server inside sandbox |
-| `TERMBRIDGE_SANDBOX_DAYTONA_SERVER_PORT` | Server port in direct mode |
-| `TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT` | Preview port |
-| `TERMBRIDGE_SANDBOX_DAYTONA_GIT_USERNAME` | Git username (private repos) |
-| `TERMBRIDGE_SANDBOX_DAYTONA_GIT_TOKEN` | Git token (private repos) |
-| `TERMBRIDGE_SANDBOX_DAYTONA_GIT_PASSWORD` | Git password (alias for token) |
+| `TERMBRIDGE_SANDBOX_REPO` | Git repo URL to clone |
+| `TERMBRIDGE_SANDBOX_BRANCH` | Git branch |
+| `TERMBRIDGE_SANDBOX_PATH` | Path inside sandbox |
+| `TERMBRIDGE_SANDBOX_NAME` | Sandbox name |
+| `TERMBRIDGE_SANDBOX_PUBLIC=true` | Make sandbox publicly accessible |
+| `TERMBRIDGE_SANDBOX_DELETE_ON_EXIT=true` | Delete sandbox on exit |
+| `TERMBRIDGE_SANDBOX_DIRECT=true` | Run server inside sandbox |
+| `TERMBRIDGE_SANDBOX_SERVER_PORT` | Server port in direct mode |
+| `TERMBRIDGE_SANDBOX_PREVIEW_PORT` | Preview port |
+| `TERMBRIDGE_SANDBOX_GIT_USERNAME` | Git username (private repos) |
+| `TERMBRIDGE_SANDBOX_GIT_TOKEN` | Git token (private repos) |
+| `TERMBRIDGE_SANDBOX_GIT_PASSWORD` | Git password (alias for token) |
 
 ### Agent Configuration
 
 | Variable | Description |
 |----------|-------------|
-| `TERMBRIDGE_SANDBOX_DAYTONA_AGENTS` | Agents to install: `claude`, `codex`, `opencode`, or `all` |
-| `TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTO=true` | Auto-detect agents from local auth |
-| `TERMBRIDGE_SANDBOX_DAYTONA_AGENT_INSTALL=true` | Enable agent installation |
-| `TERMBRIDGE_SANDBOX_DAYTONA_AGENT_PACKAGES` | NPM packages to install (comma-separated) |
-| `TERMBRIDGE_SANDBOX_DAYTONA_AGENT_ENV` | Env var keys to pass to agents |
-| `TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTH_PATHS` | Auth file paths to sync |
-| `TERMBRIDGE_SANDBOX_DAYTONA_AGENT_AUTH_MAPS` | Auth file mappings (`local=remote`) |
+| `TERMBRIDGE_SANDBOX_AGENTS` | Agents to install: `claude`, `codex`, `opencode`, or `all` |
+| `TERMBRIDGE_SANDBOX_AGENT_AUTO=true` | Auto-detect agents from local auth |
+| `TERMBRIDGE_SANDBOX_AGENT_INSTALL=true` | Enable agent installation |
+| `TERMBRIDGE_SANDBOX_AGENT_PACKAGES` | NPM packages to install (comma-separated) |
+| `TERMBRIDGE_SANDBOX_AGENT_ENV` | Env var keys to pass to agents |
+| `TERMBRIDGE_SANDBOX_AGENT_AUTH_PATHS` | Auth file paths to sync |
+| `TERMBRIDGE_SANDBOX_AGENT_AUTH_MAPS` | Auth file mappings (`local=remote`) |
 
 ### Development
 
@@ -207,10 +207,10 @@ The test app's `.env` file contains:
 TERMBRIDGE_DAYTONA_API_KEY=...
 TERMBRIDGE_DAYTONA_API_URL=https://app.daytona.io/api
 TERMBRIDGE_BACKEND=sandbox-daytona
-TERMBRIDGE_SANDBOX_DAYTONA_PUBLIC=true
-TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT=5173
-TERMBRIDGE_SANDBOX_DAYTONA_GIT_USERNAME=...
-TERMBRIDGE_SANDBOX_DAYTONA_GIT_TOKEN=...
+TERMBRIDGE_SANDBOX_PUBLIC=true
+TERMBRIDGE_SANDBOX_PREVIEW_PORT=5173
+TERMBRIDGE_SANDBOX_GIT_USERNAME=...
+TERMBRIDGE_SANDBOX_GIT_TOKEN=...
 TERMBRIDGE_E2E_DAYTONA=1
 ```
 

@@ -28,18 +28,18 @@ describe("parseArgs", () => {
       "https://public.example",
       "--backend",
       "sandbox-daytona",
-      "--sandbox-daytona-direct",
-      "--sandbox-daytona-repo",
+      "--sandbox-direct",
+      "--sandbox-repo",
       "https://github.com/inline0/termbridge-test-app.git",
-      "--sandbox-daytona-branch",
+      "--sandbox-branch",
       "main",
-      "--sandbox-daytona-path",
+      "--sandbox-path",
       "termbridge-test-app",
-      "--sandbox-daytona-name",
+      "--sandbox-name",
       "termbridge-sandbox",
-      "--sandbox-daytona-preview-port",
+      "--sandbox-preview-port",
       "5173",
-      "--sandbox-daytona-public"
+      "--sandbox-public"
     ]);
 
     expect(parsed.options.port).toBe(3000);
@@ -51,13 +51,13 @@ describe("parseArgs", () => {
     expect(parsed.options.tunnel).toBe("none");
     expect(parsed.options.publicUrl).toBe("https://public.example");
     expect(parsed.options.backend).toBe("sandbox-daytona");
-    expect(parsed.options.sandboxDaytonaDirect).toBe(true);
-    expect(parsed.options.sandboxDaytonaRepo).toBe("https://github.com/inline0/termbridge-test-app.git");
-    expect(parsed.options.sandboxDaytonaBranch).toBe("main");
-    expect(parsed.options.sandboxDaytonaPath).toBe("termbridge-test-app");
-    expect(parsed.options.sandboxDaytonaName).toBe("termbridge-sandbox");
-    expect(parsed.options.sandboxDaytonaPreviewPort).toBe(5173);
-    expect(parsed.options.sandboxDaytonaPublic).toBe(true);
+    expect(parsed.options.sandboxDirect).toBe(true);
+    expect(parsed.options.sandboxRepo).toBe("https://github.com/inline0/termbridge-test-app.git");
+    expect(parsed.options.sandboxBranch).toBe("main");
+    expect(parsed.options.sandboxPath).toBe("termbridge-test-app");
+    expect(parsed.options.sandboxName).toBe("termbridge-sandbox");
+    expect(parsed.options.sandboxPreviewPort).toBe(5173);
+    expect(parsed.options.sandboxPublic).toBe(true);
   });
 
   it("supports help", () => {
@@ -105,16 +105,16 @@ describe("parseArgs", () => {
       .toThrow("missing backend");
     expect(() => parseArgs(["--backend", "invalid"]))
       .toThrow("invalid backend");
-    expect(() => parseArgs(["--sandbox-daytona-repo"]))
-      .toThrow("missing sandbox daytona repo");
-    expect(() => parseArgs(["--sandbox-daytona-branch"]))
-      .toThrow("missing sandbox daytona branch");
-    expect(() => parseArgs(["--sandbox-daytona-path"]))
-      .toThrow("missing sandbox daytona path");
-    expect(() => parseArgs(["--sandbox-daytona-name"]))
-      .toThrow("missing sandbox daytona name");
-    expect(() => parseArgs(["--sandbox-daytona-preview-port"]))
-      .toThrow("missing sandbox daytona preview port");
+    expect(() => parseArgs(["--sandbox-repo"]))
+      .toThrow("missing sandbox repo");
+    expect(() => parseArgs(["--sandbox-branch"]))
+      .toThrow("missing sandbox branch");
+    expect(() => parseArgs(["--sandbox-path"]))
+      .toThrow("missing sandbox path");
+    expect(() => parseArgs(["--sandbox-name"]))
+      .toThrow("missing sandbox name");
+    expect(() => parseArgs(["--sandbox-preview-port"]))
+      .toThrow("missing sandbox preview port");
     expect(() => parseArgs(["--unknown"])).toThrow("unknown option");
   });
 
