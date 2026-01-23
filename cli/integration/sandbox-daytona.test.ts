@@ -73,14 +73,14 @@ const parseEnvFile = (path: string) => {
 
 const daytonaEnv = parseEnvFile(envPath);
 const daytonaRepo =
-  daytonaEnv.TERMBRIDGE_DAYTONA_REPO ?? "https://github.com/inline0/termbridge-test-app.git";
+  daytonaEnv.TERMBRIDGE_SANDBOX_DAYTONA_REPO ?? "https://github.com/inline0/termbridge-test-app.git";
 const requiresGitAuth = daytonaRepo.includes("github.com/inline0/termbridge-test-app");
 const hasGitAuth =
-  Boolean(daytonaEnv.TERMBRIDGE_DAYTONA_GIT_TOKEN ?? daytonaEnv.TERMBRIDGE_DAYTONA_GIT_PASSWORD) &&
-  Boolean(daytonaEnv.TERMBRIDGE_DAYTONA_GIT_USERNAME);
+  Boolean(daytonaEnv.TERMBRIDGE_SANDBOX_DAYTONA_GIT_TOKEN ?? daytonaEnv.TERMBRIDGE_SANDBOX_DAYTONA_GIT_PASSWORD) &&
+  Boolean(daytonaEnv.TERMBRIDGE_SANDBOX_DAYTONA_GIT_USERNAME);
 const hasDaytonaConfig =
   (daytonaEnv.TERMBRIDGE_E2E_DAYTONA === "1" || daytonaEnv.TERMBRIDGE_E2E_DAYTONA === "true") &&
-  Boolean(daytonaEnv.DAYTONA_API_KEY) &&
+  Boolean(daytonaEnv.TERMBRIDGE_DAYTONA_API_KEY) &&
   (!requiresGitAuth || hasGitAuth);
 
 if (process.env.TERMBRIDGE_TEST_DEBUG) {
@@ -113,12 +113,12 @@ const waitForMatch = (
 const sandboxPrefix = "termbridge-test-";
 
 const createDaytonaClient = () => {
-  const apiKey = process.env.DAYTONA_API_KEY ?? daytonaEnv.DAYTONA_API_KEY;
-  const apiUrl = process.env.DAYTONA_API_URL ?? daytonaEnv.DAYTONA_API_URL;
-  const target = process.env.DAYTONA_TARGET ?? daytonaEnv.DAYTONA_TARGET;
+  const apiKey = process.env.TERMBRIDGE_DAYTONA_API_KEY ?? daytonaEnv.TERMBRIDGE_DAYTONA_API_KEY;
+  const apiUrl = process.env.TERMBRIDGE_DAYTONA_API_URL ?? daytonaEnv.TERMBRIDGE_DAYTONA_API_URL;
+  const target = process.env.TERMBRIDGE_DAYTONA_TARGET ?? daytonaEnv.TERMBRIDGE_DAYTONA_TARGET;
 
   if (!apiKey) {
-    throw new Error("DAYTONA_API_KEY is required for cleanup");
+    throw new Error("TERMBRIDGE_DAYTONA_API_KEY is required for cleanup");
   }
 
   return new Daytona({ apiKey, apiUrl, target });
@@ -219,11 +219,12 @@ describeDaytonaTunnel("daytona integration (tunnel)", () => {
     const env = {
       ...process.env,
       NODE_ENV: "production",
-      TERMBRIDGE_DAYTONA_DELETE_ON_EXIT: "true",
-      TERMBRIDGE_DAYTONA_NAME: sandboxName,
+      TERMBRIDGE_BACKEND: "sandbox-daytona",
+      TERMBRIDGE_SANDBOX_DAYTONA_DELETE_ON_EXIT: "true",
+      TERMBRIDGE_SANDBOX_DAYTONA_NAME: sandboxName,
       ...(shouldTestAgents
         ? {
-            TERMBRIDGE_DAYTONA_AGENTS: "claude,codex,opencode"
+            TERMBRIDGE_SANDBOX_DAYTONA_AGENTS: "claude,codex,opencode"
           }
         : {})
     };
@@ -570,13 +571,14 @@ describeDaytonaDirect("daytona integration (direct)", () => {
     const env = {
       ...process.env,
       NODE_ENV: "production",
-      TERMBRIDGE_DAYTONA_DELETE_ON_EXIT: "true",
-      TERMBRIDGE_DAYTONA_NAME: sandboxName,
-      TERMBRIDGE_DAYTONA_DIRECT: "true",
-      TERMBRIDGE_DAYTONA_PREVIEW_PORT: daytonaEnv.TERMBRIDGE_DAYTONA_PREVIEW_PORT ?? "5173",
+      TERMBRIDGE_BACKEND: "sandbox-daytona",
+      TERMBRIDGE_SANDBOX_DAYTONA_DELETE_ON_EXIT: "true",
+      TERMBRIDGE_SANDBOX_DAYTONA_NAME: sandboxName,
+      TERMBRIDGE_SANDBOX_DAYTONA_DIRECT: "true",
+      TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT: daytonaEnv.TERMBRIDGE_SANDBOX_DAYTONA_PREVIEW_PORT ?? "5173",
       ...(shouldTestAgents
         ? {
-            TERMBRIDGE_DAYTONA_AGENTS: "claude,codex,opencode"
+            TERMBRIDGE_SANDBOX_DAYTONA_AGENTS: "claude,codex,opencode"
           }
         : {})
     };
