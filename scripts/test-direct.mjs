@@ -35,7 +35,7 @@ console.log(`- Working dir: ${testAppDir}`);
 console.log(`- Sandbox: ${sandboxName}`);
 console.log("");
 
-const child = spawn("node", [distBin, "--no-qr"], {
+const child = spawn("node", [distBin], {
   cwd: testAppDir,
   env,
   stdio: "inherit",
