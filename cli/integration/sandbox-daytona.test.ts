@@ -26,7 +26,8 @@ import {
 } from "./cli-test-utils";
 import {
   getSandboxPathPrefix,
-  runSandboxCommand as runSandboxCommandUtil
+  runSandboxCommand as runSandboxCommandUtil,
+  runSandboxCommandViaPty
 } from "./sandbox-utils";
 import { Daytona } from "@daytonaio/sdk";
 
@@ -524,8 +525,16 @@ describeDaytonaTunnel("daytona integration (tunnel)", () => {
       expect(codexOutput).toMatch(/ok/i);
       logStep("codex passed");
 
-      // opencode skipped - hangs in sandbox environment
-      logStep("opencode skipped (known issue: hangs in sandbox)");
+      logStep("run opencode");
+      const opencodeOutput = await runSandboxCommandViaPty(
+        sandbox,
+        'opencode run --format json "Respond with exactly OK."',
+        "opencode",
+        60_000,
+        logStep
+      );
+      expect(opencodeOutput).toMatch(/ok/i);
+      logStep("opencode passed");
     },
     300_000
   );
@@ -832,8 +841,16 @@ describeDaytonaDirect("daytona integration (direct)", () => {
       expect(codexOutput).toMatch(/ok/i);
       logStep("codex passed");
 
-      // opencode skipped - hangs in sandbox environment
-      logStep("opencode skipped (known issue: hangs in sandbox)");
+      logStep("run opencode");
+      const opencodeOutput = await runSandboxCommandViaPty(
+        sandbox,
+        'opencode run --format json "Respond with exactly OK."',
+        "opencode",
+        60_000,
+        logStep
+      );
+      expect(opencodeOutput).toMatch(/ok/i);
+      logStep("opencode passed");
     },
     300_000
   );

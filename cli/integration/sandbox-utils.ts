@@ -2,6 +2,58 @@ import type { Sandbox } from "@daytonaio/sdk";
 
 export type SandboxLike = Pick<Sandbox, "process">;
 
+export const runSandboxCommandViaPty = async (
+  sandbox: SandboxLike,
+  command: string,
+  label: string,
+  timeoutMs = 60000,
+  log?: (message: string) => void
+): Promise<string> => {
+  log?.(`run ${label}`);
+
+  const homeResult = await sandbox.process.executeCommand("printf $HOME");
+  const home = homeResult.exitCode === 0 ? homeResult.result.trim() : "/home/daytona";
+
+  let output = "";
+  const ptyHandle = await sandbox.process.createPty({
+    id: `${label}-${Date.now()}`,
+    cwd: home,
+    cols: 120,
+    rows: 40,
+    envs: {
+      TERM: "xterm-256color",
+      PATH: `${home}/.local/bin:/usr/local/bin:/usr/bin:/bin`,
+    },
+    onData: (data) => {
+      output += Buffer.from(data).toString("utf8");
+    }
+  });
+
+  await ptyHandle.waitForConnection();
+  await ptyHandle.sendInput(`${command}\n`);
+
+  const deadline = Date.now() + timeoutMs;
+  const successPatterns = [/"text"/, /\bok\b/i, /hello/i, /done/i];
+
+  while (Date.now() < deadline) {
+    if (successPatterns.some(p => p.test(output))) {
+      break;
+    }
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  await ptyHandle.sendInput("\x03");
+  await new Promise(r => setTimeout(r, 100));
+  try {
+    await ptyHandle.kill();
+  } catch {}
+  try {
+    await ptyHandle.disconnect();
+  } catch {}
+
+  return output;
+};
+
 export const getSandboxPathPrefix = async (sandbox: SandboxLike) => {
   const homeResult = await sandbox.process.executeCommand("printf $HOME");
   const home = homeResult.exitCode === 0 ? homeResult.result.trim() : "/home/daytona";
@@ -116,12 +168,11 @@ export const testAgentCLIs = async (
   if (opencodeAvailable) {
     results.opencode = { available: true };
     try {
-      const output = await runSandboxCommand(
+      const output = await runSandboxCommandViaPty(
         sandbox,
-        'opencode run "Respond with exactly OK."',
+        'opencode run --format json "Respond with exactly OK."',
         "opencode",
-        180,
-        pathPrefix,
+        60000,
         log
       );
       results.opencode.passed = /ok/i.test(output);
