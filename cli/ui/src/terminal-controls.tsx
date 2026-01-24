@@ -250,7 +250,7 @@ export const TerminalControls = ({
             <Input
               placeholder="Message"
               aria-label="Message"
-              className="h-11 rounded-full border-none bg-input/50 pl-4 pr-8"
+              className="h-11 rounded-full border-none bg-input/50 pl-4 pr-12"
               value={message}
               onChange={(event) => setMessage(event.target.value)}
               onKeyDown={(event) => {
