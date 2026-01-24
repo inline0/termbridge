@@ -69,6 +69,7 @@ export const syncAgentAuth = async (
     return;
   }
 
+  logger.info(`Sandbox (Daytona): syncing ${options.specs.length} auth spec(s)`);
   const localHome = homedir();
   const remoteHome = await resolveRemoteHome(sandbox);
   const uploads: Array<{ source: string; destination: string }> = [];

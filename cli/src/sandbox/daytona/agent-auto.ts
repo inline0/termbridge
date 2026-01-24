@@ -17,17 +17,20 @@ const agentDefinitions: Record<AgentId, AgentDefinition> = {
   "claude-code": {
     packages: ["@anthropic-ai/claude-code"],
     authFiles: ["~/.claude/.credentials.json"],
-    authDirs: ["~/.config/claude"]
+    // Avoid syncing entire ~/.config/claude as it may contain large session data
+    authDirs: []
   },
   codex: {
     packages: ["@openai/codex"],
     authFiles: ["~/.codex/auth.json"],
-    authDirs: ["~/.config/codex", "~/.codex"]
+    // Avoid syncing entire ~/.codex as it contains history and caches
+    authDirs: []
   },
   opencode: {
     packages: ["opencode-ai"],
-    authFiles: ["~/.config/opencode/opencode.json"],
-    authDirs: ["~/.config/opencode"]
+    // OpenCode uses free models and doesn't require auth
+    authFiles: [],
+    authDirs: []
   }
 };
 

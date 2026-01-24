@@ -1000,7 +1000,7 @@ describe("createSandboxDaytonaServerProvider", () => {
     const startCall = findStartCall();
     const startEnv = startCall?.[2] as Record<string, string> | undefined;
     expect(startEnv?.TERMBRIDGE_TMUX_PATH_PREFIX).toBe(
-      "/home/daytona/.local/bin:/home/daytona/.opencode/bin"
+      "/home/daytona/.local/bin"
     );
     await result.stop();
   });

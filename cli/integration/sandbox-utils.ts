@@ -49,7 +49,7 @@ export const testAgentCLIs = async (
   sandbox: SandboxLike,
   options: AgentTestOptions = {}
 ): Promise<Record<string, AgentTestResult>> => {
-  const { pathPrefix = "", log, requireClaude = true, requireCodex = true, requireOpencode = true } = options;
+  const { pathPrefix = "", log, requireClaude = true, requireCodex = true, requireOpencode = false } = options;
   const results: Record<string, AgentTestResult> = {};
 
   const checkAvailable = async (name: string) => {

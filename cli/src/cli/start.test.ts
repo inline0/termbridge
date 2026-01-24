@@ -1235,9 +1235,8 @@ describe("startCommand", () => {
 
   const localClaudeAuth = join(homedir(), ".claude", ".credentials.json");
   const localCodexAuth = join(homedir(), ".codex", "auth.json");
-  const localOpenCodeAuth = join(homedir(), ".config", "opencode", "opencode.json");
-  const hasLocalAgents =
-    existsSync(localClaudeAuth) && existsSync(localCodexAuth) && existsSync(localOpenCodeAuth);
+  // OpenCode uses free models and doesn't require auth
+  const hasLocalAgents = existsSync(localClaudeAuth) && existsSync(localCodexAuth);
   (hasLocalAgents ? it : it.skip)(
     "auto configures agent packages and auth when agents list is provided",
     async () => {
@@ -1304,11 +1303,11 @@ describe("startCommand", () => {
             packages: ["@anthropic-ai/claude-code", "@openai/codex", "opencode-ai"],
             installScripts: []
           },
+          // Only claude and codex have auth specs - opencode uses free models
           agentAuth: {
             specs: [
               { source: localClaudeAuth },
-              { source: localCodexAuth },
-              { source: localOpenCodeAuth }
+              { source: localCodexAuth }
             ]
           }
         })

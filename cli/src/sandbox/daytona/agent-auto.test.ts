@@ -23,14 +23,11 @@ describe("resolveAutoAgents", () => {
     const home = await mkdtemp(join(tmpdir(), "termbridge-agent-"));
     const claudeAuth = join(home, ".claude", ".credentials.json");
     const codexAuth = join(home, ".codex", "auth.json");
-    const opencodeAuth = join(home, ".config", "opencode", "opencode.json");
 
     await mkdir(join(home, ".claude"), { recursive: true });
     await writeFile(claudeAuth, "{}");
     await mkdir(join(home, ".codex"), { recursive: true });
     await writeFile(codexAuth, "{}");
-    await mkdir(join(home, ".config", "opencode"), { recursive: true });
-    await writeFile(opencodeAuth, "{}");
 
     const logger = createLogger();
     const result = resolveAutoAgents(["claude-code", "codex", "opencode"], logger, { home });
@@ -41,12 +38,13 @@ describe("resolveAutoAgents", () => {
       "opencode-ai"
     ]);
     expect(result.installScripts).toEqual([]);
+    // OpenCode doesn't require auth, so only claude and codex have auth specs
     expect(result.authSpecs).toEqual([
       { source: claudeAuth },
-      { source: codexAuth },
-      { source: opencodeAuth }
+      { source: codexAuth }
     ]);
-    expect(logger.warn).not.toHaveBeenCalled();
+    // OpenCode warns because it has no auth config (by design - uses free model)
+    expect(logger.warn).toHaveBeenCalledWith("Sandbox (Daytona): no auth files found for opencode");
   });
 
   it("expands home when an auth dir uses a tilde path", async () => {
@@ -66,6 +64,27 @@ describe("resolveAutoAgents", () => {
     );
 
     expect(result.authSpecs).toEqual([{ source: home }]);
+  });
+
+  it("skips non-existent auth directories", async () => {
+    const home = await mkdtemp(join(tmpdir(), "termbridge-agent-nodir-"));
+    const logger = createLogger();
+    const result = resolveAutoAgents(
+      ["claude-code"],
+      logger,
+      {
+        home,
+        definitions: {
+          "claude-code": { packages: ["@anthropic-ai/claude-code"], authFiles: [], authDirs: ["~/nonexistent-dir"] },
+          codex: { packages: ["@openai/codex"], authFiles: [], authDirs: [] },
+          opencode: { packages: [], authFiles: [], authDirs: [] }
+        }
+      }
+    );
+
+    // No auth specs since the directory doesn't exist
+    expect(result.authSpecs).toEqual([]);
+    expect(logger.warn).toHaveBeenCalledWith("Sandbox (Daytona): no auth files found for claude-code");
   });
 
   it("keeps absolute auth paths intact", async () => {
