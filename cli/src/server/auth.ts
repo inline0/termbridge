@@ -131,8 +131,8 @@ export const createAuth = ({
     if (!record) {
       return null;
     }
+    wsTokens.delete(token);
     if (record.expiresAt <= clock()) {
-      wsTokens.delete(token);
       return null;
     }
     return getSession(record.sessionId);

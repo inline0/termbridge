@@ -1,21 +1,22 @@
-import { createServer as createHttpServer, request as httpRequest } from "node:http";
-import { request as httpsRequest } from "node:https";
+import { createServer as createHttpServer } from "node:http";
 import { randomBytes } from "node:crypto";
 import { WebSocketServer, WebSocket as WsWebSocket } from "ws";
-import type { IncomingMessage, ServerResponse } from "node:http";
 import type { WebSocket } from "ws";
-import {
-  TERMINAL_CONTROL_KEYS,
-  type TerminalClientMessage,
-  type TerminalControlKey,
-  type TerminalServerMessage,
-  type TerminalListResponse
-} from "@termbridge/shared";
+import type { TerminalListResponse } from "@termbridge/shared";
 import type { TerminalBackend } from "@termbridge/terminal";
 import type { Auth } from "./auth";
 import type { RateLimiter } from "./rate-limit";
 import type { TerminalRegistry } from "./terminal-registry";
 import { createStaticHandler } from "./static";
+import {
+  jsonResponse,
+  readJsonBody,
+  getIp,
+  isAllowedOrigin,
+  resolveForwardedHost
+} from "./http-utils";
+import { parseClientMessage, sendWsMessage } from "./ws-utils";
+import { proxyRequest, getProxyWebSocketUrl, type ProxyConfig } from "./proxy";
 
 export type Logger = {
   info: (message: string) => void;
@@ -32,7 +33,7 @@ export type ServerDeps = {
   wsLimiter: RateLimiter;
   logger: Logger;
   proxyPort?: number;
-  devProxyUrl?: string; // Remote proxy target URL (preview iframe points to /)
+  devProxyUrl?: string;
   devProxyHeaders?: Record<string, string>;
   hideTerminalSwitcher?: boolean;
   listenHost?: string;
@@ -43,191 +44,20 @@ export type StartedServer = {
   close: () => Promise<void>;
 };
 
-const MAX_HTTP_BODY_SIZE = 64 * 1024; // 64KB for HTTP requests
-const MAX_WS_MESSAGE_SIZE = 1024 * 1024; // 1MB for WebSocket messages
-const MAX_INPUT_LENGTH = 64 * 1024; // 64KB for terminal input
-
-const jsonResponse = (response: ServerResponse, status: number, payload: unknown) => {
-  const body = JSON.stringify(payload);
-  response.statusCode = status;
-  response.setHeader("Content-Type", "application/json");
-  response.setHeader("Content-Length", Buffer.byteLength(body));
-  response.end(body);
-};
-
-const readJsonBody = async (request: IncomingMessage): Promise<unknown | null | "too_large"> => {
-  const chunks: Uint8Array[] = [];
-  let totalSize = 0;
-
-  for await (const chunk of request) {
-    totalSize += chunk.length;
-    if (totalSize > MAX_HTTP_BODY_SIZE) {
-      return "too_large";
-    }
-    chunks.push(chunk);
-  }
-
-  const body = Buffer.concat(chunks).toString("utf8").trim();
-
-  if (!body) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(body) as unknown;
-  } catch {
-    return null;
-  }
-};
-
-const getIp = (request: IncomingMessage) => String(request.socket.remoteAddress);
-
-export const isAllowedOrigin = (
-  origin: string | undefined,
-  host: string | undefined,
-  forwardedHost?: string | null
-) => {
-  if (!origin || (!host && !forwardedHost)) {
-    return true;
-  }
-
-  try {
-    const originHost = new URL(origin).host;
-    if (host && originHost === host) {
-      return true;
-    }
-    if (forwardedHost && originHost === forwardedHost) {
-      return true;
-    }
-    return false;
-  } catch {
-    return false;
-  }
-};
-
-export const resolveForwardedHost = (header: string | string[] | undefined) =>
-  Array.isArray(header) ? header[0] : header;
-
-const allowedControlKeys: Set<TerminalControlKey> = new Set(TERMINAL_CONTROL_KEYS);
-
-export type ParseResult =
-  | { ok: true; message: TerminalClientMessage }
-  | { ok: false; error: "too_large" | "invalid" };
-
-export const parseClientMessage = (payload: WebSocket.Data): ParseResult => {
-  const size =
-    typeof payload === "string"
-      ? payload.length
-      : Array.isArray(payload)
-        ? payload.reduce((sum, buf) => sum + buf.length, 0)
-        : payload.byteLength;
-
-  if (size > MAX_WS_MESSAGE_SIZE) {
-    return { ok: false, error: "too_large" };
-  }
-
-  const text =
-    typeof payload === "string"
-      ? payload
-      : Array.isArray(payload)
-        ? Buffer.concat(payload).toString()
-        : payload.toString();
-
-  try {
-    const parsed = JSON.parse(text) as TerminalClientMessage;
-
-    if (parsed.type === "input" && typeof parsed.data === "string") {
-      if (parsed.data.length > MAX_INPUT_LENGTH) {
-        return { ok: false, error: "too_large" };
-      }
-      return { ok: true, message: parsed };
-    }
-
-    if (
-      parsed.type === "resize" &&
-      typeof parsed.cols === "number" &&
-      typeof parsed.rows === "number"
-    ) {
-      return { ok: true, message: parsed };
-    }
-
-    if (parsed.type === "control" && allowedControlKeys.has(parsed.key)) {
-      return { ok: true, message: parsed };
-    }
-
-    if (
-      parsed.type === "scroll" &&
-      (parsed.mode === "lines" || parsed.mode === "pages") &&
-      typeof parsed.amount === "number" &&
-      Number.isFinite(parsed.amount)
-    ) {
-      return { ok: true, message: parsed };
-    }
-
-    return { ok: false, error: "invalid" };
-  } catch {
-    return { ok: false, error: "invalid" };
-  }
-};
-
-const sendWsMessage = (socket: WebSocket, message: TerminalServerMessage) => {
-  socket.send(JSON.stringify(message));
-};
-
 const createSessionName = () => `termbridge-${randomBytes(4).toString("hex")}`;
+
+export { isAllowedOrigin, resolveForwardedHost } from "./http-utils";
+export { parseClientMessage, type ParseResult } from "./ws-utils";
 
 export const createAppServer = (deps: ServerDeps) => {
   const staticHandler = createStaticHandler(deps.uiDistPath, "/__tb/app");
   const wss = new WebSocketServer({ noServer: true });
   const connectionInfo = new WeakMap<WebSocket, { sessionName: string }>();
   const hasProxy = typeof deps.proxyPort === "number" || deps.devProxyUrl !== undefined;
-
-  const resolveProxyUrl = (targetPath: string, search: string) => {
-    if (typeof deps.proxyPort === "number") {
-      return new URL(`http://localhost:${deps.proxyPort}${targetPath}${search}`);
-    }
-    if (deps.devProxyUrl) {
-      try {
-        return new URL(`${targetPath}${search}`, deps.devProxyUrl);
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  };
-
-  const proxyRequest = (
-    request: IncomingMessage,
-    response: ServerResponse,
-    targetPath: string,
-    search: string
-  ) => {
-    const targetUrl = resolveProxyUrl(targetPath, search);
-    if (!targetUrl) {
-      response.statusCode = 502;
-      response.end("proxy error");
-      return;
-    }
-
-    const proxyHeaders = { ...request.headers, ...(deps.devProxyHeaders ?? {}) };
-    delete proxyHeaders.cookie;
-    delete proxyHeaders.host;
-    proxyHeaders.host = targetUrl.host;
-
-    const requestImpl = targetUrl.protocol === "https:" ? httpsRequest : httpRequest;
-    const proxyReq = requestImpl(
-      targetUrl,
-      { method: request.method, headers: proxyHeaders },
-      (proxyRes) => {
-        response.writeHead(proxyRes.statusCode as number, proxyRes.headers);
-        proxyRes.pipe(response);
-      }
-    );
-    proxyReq.on("error", () => {
-      response.statusCode = 502;
-      response.end("proxy error");
-    });
-    request.pipe(proxyReq);
+  const proxyConfig: ProxyConfig = {
+    proxyPort: deps.proxyPort,
+    devProxyUrl: deps.devProxyUrl,
+    devProxyHeaders: deps.devProxyHeaders
   };
 
   const server = createHttpServer(async (request, response) => {
@@ -353,9 +183,8 @@ export const createAppServer = (deps: ServerDeps) => {
     const handled = await staticHandler(request, response);
 
     if (!handled) {
-      // If proxy mode is enabled and user is authenticated, proxy to target app
       if (hasProxy && deps.auth.getSessionFromRequest(request)) {
-        proxyRequest(request, response, url.pathname, url.search);
+        proxyRequest(proxyConfig, request, response, url.pathname, url.search);
         return;
       }
 
@@ -368,21 +197,16 @@ export const createAppServer = (deps: ServerDeps) => {
     const url = new URL(request.url as string, `http://${request.headers.host as string}`);
 
     if (!url.pathname.startsWith("/__tb/ws/terminal/")) {
-      // Proxy WebSocket to target app if proxy mode enabled
       if (hasProxy && deps.auth.getSessionFromRequest(request)) {
-        let baseUrl: URL | null = null;
-        try {
-          baseUrl = typeof deps.proxyPort === "number"
-            ? new URL(`http://localhost:${deps.proxyPort}`)
-            : new URL(deps.devProxyUrl as string);
-        } catch {
+        const baseUrl = getProxyWebSocketUrl(proxyConfig);
+        if (!baseUrl) {
           socket.destroy();
           return;
         }
         const wsProtocol = baseUrl.protocol === "https:" ? "wss:" : "ws:";
         const targetUrl = new URL(`${url.pathname}${url.search}`, baseUrl);
         targetUrl.protocol = wsProtocol;
-        const proxyHeaders = { ...request.headers, ...(deps.devProxyHeaders ?? {}) };
+        const proxyHeaders = { ...request.headers, ...(proxyConfig.devProxyHeaders ?? {}) };
         delete proxyHeaders.cookie;
         delete proxyHeaders.host;
         proxyHeaders.host = targetUrl.host;

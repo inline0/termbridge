@@ -1,51 +1,12 @@
-import type { TerminalControlKey, TerminalListItem } from "@termbridge/shared";
+import type { TerminalListItem } from "@termbridge/shared";
 import { Button, Input } from "@termbridge/ui";
-import {
-  ArrowDown,
-  ArrowLeft,
-  ArrowRight,
-  ArrowRightToLine,
-  ArrowUp,
-  ChevronDown,
-  ChevronUp,
-  ChevronsDown,
-  ChevronsUp,
-  Command,
-  CornerDownLeft,
-  PlusIcon,
-  SendIcon,
-  X as XIcon
-} from "lucide-react";
-import { type MutableRefObject, useEffect, useMemo, useRef, useState } from "react";
+import { PlusIcon, SendIcon } from "lucide-react";
+import { type MutableRefObject, useEffect, useRef, useState } from "react";
 import type { TerminalClient } from "./terminal-client";
 import type { TerminalListState } from "./terminal-list-state";
 import { TerminalSwitcher } from "./terminal-switcher";
 import { ViewSwitcher } from "./view-switcher";
-
-type ActionIcon = typeof ArrowUp;
-type Action =
-  | {
-      id: string;
-      label: string;
-      icon: ActionIcon;
-      kind: "input";
-      data: string;
-    }
-  | {
-      id: string;
-      label: string;
-      icon: ActionIcon;
-      kind: "control";
-      key: TerminalControlKey;
-    }
-  | {
-      id: string;
-      label: string;
-      icon: ActionIcon;
-      kind: "scroll";
-      mode: "lines" | "pages";
-      amount: number;
-    };
+import { terminalActions, type TerminalAction } from "./terminal-actions";
 
 type TerminalControlsProps = {
   clientRef: MutableRefObject<TerminalClient | null>;
@@ -117,24 +78,6 @@ export const TerminalControls = ({
     };
   }, [showActions]);
 
-  const actions = useMemo<Action[]>(
-    () => [
-      { id: "enter", label: "Enter", kind: "input", data: "\r", icon: CornerDownLeft },
-      { id: "page-up", label: "Page Up", kind: "scroll", mode: "pages", amount: -1, icon: ChevronsUp },
-      { id: "page-down", label: "Page Down", kind: "scroll", mode: "pages", amount: 1, icon: ChevronsDown },
-      { id: "line-up", label: "Line Up", kind: "scroll", mode: "lines", amount: -1, icon: ChevronUp },
-      { id: "line-down", label: "Line Down", kind: "scroll", mode: "lines", amount: 1, icon: ChevronDown },
-      { id: "up", label: "Up", kind: "control", key: "up", icon: ArrowUp },
-      { id: "down", label: "Down", kind: "control", key: "down", icon: ArrowDown },
-      { id: "left", label: "Left", kind: "control", key: "left", icon: ArrowLeft },
-      { id: "right", label: "Right", kind: "control", key: "right", icon: ArrowRight },
-      { id: "tab", label: "Tab", kind: "control", key: "tab", icon: ArrowRightToLine },
-      { id: "esc", label: "Esc", kind: "control", key: "esc", icon: XIcon },
-      { id: "ctrl-c", label: "Ctrl+C", kind: "control", key: "ctrl_c", icon: Command }
-    ],
-    []
-  );
-
   const handleSend = () => {
     const client = clientRef.current;
     if (!client) {
@@ -148,7 +91,7 @@ export const TerminalControls = ({
     setMessage("");
   };
 
-  const handleAction = (action: Action) => {
+  const handleAction = (action: TerminalAction) => {
     const client = clientRef.current;
     if (!client) {
       return;
@@ -196,7 +139,7 @@ export const TerminalControls = ({
                 data-testid="terminal-actions-scroll"
                 className="no-scrollbar flex h-full w-full items-center gap-2 overflow-x-auto px-3 snap-x snap-mandatory scroll-px-3"
               >
-                {actions.map((action) => {
+                {terminalActions.map((action) => {
                   const Icon = action.icon;
                   return (
                     <Button

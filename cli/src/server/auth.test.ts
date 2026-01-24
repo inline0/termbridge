@@ -160,9 +160,25 @@ describe("createAuth", () => {
     const { token: wsToken } = auth.issueWsToken(session!.id);
     expect(auth.redeemWsToken(wsToken)?.id).toBe(session!.id);
 
-    now = 200_000;
     expect(auth.redeemWsToken(wsToken)).toBeNull();
     expect(auth.redeemWsToken("missing")).toBeNull();
+  });
+
+  it("rejects expired websocket tokens", () => {
+    let now = 0;
+    const auth = createAuth({
+      tokenTtlMs: 1000,
+      sessionIdleMs: 5000,
+      sessionMaxMs: 10_000,
+      now: () => now
+    });
+
+    const session = auth.redeemToken(auth.issueToken().token, "ip");
+    expect(session).not.toBeNull();
+
+    const { token: wsToken } = auth.issueWsToken(session!.id);
+    now = 200_000;
+    expect(auth.redeemWsToken(wsToken)).toBeNull();
   });
 
   it("looks up sessions by CSRF token", () => {
