@@ -20,7 +20,8 @@ import {
   waitForMatch as waitForMatchUtil,
   withTimeout,
   stopCli,
-  clickSheetOption
+  clickSheetOption,
+  resolveCliCommand
 } from "./cli-test-utils";
 
 const rootDir = resolveRepoRoot();
@@ -50,15 +51,17 @@ maybeDescribe("cli integration", () => {
     const env = { ...process.env, NODE_ENV: "production" };
     const nodePath = resolveNodePath();
 
-    const started = spawn(
-      nodePath,
-      [distBin, "--no-qr", "--kill-on-exit", "--session", sessionName],
-      {
-        cwd: cliDir,
-        env,
-        stdio: ["pipe", "pipe", "pipe"]
-      }
-    ) as ChildProcessWithoutNullStreams;
+    const { command, args } = resolveCliCommand(nodePath, distBin, [
+      "--no-qr",
+      "--kill-on-exit",
+      "--session",
+      sessionName
+    ]);
+    const started = spawn(command, args, {
+      cwd: cliDir,
+      env,
+      stdio: ["pipe", "pipe", "pipe"]
+    }) as ChildProcessWithoutNullStreams;
 
     child = started;
 
@@ -303,15 +306,19 @@ maybeDescribe("cli integration (proxy mode)", () => {
     const env = { ...process.env, NODE_ENV: "production" };
     const nodePath = resolveNodePath();
 
-    const started = spawn(
-      nodePath,
-      [distBin, "--no-qr", "--kill-on-exit", "--session", sessionName, "--proxy", String(proxyPort)],
-      {
-        cwd: cliDir,
-        env,
-        stdio: ["pipe", "pipe", "pipe"]
-      }
-    ) as ChildProcessWithoutNullStreams;
+    const { command, args } = resolveCliCommand(nodePath, distBin, [
+      "--no-qr",
+      "--kill-on-exit",
+      "--session",
+      sessionName,
+      "--proxy",
+      String(proxyPort)
+    ]);
+    const started = spawn(command, args, {
+      cwd: cliDir,
+      env,
+      stdio: ["pipe", "pipe", "pipe"]
+    }) as ChildProcessWithoutNullStreams;
 
     child = started;
 

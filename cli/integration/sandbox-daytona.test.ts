@@ -21,7 +21,8 @@ import {
   waitForMatch as waitForMatchUtil,
   withTimeout,
   stopCli,
-  clickSheetOption
+  clickSheetOption,
+  resolveCliCommand
 } from "./cli-test-utils";
 import {
   getSandboxPathPrefix,
@@ -566,7 +567,12 @@ describeDaytonaDirect("daytona integration (direct)", () => {
     };
     const nodePath = resolveNodePath();
 
-    const started = spawn(nodePath, [distBin, "--no-qr", "--session", sessionName], {
+    const { command, args } = resolveCliCommand(nodePath, distBin, [
+      "--no-qr",
+      "--session",
+      sessionName
+    ]);
+    const started = spawn(command, args, {
       cwd: testAppDir,
       env,
       stdio: ["pipe", "pipe", "pipe"]

@@ -30,7 +30,28 @@ export const resolveNodePath = () => {
 export const commandExists = (name: string) =>
   spawnSync("which", [name], { stdio: "ignore" }).status === 0;
 
+export const isPublishedMode = () => process.env.TERMBRIDGE_TEST_PUBLISHED === "1";
+
+export type CliCommand = {
+  command: string;
+  args: string[];
+};
+
+export const resolveCliCommand = (
+  nodePath: string,
+  distBin: string,
+  cliArgs: string[]
+): CliCommand => {
+  if (isPublishedMode()) {
+    return { command: "npx", args: ["termbridge", ...cliArgs] };
+  }
+  return { command: nodePath, args: [distBin, ...cliArgs] };
+};
+
 export const buildCli = (rootDir: string) => {
+  if (isPublishedMode()) {
+    return;
+  }
   const result = spawnSync("bun", ["run", "build"], { cwd: rootDir, stdio: "inherit" });
   if (result.status !== 0) {
     throw new Error("cli build failed");
@@ -180,8 +201,9 @@ export const spawnCli = (
   env: NodeJS.ProcessEnv
 ) => {
   const output = { stdout: "", stderr: "" };
+  const { command, args: spawnArgs } = resolveCliCommand(nodePath, distBin, args);
 
-  const child = spawn(nodePath, [distBin, ...args], {
+  const child = spawn(command, spawnArgs, {
     cwd,
     env,
     stdio: ["pipe", "pipe", "pipe"]
