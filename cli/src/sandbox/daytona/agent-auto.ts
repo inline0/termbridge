@@ -1,8 +1,7 @@
 import { homedir } from "node:os";
-import { resolve } from "node:path";
-import { statSync } from "node:fs";
 import type { Logger } from "../../server/server";
 import type { AgentAuthSpec } from "../server-provider";
+import { resolvePath, safeStat } from "../../utils";
 
 export type AgentId = "claude-code" | "codex" | "opencode";
 
@@ -40,26 +39,6 @@ const agentAliasMap: Record<string, AgentId> = {
   codex: "codex",
   "@openai/codex": "codex",
   opencode: "opencode"
-};
-
-const expandHome = (value: string, home: string) => {
-  if (value === "~") {
-    return home;
-  }
-  if (value.startsWith("~/")) {
-    return `${home}/${value.slice(2)}`;
-  }
-  return value;
-};
-
-const resolvePath = (value: string, home: string) => resolve(expandHome(value, home));
-
-const safeStat = (path: string) => {
-  try {
-    return statSync(path);
-  } catch {
-    return null;
-  }
 };
 
 const normalizeAgentName = (value: string) => {

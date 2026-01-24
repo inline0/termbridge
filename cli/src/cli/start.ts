@@ -22,6 +22,15 @@ import {
   type SandboxDaytonaProviderOptions
 } from "../sandbox/daytona/direct";
 import type { SandboxServerProvider } from "../sandbox/server-provider";
+import {
+  parseBoolean,
+  parseOptionalNumber,
+  parseList,
+  parseSessionCount,
+  normalizePublicUrl,
+  buildShareUrl,
+  deriveRepoPath
+} from "../utils";
 
 export type StartOptions = {
   port?: number;
@@ -123,47 +132,6 @@ const createDefaultLogger = (): Logger => ({
   warn: (message) => console.warn(message),
   error: (message) => console.error(message)
 });
-
-const parseSessionCount = (value: string | undefined) => {
-  if (!value) {
-    return 1;
-  }
-
-  const parsed = Number.parseInt(value, 10);
-
-  if (!Number.isFinite(parsed) || parsed < 1) {
-    return 1;
-  }
-
-  return parsed;
-};
-
-const parseBoolean = (value: string | undefined) => {
-  if (!value) {
-    return false;
-  }
-  const normalized = value.trim().toLowerCase();
-  return normalized === "1" || normalized === "true" || normalized === "yes";
-};
-
-const parseOptionalNumber = (value: string | undefined) => {
-  if (!value) {
-    return undefined;
-  }
-
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) ? parsed : undefined;
-};
-
-const parseList = (value: string | undefined) => {
-  if (!value) {
-    return [];
-  }
-  return value
-    .split(/[,\s]+/)
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0);
-};
 
 const defaultAgentEnvKeys = [
   "OPENAI_API_KEY",
@@ -270,62 +238,6 @@ const resolveBackendMode = (value: string | undefined): "tmux" | "sandbox-dayton
   }
 
   throw new Error("invalid backend");
-};
-
-const deriveRepoPath = (repoUrl: string) => {
-  const trimmed = repoUrl.replace(/\/$/, "");
-  const last = trimmed.split("/").pop();
-  if (!last) {
-    return "repo";
-  }
-  return last.endsWith(".git") ? last.slice(0, -4) : last;
-};
-
-const normalizePublicUrl = (value: string) => {
-  let parsed: URL;
-
-  try {
-    parsed = new URL(value);
-  } catch {
-    throw new Error("invalid tunnel url");
-  }
-
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new Error("invalid tunnel url");
-  }
-
-  return value.endsWith("/") ? value.slice(0, -1) : value;
-};
-
-const normalizeExternalUrl = (value: string) => {
-  let parsed: URL;
-
-  try {
-    parsed = new URL(value);
-  } catch {
-    throw new Error("invalid public url");
-  }
-
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new Error("invalid public url");
-  }
-
-  return value.endsWith("/") ? value.slice(0, -1) : value;
-};
-
-const buildShareUrl = (publicUrl: string, token: string) => {
-  let parsed: URL;
-
-  try {
-    parsed = new URL(publicUrl);
-  } catch {
-    throw new Error("invalid public url");
-  }
-
-  const basePath = parsed.pathname.endsWith("/") ? parsed.pathname : `${parsed.pathname}/`;
-  parsed.pathname = `${basePath}__tb/s/${token}`;
-  parsed.hash = "";
-  return parsed.toString();
 };
 
 const resolveTunnelMode = (value: string | undefined): "cloudflare" | "none" => {
@@ -505,7 +417,7 @@ export const startCommand = async (
       throw new Error("tunnel token/url not supported when tunnel disabled");
     }
 
-    publicUrl = normalizeExternalUrl(publicUrlOverride);
+    publicUrl = normalizePublicUrl(publicUrlOverride);
   }
 
   if (!devProxyUrl && backendMode === "sandbox-daytona" && sandboxPreviewPort) {

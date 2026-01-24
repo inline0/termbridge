@@ -9,6 +9,7 @@ import type {
 } from "../server-provider";
 import { installAgents } from "./agent-install";
 import { syncAgentAuth } from "./agent-auth";
+import { normalizePublicUrl, deriveRepoPath } from "../../utils";
 
 export type SandboxDaytonaProviderOptions = {
   apiKey?: string;
@@ -63,32 +64,6 @@ const installLocalTermbridge = async (
 
   logger.info("Sandbox (Daytona): installed local termbridge package");
   return { useLocal: true };
-};
-
-const deriveRepoPath = (repoUrl: string) => {
-  const trimmed = repoUrl.replace(/\/$/, "");
-  const last = trimmed.split("/").pop();
-  if (!last) {
-    return "repo";
-  }
-  return last.endsWith(".git") ? last.slice(0, -4) : last;
-};
-
-const normalizePublicUrl = (value: string) => {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    throw new Error("missing public url");
-  }
-  let parsed: URL;
-  try {
-    parsed = new URL(trimmed);
-  } catch {
-    throw new Error("invalid public url");
-  }
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new Error("invalid public url");
-  }
-  return trimmed.endsWith("/") ? trimmed.slice(0, -1) : trimmed;
 };
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

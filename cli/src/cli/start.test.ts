@@ -2509,7 +2509,7 @@ describe("startCommand", () => {
           logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
         }
       )
-    ).rejects.toThrow("invalid tunnel url");
+    ).rejects.toThrow("invalid public url");
   });
 
   it("rejects non-http tunnel url protocols", async () => {
@@ -2566,7 +2566,7 @@ describe("startCommand", () => {
           logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
         }
       )
-    ).rejects.toThrow("invalid tunnel url");
+    ).rejects.toThrow("invalid public url");
   });
 
   it("passes token and url to the tunnel provider", async () => {

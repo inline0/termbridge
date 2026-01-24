@@ -1,3 +1,5 @@
+import { parseNumber } from "../utils";
+
 export type CliOptions = {
   port?: number;
   proxy?: number;
@@ -22,15 +24,6 @@ export type CliOptions = {
 export type ParsedArgs = {
   command: "start" | "help";
   options: CliOptions;
-};
-
-const parseNumber = (value: string | undefined) => {
-  if (!value) {
-    return null;
-  }
-
-  const parsed = Number.parseInt(value, 10);
-  return Number.isNaN(parsed) ? null : parsed;
 };
 
 export const parseArgs = (argv: string[]): ParsedArgs => {
