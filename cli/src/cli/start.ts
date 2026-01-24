@@ -377,8 +377,8 @@ export const startCommand = async (
   const auth = (deps.createAuth ?? (() =>
     createAuth({
       tokenTtlMs: 90_000,
-      sessionIdleMs: 30 * 60_000,
-      sessionMaxMs: 8 * 60 * 60_000,
+      sessionIdleMs: Infinity,
+      sessionMaxMs: Infinity,
       cookieSecure: !insecureCookie,
       cookieSameSite
     })))();
