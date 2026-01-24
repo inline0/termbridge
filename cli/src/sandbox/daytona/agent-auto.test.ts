@@ -37,11 +37,10 @@ describe("resolveAutoAgents", () => {
 
     expect(result.packages).toEqual([
       "@anthropic-ai/claude-code",
-      "@openai/codex"
+      "@openai/codex",
+      "opencode-ai"
     ]);
-    expect(result.installScripts).toEqual([
-      "curl -fsSL https://opencode.ai/install | bash"
-    ]);
+    expect(result.installScripts).toEqual([]);
     expect(result.authSpecs).toEqual([
       { source: claudeAuth },
       { source: codexAuth },
@@ -119,5 +118,28 @@ describe("resolveAutoAgents", () => {
 
     expect(result.agents).toEqual([]);
     expect(logger.warn).toHaveBeenCalledWith("Unknown agent selection: ");
+  });
+
+  it("collects install scripts from custom definitions", () => {
+    const logger = createLogger();
+    const result = resolveAutoAgents(
+      ["opencode"],
+      logger,
+      {
+        home: "/tmp",
+        definitions: {
+          "claude-code": { packages: [], authFiles: [], authDirs: [] },
+          codex: { packages: [], authFiles: [], authDirs: [] },
+          opencode: {
+            packages: [],
+            installScript: "curl -fsSL https://example.com/install | bash",
+            authFiles: [],
+            authDirs: []
+          }
+        }
+      }
+    );
+
+    expect(result.installScripts).toEqual(["curl -fsSL https://example.com/install | bash"]);
   });
 });

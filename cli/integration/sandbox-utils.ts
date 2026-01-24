@@ -6,11 +6,10 @@ export const getSandboxPathPrefix = async (sandbox: SandboxLike) => {
   const homeResult = await sandbox.process.executeCommand("printf $HOME");
   const home = homeResult.exitCode === 0 ? homeResult.result.trim() : "/home/daytona";
   const localBin = `${home}/.local/bin`;
-  const opencodeBin = `${home}/.opencode/bin`;
   const npmBin = await sandbox.process.executeCommand("npm bin -g");
   const globalBin = npmBin.exitCode === 0 ? npmBin.result.trim() : "";
 
-  const paths = [localBin, opencodeBin, globalBin].filter(Boolean).join(":");
+  const paths = [localBin, globalBin].filter(Boolean).join(":");
   return paths ? `PATH="${paths}:$PATH"` : "";
 };
 
@@ -43,13 +42,14 @@ export type AgentTestOptions = {
   log?: (message: string) => void;
   requireClaude?: boolean;
   requireCodex?: boolean;
+  requireOpencode?: boolean;
 };
 
 export const testAgentCLIs = async (
   sandbox: SandboxLike,
   options: AgentTestOptions = {}
 ): Promise<Record<string, AgentTestResult>> => {
-  const { pathPrefix = "", log, requireClaude = true, requireCodex = true } = options;
+  const { pathPrefix = "", log, requireClaude = true, requireCodex = true, requireOpencode = true } = options;
   const results: Record<string, AgentTestResult> = {};
 
   const checkAvailable = async (name: string) => {
@@ -70,6 +70,9 @@ export const testAgentCLIs = async (
   }
   if (requireCodex && !codexAvailable) {
     throw new Error("Required agent CLI 'codex' not available");
+  }
+  if (requireOpencode && !opencodeAvailable) {
+    throw new Error("Required agent CLI 'opencode' not available");
   }
 
   if (claudeAvailable) {
@@ -129,7 +132,8 @@ export const testAgentCLIs = async (
     }
   } else {
     results.opencode = { available: false };
-    log?.("opencode skipped");
+    // If we got here without throwing, requireOpencode was false
+    log?.("opencode not available (not required)");
   }
 
   return results;

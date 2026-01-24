@@ -73,11 +73,12 @@ export const installAgents = async (
             `curl -fsSL ${url} -o ${scriptPath} && chmod +x ${scriptPath}`,
             undefined,
             undefined,
-            60
+            120
           );
 
           if (download.exitCode !== 0) {
-            logger.warn(`Sandbox (Daytona): failed to download script: ${shortName}`);
+            const downloadOutput = download.result?.slice(-300) || "(no output)";
+            logger.warn(`Sandbox (Daytona): failed to download script: ${shortName}: ${downloadOutput}`);
             failedItems.push(`script:${shortName}`);
             continue;
           }
@@ -92,7 +93,8 @@ export const installAgents = async (
           if (result.exitCode === 0) {
             installedItems.push(`script:${shortName}`);
           } else {
-            logger.warn(`Sandbox (Daytona): script failed: ${shortName}`);
+            const output = result.result?.slice(-500) || "(no output)";
+            logger.warn(`Sandbox (Daytona): script failed: ${shortName} (exit ${result.exitCode}): ${output}`);
             failedItems.push(`script:${shortName}`);
           }
           continue;

@@ -968,4 +968,70 @@ describe("createSandboxDaytonaServerProvider", () => {
 
     await expect(provider.start({ ...baseOptions })).rejects.toThrow("invalid public url");
   });
+
+  it("sets PATH prefix in environment when agents are installed", async () => {
+    mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example", token: "" });
+    mocks.sandbox.process.executeCommand.mockImplementation(async (command: string) => {
+      if (command === "printf $HOME") {
+        return { exitCode: 0, result: "/home/daytona" };
+      }
+      return { exitCode: 0 };
+    });
+    mocks.sandbox.fs.downloadFile.mockImplementation(async (path: string) => {
+      if (path.includes("share")) {
+        return Buffer.from("https://preview.example/__tb/s/token-agents");
+      }
+      if (path.includes(".pid")) {
+        return Buffer.from("333");
+      }
+      throw new Error("missing");
+    });
+
+    const provider = createProvider();
+    const result = await provider.start({
+      ...baseOptions,
+      agentInstall: {
+        enabled: true,
+        packages: ["@anthropic-ai/claude-code"],
+        installScripts: []
+      }
+    });
+
+    const startCall = findStartCall();
+    const startEnv = startCall?.[2] as Record<string, string> | undefined;
+    expect(startEnv?.TERMBRIDGE_TMUX_PATH_PREFIX).toBe(
+      "/home/daytona/.local/bin:/home/daytona/.opencode/bin"
+    );
+    await result.stop();
+  });
+
+  it("skips PATH prefix when no agents are installed", async () => {
+    mocks.sandbox.getPreviewLink.mockResolvedValue({ url: "https://preview.example", token: "" });
+    mocks.sandbox.process.executeCommand.mockImplementation(async (command: string) => {
+      if (command === "printf $HOME") {
+        return { exitCode: 0, result: "/home/daytona" };
+      }
+      return { exitCode: 0 };
+    });
+    mocks.sandbox.fs.downloadFile.mockImplementation(async (path: string) => {
+      if (path.includes("share")) {
+        return Buffer.from("https://preview.example/__tb/s/token-no-agents");
+      }
+      if (path.includes(".pid")) {
+        return Buffer.from("444");
+      }
+      throw new Error("missing");
+    });
+
+    const provider = createProvider();
+    const result = await provider.start({
+      ...baseOptions,
+      agentInstall: { enabled: false, packages: [], installScripts: [] }
+    });
+
+    const startCall = findStartCall();
+    const startEnv = startCall?.[2] as Record<string, string> | undefined;
+    expect(startEnv?.TERMBRIDGE_TMUX_PATH_PREFIX).toBeUndefined();
+    await result.stop();
+  });
 });

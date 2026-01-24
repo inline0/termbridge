@@ -25,8 +25,7 @@ const agentDefinitions: Record<AgentId, AgentDefinition> = {
     authDirs: ["~/.config/codex", "~/.codex"]
   },
   opencode: {
-    packages: [],
-    installScript: "curl -fsSL https://opencode.ai/install | bash",
+    packages: ["opencode-ai"],
     authFiles: ["~/.config/opencode/opencode.json"],
     authDirs: ["~/.config/opencode"]
   }

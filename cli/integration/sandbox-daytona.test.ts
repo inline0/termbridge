@@ -504,9 +504,9 @@ describeDaytonaTunnel("daytona integration (tunnel)", () => {
 
       logStep(`claude: ${claudeCheck.exitCode === 0}, codex: ${codexCheck.exitCode === 0}, opencode: ${opencodeCheck.exitCode === 0}`);
 
-      if (claudeCheck.exitCode !== 0 || codexCheck.exitCode !== 0) {
+      if (claudeCheck.exitCode !== 0 || codexCheck.exitCode !== 0 || opencodeCheck.exitCode !== 0) {
         throw new Error(
-          `Required agent CLIs not available. claude: ${claudeCheck.exitCode === 0}, codex: ${codexCheck.exitCode === 0}`
+          `Required agent CLIs not available. claude: ${claudeCheck.exitCode === 0}, codex: ${codexCheck.exitCode === 0}, opencode: ${opencodeCheck.exitCode === 0}`
         );
       }
 
@@ -530,19 +530,15 @@ describeDaytonaTunnel("daytona integration (tunnel)", () => {
       expect(codexOutput).toMatch(/ok/i);
       logStep("codex passed");
 
-      if (opencodeCheck.exitCode === 0) {
-        const opencodeOutput = await runSandboxCommand(
-          sandbox,
-          'opencode run "Respond with exactly OK."',
-          "opencode",
-          180,
-          pathPrefix
-        );
-        expect(opencodeOutput).toMatch(/ok/i);
-        logStep("opencode passed");
-      } else {
-        logStep("opencode skipped");
-      }
+      const opencodeOutput = await runSandboxCommand(
+        sandbox,
+        'opencode run "Respond with exactly OK."',
+        "opencode",
+        180,
+        pathPrefix
+      );
+      expect(opencodeOutput).toMatch(/ok/i);
+      logStep("opencode passed");
     },
     300_000
   );
@@ -825,9 +821,9 @@ describeDaytonaDirect("daytona integration (direct)", () => {
 
       logStep(`claude: ${claudeCheck.exitCode === 0}, codex: ${codexCheck.exitCode === 0}, opencode: ${opencodeCheck.exitCode === 0}`);
 
-      if (claudeCheck.exitCode !== 0 || codexCheck.exitCode !== 0) {
+      if (claudeCheck.exitCode !== 0 || codexCheck.exitCode !== 0 || opencodeCheck.exitCode !== 0) {
         throw new Error(
-          `Required agent CLIs not available. claude: ${claudeCheck.exitCode === 0}, codex: ${codexCheck.exitCode === 0}`
+          `Required agent CLIs not available. claude: ${claudeCheck.exitCode === 0}, codex: ${codexCheck.exitCode === 0}, opencode: ${opencodeCheck.exitCode === 0}`
         );
       }
 
@@ -851,19 +847,15 @@ describeDaytonaDirect("daytona integration (direct)", () => {
       expect(codexOutput).toMatch(/ok/i);
       logStep("codex passed");
 
-      if (opencodeCheck.exitCode === 0) {
-        const opencodeOutput = await runSandboxCommand(
-          sandbox,
-          'opencode run "Respond with exactly OK."',
-          "opencode",
-          180,
-          pathPrefix
-        );
-        expect(opencodeOutput).toMatch(/ok/i);
-        logStep("opencode passed");
-      } else {
-        logStep("opencode skipped");
-      }
+      const opencodeOutput = await runSandboxCommand(
+        sandbox,
+        'opencode run "Respond with exactly OK."',
+        "opencode",
+        180,
+        pathPrefix
+      );
+      expect(opencodeOutput).toMatch(/ok/i);
+      logStep("opencode passed");
     },
     300_000
   );

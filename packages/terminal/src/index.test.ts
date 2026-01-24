@@ -114,6 +114,52 @@ describe("createTmuxBackend", () => {
     ]);
   });
 
+  it("sets PATH prefix in new sessions", async () => {
+    const execFile = vi.fn(async () => ({ stdout: "" }));
+    const backend = createTmuxBackend({
+      execFile,
+      spawnPty: vi.fn(() => new FakePty() as unknown as IPty),
+      pathPrefix: "/home/user/.local/bin:/home/user/.opencode/bin",
+      _skipSpawnHelperCheck: true
+    });
+
+    await backend.createSession("session");
+
+    expect(execFile).toHaveBeenCalledWith("tmux", [
+      "send-keys",
+      "-t",
+      "session",
+      'export PATH="/home/user/.local/bin:/home/user/.opencode/bin:$PATH"',
+      "Enter"
+    ]);
+    expect(execFile).toHaveBeenCalledWith("tmux", [
+      "send-keys",
+      "-t",
+      "session",
+      "clear",
+      "Enter"
+    ]);
+  });
+
+  it("continues when PATH prefix setup fails", async () => {
+    const execFile = vi.fn(async (_file: string, args: string[]) => {
+      if (args[0] === "send-keys" && args[3]?.startsWith("export PATH=")) {
+        throw new Error("send-keys failed");
+      }
+      return { stdout: "" };
+    });
+    const backend = createTmuxBackend({
+      execFile,
+      spawnPty: vi.fn(() => new FakePty() as unknown as IPty),
+      pathPrefix: "/home/user/.local/bin",
+      _skipSpawnHelperCheck: true
+    });
+
+    const session = await backend.createSession("session");
+
+    expect(session.name).toBe("session");
+  });
+
   it("reuses an existing session entry", async () => {
     const execFile = vi.fn(async () => ({ stdout: "" }));
     const backend = createTmuxBackend({

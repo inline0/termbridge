@@ -478,10 +478,11 @@ export const startCommand = async (
   }
 
   const tunnelMode = resolveTunnelMode(env.TERMBRIDGE_TUNNEL ?? options.tunnel);
+  const tmuxPathPrefix = env.TERMBRIDGE_TMUX_PATH_PREFIX ?? undefined;
   const terminalBackend =
     backendMode === "sandbox-daytona"
       ? (deps.createSandboxDaytonaBackend ?? createSandboxDaytonaBackend)(sandboxConfig)
-      : (deps.createTerminalBackend ?? (() => createTmuxBackend({ defaultCwd: tmuxCwd })))();
+      : (deps.createTerminalBackend ?? (() => createTmuxBackend({ defaultCwd: tmuxCwd, pathPrefix: tmuxPathPrefix })))();
   const terminalRegistry = (deps.createTerminalRegistry ?? (() => createTerminalRegistry()))();
   const tunnelProvider =
     tunnelMode === "cloudflare"

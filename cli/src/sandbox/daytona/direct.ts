@@ -271,10 +271,17 @@ export const createSandboxDaytonaServerProvider = (
             : repoPath;
 
         await ensureTmux(sandbox, logger);
-        await installAgents(sandbox, startOptions.agentInstall, logger);
+        const agentResult = await installAgents(sandbox, startOptions.agentInstall, logger);
         await syncAgentAuth(sandbox, startOptions.agentAuth, logger);
 
         const localCli = await installLocalTermbridge(sandbox, startOptions, logger);
+
+        // Get home directory for agent binary paths
+        const homeResult = await sandbox.process.executeCommand("printf $HOME");
+        const home = homeResult.exitCode === 0 && homeResult.result ? homeResult.result.trim() : "/home/daytona";
+
+        // Build PATH with agent binary locations (npm packages with --prefix ~/.local)
+        const agentPathPrefix = agentResult.installed.length > 0 ? `${home}/.local/bin` : "";
 
         const publicUrl = normalizePublicUrl(
           await resolvePreviewUrl(sandbox, startOptions.serverPort, logger)
@@ -319,6 +326,7 @@ export const createSandboxDaytonaServerProvider = (
           TERMBRIDGE_HOST: "0.0.0.0",
           TERMBRIDGE_COOKIE_SAMESITE: "none",
           TERMBRIDGE_HIDE_TERMINAL_SWITCHER: startOptions.hideTerminalSwitcher ? "1" : undefined,
+          TERMBRIDGE_TMUX_PATH_PREFIX: agentPathPrefix || undefined,
           ...startOptions.agentEnv
         });
 

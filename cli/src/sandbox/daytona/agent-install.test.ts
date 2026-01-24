@@ -245,7 +245,7 @@ describe("installAgents", () => {
       expect.stringMatching(/curl -fsSL https:\/\/example\.com\/install\.sh -o \/tmp\/install-\d+\.sh && chmod \+x/),
       undefined,
       undefined,
-      60
+      120
     );
   });
 
@@ -287,6 +287,45 @@ describe("installAgents", () => {
     expect(result.error).toContain("script:bad.sh");
     expect(logger.warn).toHaveBeenCalledWith(
       expect.stringContaining("Sandbox (Daytona): script failed")
+    );
+  });
+
+  it("reports curl download failure with missing result", async () => {
+    const sandbox = createSandbox();
+    const logger = createLogger();
+    sandbox.process.executeCommand
+      .mockResolvedValueOnce({ exitCode: 0, result: "/home/daytona" })
+      .mockResolvedValueOnce({ exitCode: 1, result: undefined as unknown as string }); // curl download fails, no result
+
+    const result = await installAgents(
+      sandbox as any,
+      { enabled: true, packages: [], installScripts: ["curl -fsSL https://example.com/missing.sh | bash"] },
+      logger
+    );
+
+    expect(result.success).toBe(false);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining("(no output)")
+    );
+  });
+
+  it("reports curl script execution failure with missing result", async () => {
+    const sandbox = createSandbox();
+    const logger = createLogger();
+    sandbox.process.executeCommand
+      .mockResolvedValueOnce({ exitCode: 0, result: "/home/daytona" })
+      .mockResolvedValueOnce({ exitCode: 0, result: "" }) // curl download ok
+      .mockResolvedValueOnce({ exitCode: 1, result: undefined as unknown as string }); // bash execute fails, no result
+
+    const result = await installAgents(
+      sandbox as any,
+      { enabled: true, packages: [], installScripts: ["curl -fsSL https://example.com/bad.sh | bash"] },
+      logger
+    );
+
+    expect(result.success).toBe(false);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining("(no output)")
     );
   });
 });

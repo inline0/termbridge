@@ -1301,8 +1301,8 @@ describe("startCommand", () => {
         expect.objectContaining({
           agentInstall: {
             enabled: true,
-            packages: ["@anthropic-ai/claude-code", "@openai/codex"],
-            installScripts: ["curl -fsSL https://opencode.ai/install | bash"]
+            packages: ["@anthropic-ai/claude-code", "@openai/codex", "opencode-ai"],
+            installScripts: []
           },
           agentAuth: {
             specs: [
@@ -1452,8 +1452,8 @@ describe("startCommand", () => {
       expect.objectContaining({
         agentInstall: {
           enabled: true,
-          packages: ["@anthropic-ai/claude-code", "@openai/codex"],
-          installScripts: ["curl -fsSL https://opencode.ai/install | bash"]
+          packages: ["@anthropic-ai/claude-code", "@openai/codex", "opencode-ai"],
+          installScripts: []
         }
       })
     );

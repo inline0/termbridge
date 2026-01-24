@@ -40,6 +40,8 @@ export type TmuxBackendDeps = {
   defaultCols?: number;
   defaultRows?: number;
   defaultCwd?: string;
+  /** Path prefix to add to PATH in new sessions (e.g., for agent binaries) */
+  pathPrefix?: string;
   /** @internal Skip spawn-helper check when using mock spawnPty in tests */
   _skipSpawnHelperCheck?: boolean;
   /** @internal Override platform for spawn-helper checks */
@@ -56,13 +58,17 @@ const controlKeyMap: Record<TerminalControlKey, string> = {
   right: "\x1b[C"
 };
 
-const defaultDeps: Required<Omit<TmuxBackendDeps, "defaultCwd">> & { defaultCwd?: string } = {
+const defaultDeps: Required<Omit<TmuxBackendDeps, "defaultCwd" | "pathPrefix">> & {
+  defaultCwd?: string;
+  pathPrefix?: string;
+} = {
   execFile: async (file, args) => execFile(file, args),
   spawnPty: pty.spawn,
   env: process.env,
   defaultCols: 80,
   defaultRows: 24,
   defaultCwd: undefined,
+  pathPrefix: undefined,
   _skipSpawnHelperCheck: false,
   _platform: process.platform
 };
@@ -148,6 +154,23 @@ export const createTmuxBackend = (deps: TmuxBackendDeps = {}): TerminalBackend =
     await setSessionOption(name, "status-style", "bg=default,fg=default");
     await setSessionOption(name, "message-style", "bg=default,fg=default");
     await setSessionOption(name, "message-command-style", "bg=default,fg=default");
+
+    // Add agent binary paths to PATH in the session
+    if (runtime.pathPrefix) {
+      try {
+        await runTmux([
+          "send-keys",
+          "-t",
+          name,
+          `export PATH="${runtime.pathPrefix}:$PATH"`,
+          "Enter"
+        ]);
+        // Clear the screen so user doesn't see the export command
+        await runTmux(["send-keys", "-t", name, "clear", "Enter"]);
+      } catch {
+        // Best-effort: continue even if PATH setup fails
+      }
+    }
 
     const session = { name, createdAt: new Date() };
     sessions.set(name, {
