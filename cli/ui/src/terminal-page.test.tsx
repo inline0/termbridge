@@ -695,4 +695,59 @@ describe("TerminalPage", () => {
 
     expect(screen.queryByRole("button", { name: "Terminals" })).toBeNull();
   });
+
+  it("provides fetchWsToken callback that fetches fresh tokens", async () => {
+    const destroy = vi.fn();
+    createTerminalClientMock.mockReturnValue(createMockClient({ destroy }));
+
+    global.fetch = createMockFetch([makeTerminal("term-1")]);
+
+    render(<TerminalPage terminalId="term-1" />);
+
+    await waitFor(() => {
+      expect(createTerminalClientMock).toHaveBeenCalled();
+    });
+
+    const callArgs = createTerminalClientMock.mock.calls[0];
+    const deps = callArgs?.[3] as { fetchWsToken?: () => Promise<string | undefined> } | undefined;
+    expect(deps?.fetchWsToken).toBeDefined();
+
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.includes("/__tb/api/config")) {
+        return new Response(JSON.stringify({ proxyPort: null, devProxyUrl: null, wsToken: "fresh-ws-token" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      return new Response("{}", { status: 200 });
+    });
+
+    const token = await deps!.fetchWsToken!();
+    expect(token).toBe("fresh-ws-token");
+  });
+
+  it("returns undefined from fetchWsToken when config fetch fails", async () => {
+    const destroy = vi.fn();
+    createTerminalClientMock.mockReturnValue(createMockClient({ destroy }));
+
+    global.fetch = createMockFetch([makeTerminal("term-1")]);
+
+    render(<TerminalPage terminalId="term-1" />);
+
+    await waitFor(() => {
+      expect(createTerminalClientMock).toHaveBeenCalled();
+    });
+
+    const callArgs = createTerminalClientMock.mock.calls[0];
+    const deps = callArgs?.[3] as { fetchWsToken?: () => Promise<string | undefined> } | undefined;
+    expect(deps?.fetchWsToken).toBeDefined();
+
+    global.fetch = vi.fn(async (_input: RequestInfo | URL) => {
+      return new Response("error", { status: 500 });
+    });
+
+    const token = await deps!.fetchWsToken!();
+    expect(token).toBeUndefined();
+  });
 });

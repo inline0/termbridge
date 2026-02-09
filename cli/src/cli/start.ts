@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
-import { resolve, dirname } from "node:path";
+import { tmpdir } from "node:os";
+import { resolve, dirname, join } from "node:path";
 import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -196,13 +197,15 @@ export const startCommand = async (
           : sandboxDirect && !insecureCookie
             ? "None"
             : "Lax";
+  const sessionFile = join(tmpdir(), "termbridge", "sessions.json");
   const auth = (deps.createAuth ?? (() =>
     createAuth({
       tokenTtlMs: 90_000,
       sessionIdleMs: Infinity,
       sessionMaxMs: Infinity,
       cookieSecure: !insecureCookie,
-      cookieSameSite
+      cookieSameSite,
+      sessionFile
     })))();
   const backendMode = resolveBackendMode(options.backend ?? env.TERMBRIDGE_BACKEND);
   const publicUrlOverride = options.publicUrl ?? env.TERMBRIDGE_PUBLIC_URL;

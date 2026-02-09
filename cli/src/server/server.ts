@@ -37,6 +37,7 @@ export type ServerDeps = {
   devProxyHeaders?: Record<string, string>;
   hideTerminalSwitcher?: boolean;
   listenHost?: string;
+  pingIntervalMs?: number;
 };
 
 export type StartedServer = {
@@ -296,6 +297,20 @@ export const createAppServer = (deps: ServerDeps) => {
 
     sendWsMessage(socket, { type: "status", state: "connected" });
 
+    let alive = true;
+    const pingInterval = setInterval(() => {
+      if (!alive) {
+        socket.terminate();
+        return;
+      }
+      alive = false;
+      socket.ping();
+    }, deps.pingIntervalMs ?? 30_000);
+
+    socket.on("pong", () => {
+      alive = true;
+    });
+
     const unsubscribe = deps.terminalBackend.onOutput(info.sessionName, (data) => {
       sendWsMessage(socket, { type: "output", data });
     });
@@ -333,6 +348,7 @@ export const createAppServer = (deps: ServerDeps) => {
     });
 
     socket.on("close", () => {
+      clearInterval(pingInterval);
       unsubscribe();
     });
   });

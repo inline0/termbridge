@@ -1274,6 +1274,277 @@ describe("terminal-client", () => {
     client.destroy();
   });
 
+  it("fetches a fresh wsToken before reconnecting", async () => {
+    vi.useFakeTimers();
+
+    const terminal = new FakeTerminal();
+    const fitAddon = new FakeFitAddon();
+    fitAddon.proposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
+
+    const container = document.createElement("div");
+    Object.defineProperty(container, "clientWidth", { value: 120 });
+    Object.defineProperty(container, "clientHeight", { value: 80 });
+    document.body.appendChild(container);
+
+    const windowRef = {
+      location: { protocol: "http:", host: "localhost" },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn()
+    } as unknown as Window;
+
+    const sockets: FakeWebSocket[] = [];
+    const WebSocketImpl = class {
+      url: string;
+      socket: FakeWebSocket;
+
+      constructor(url: string) {
+        this.url = url;
+        this.socket = new FakeWebSocket(url);
+        sockets.push(this.socket);
+      }
+
+      addEventListener(
+        type: string,
+        handler: (event: { data?: unknown }) => void
+      ) {
+        this.socket.addEventListener(type, handler);
+      }
+
+      send = (data: unknown) => this.socket.send(data);
+      close = () => this.socket.close();
+    } as unknown as typeof WebSocket;
+
+    const fetchWsToken = vi.fn().mockResolvedValue("fresh-token-123");
+
+    const client = createTerminalClient(container, "terminal-fetch-token", "csrf-test", {
+      createTerminal: () => terminal as unknown as Terminal,
+      createFitAddon: () => fitAddon as unknown as FitAddon,
+      WebSocketImpl,
+      windowRef,
+      wsToken: "initial-token",
+      fetchWsToken
+    });
+
+    expect(sockets.length).toBe(1);
+    expect(sockets[0]?.url).toContain("wsToken=initial-token");
+
+    sockets[0]?.emit("open");
+    sockets[0]?.emit("close");
+
+    vi.advanceTimersByTime(1000);
+    await Promise.resolve();
+
+    expect(fetchWsToken).toHaveBeenCalled();
+    expect(sockets.length).toBe(2);
+    expect(sockets[1]?.url).toContain("wsToken=fresh-token-123");
+
+    client.destroy();
+    vi.useRealTimers();
+  });
+
+  it("reconnects even if fetchWsToken fails", async () => {
+    vi.useFakeTimers();
+
+    const terminal = new FakeTerminal();
+    const fitAddon = new FakeFitAddon();
+    fitAddon.proposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
+
+    const container = document.createElement("div");
+    Object.defineProperty(container, "clientWidth", { value: 120 });
+    Object.defineProperty(container, "clientHeight", { value: 80 });
+    document.body.appendChild(container);
+
+    const windowRef = {
+      location: { protocol: "http:", host: "localhost" },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn()
+    } as unknown as Window;
+
+    const sockets: FakeWebSocket[] = [];
+    const WebSocketImpl = class {
+      url: string;
+      socket: FakeWebSocket;
+
+      constructor(url: string) {
+        this.url = url;
+        this.socket = new FakeWebSocket(url);
+        sockets.push(this.socket);
+      }
+
+      addEventListener(
+        type: string,
+        handler: (event: { data?: unknown }) => void
+      ) {
+        this.socket.addEventListener(type, handler);
+      }
+
+      send = (data: unknown) => this.socket.send(data);
+      close = () => this.socket.close();
+    } as unknown as typeof WebSocket;
+
+    const fetchWsToken = vi.fn().mockRejectedValue(new Error("network error"));
+
+    const client = createTerminalClient(container, "terminal-fetch-fail", "csrf-test", {
+      createTerminal: () => terminal as unknown as Terminal,
+      createFitAddon: () => fitAddon as unknown as FitAddon,
+      WebSocketImpl,
+      windowRef,
+      fetchWsToken
+    });
+
+    sockets[0]?.emit("open");
+    sockets[0]?.emit("close");
+
+    vi.advanceTimersByTime(1000);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(fetchWsToken).toHaveBeenCalled();
+    expect(sockets.length).toBe(2);
+
+    client.destroy();
+    vi.useRealTimers();
+  });
+
+  it("does not reconnect if destroyed while fetching wsToken", async () => {
+    vi.useFakeTimers();
+
+    const terminal = new FakeTerminal();
+    const fitAddon = new FakeFitAddon();
+    fitAddon.proposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
+
+    const container = document.createElement("div");
+    Object.defineProperty(container, "clientWidth", { value: 120 });
+    Object.defineProperty(container, "clientHeight", { value: 80 });
+    document.body.appendChild(container);
+
+    const windowRef = {
+      location: { protocol: "http:", host: "localhost" },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn()
+    } as unknown as Window;
+
+    const sockets: FakeWebSocket[] = [];
+    const WebSocketImpl = class {
+      url: string;
+      socket: FakeWebSocket;
+
+      constructor(url: string) {
+        this.url = url;
+        this.socket = new FakeWebSocket(url);
+        sockets.push(this.socket);
+      }
+
+      addEventListener(
+        type: string,
+        handler: (event: { data?: unknown }) => void
+      ) {
+        this.socket.addEventListener(type, handler);
+      }
+
+      send = (data: unknown) => this.socket.send(data);
+      close = () => this.socket.close();
+    } as unknown as typeof WebSocket;
+
+    let resolveToken: (value: string) => void;
+    const tokenPromise = new Promise<string>((resolve) => {
+      resolveToken = resolve;
+    });
+    const fetchWsToken = vi.fn().mockReturnValue(tokenPromise);
+
+    const client = createTerminalClient(container, "terminal-destroy-fetch", "csrf-test", {
+      createTerminal: () => terminal as unknown as Terminal,
+      createFitAddon: () => fitAddon as unknown as FitAddon,
+      WebSocketImpl,
+      windowRef,
+      fetchWsToken
+    });
+
+    sockets[0]?.emit("open");
+    sockets[0]?.emit("close");
+
+    vi.advanceTimersByTime(1000);
+
+    client.destroy();
+
+    resolveToken!("token-after-destroy");
+    await Promise.resolve();
+
+    expect(sockets.length).toBe(1);
+
+    vi.useRealTimers();
+  });
+
+  it("does not reconnect if destroyed while fetchWsToken rejects", async () => {
+    vi.useFakeTimers();
+
+    const terminal = new FakeTerminal();
+    const fitAddon = new FakeFitAddon();
+    fitAddon.proposeDimensions.mockReturnValue({ cols: 80, rows: 24 });
+
+    const container = document.createElement("div");
+    Object.defineProperty(container, "clientWidth", { value: 120 });
+    Object.defineProperty(container, "clientHeight", { value: 80 });
+    document.body.appendChild(container);
+
+    const windowRef = {
+      location: { protocol: "http:", host: "localhost" },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn()
+    } as unknown as Window;
+
+    const sockets: FakeWebSocket[] = [];
+    const WebSocketImpl = class {
+      url: string;
+      socket: FakeWebSocket;
+
+      constructor(url: string) {
+        this.url = url;
+        this.socket = new FakeWebSocket(url);
+        sockets.push(this.socket);
+      }
+
+      addEventListener(
+        type: string,
+        handler: (event: { data?: unknown }) => void
+      ) {
+        this.socket.addEventListener(type, handler);
+      }
+
+      send = (data: unknown) => this.socket.send(data);
+      close = () => this.socket.close();
+    } as unknown as typeof WebSocket;
+
+    let rejectToken: (error: Error) => void;
+    const tokenPromise = new Promise<string>((_resolve, reject) => {
+      rejectToken = reject;
+    });
+    const fetchWsToken = vi.fn().mockReturnValue(tokenPromise);
+
+    const client = createTerminalClient(container, "terminal-destroy-fetch-reject", "csrf-test", {
+      createTerminal: () => terminal as unknown as Terminal,
+      createFitAddon: () => fitAddon as unknown as FitAddon,
+      WebSocketImpl,
+      windowRef,
+      fetchWsToken
+    });
+
+    sockets[0]?.emit("open");
+    sockets[0]?.emit("close");
+
+    vi.advanceTimersByTime(1000);
+
+    client.destroy();
+
+    rejectToken!(new Error("network error"));
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(sockets.length).toBe(1);
+
+    vi.useRealTimers();
+  });
+
   it("provides scroll methods", () => {
     const terminal = new FakeTerminal();
     const fitAddon = new FakeFitAddon();

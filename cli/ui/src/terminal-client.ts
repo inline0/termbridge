@@ -38,6 +38,7 @@ export type TerminalClientDeps = {
   WebSocketImpl?: typeof WebSocket;
   windowRef?: WindowLike;
   wsToken?: string;
+  fetchWsToken?: () => Promise<string | undefined>;
 };
 
 type WindowLike = Window & {
@@ -206,12 +207,14 @@ export const createTerminalClient = (
     socket.send(JSON.stringify(message));
   };
 
+  let currentWsToken = deps.wsToken;
+
   const connectSocket = () => {
     if (destroyed) {
       return;
     }
 
-    const wsUrl = getWebSocketUrl(terminalId, csrfToken, windowRef, deps.wsToken);
+    const wsUrl = getWebSocketUrl(terminalId, csrfToken, windowRef, currentWsToken);
     const protocol = getDaytonaProtocol(windowRef);
     socket = protocol ? new WebSocketImpl(wsUrl, protocol) : new WebSocketImpl(wsUrl);
 
@@ -253,7 +256,21 @@ export const createTerminalClient = (
       reconnectAttempt += 1;
       reconnectTimeout = window.setTimeout(() => {
         reconnectTimeout = null;
-        connectSocket();
+        if (deps.fetchWsToken) {
+          void deps.fetchWsToken().then((token) => {
+            if (destroyed) {
+              return;
+            }
+            currentWsToken = token;
+            connectSocket();
+          }).catch(() => {
+            if (!destroyed) {
+              connectSocket();
+            }
+          });
+        } else {
+          connectSocket();
+        }
       }, delay) as unknown as number;
     });
 

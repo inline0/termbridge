@@ -1,4 +1,6 @@
 import { randomBytes, createHash } from "node:crypto";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 import type { IncomingMessage } from "node:http";
 import type { RateLimiter } from "./rate-limit";
 
@@ -25,6 +27,7 @@ export type AuthOptions = {
   cookieSecure?: boolean;
   cookieSameSite?: "Lax" | "None" | "Strict";
   now?: () => number;
+  sessionFile?: string;
 };
 
 export type Auth = {
@@ -66,6 +69,29 @@ const parseCookies = (cookieHeader: string | undefined) => {
   return cookies;
 };
 
+const loadSessions = (filePath: string): Map<string, SessionRecord> => {
+  const sessions = new Map<string, SessionRecord>();
+  try {
+    const data = readFileSync(filePath, "utf-8");
+    const parsed = JSON.parse(data) as SessionRecord[];
+    for (const session of parsed) {
+      sessions.set(session.id, session);
+    }
+  } catch {
+    // File doesn't exist or is invalid - start fresh
+  }
+  return sessions;
+};
+
+const saveSessions = (filePath: string, sessions: Map<string, SessionRecord>) => {
+  try {
+    mkdirSync(dirname(filePath), { recursive: true });
+    writeFileSync(filePath, JSON.stringify([...sessions.values()]), "utf-8");
+  } catch {
+    // Ignore save errors
+  }
+};
+
 export const createAuth = ({
   tokenTtlMs,
   sessionIdleMs,
@@ -73,14 +99,15 @@ export const createAuth = ({
   redeemLimiter,
   cookieSecure,
   cookieSameSite,
-  now
+  now,
+  sessionFile
 }: AuthOptions): Auth => {
   const clock = now ?? (() => Date.now());
   const secureCookie = cookieSecure ?? true;
   const resolvedSameSite = cookieSameSite ?? "Lax";
   const tokens = new Map<string, TokenRecord>();
   const wsTokens = new Map<string, { sessionId: string; expiresAt: number }>();
-  const sessions = new Map<string, SessionRecord>();
+  const sessions = sessionFile ? loadSessions(sessionFile) : new Map<string, SessionRecord>();
   const wsTokenTtlMs = 2 * 60_000;
 
   const issueToken = () => {
@@ -123,6 +150,9 @@ export const createAuth = ({
     };
 
     sessions.set(session.id, session);
+    if (sessionFile) {
+      saveSessions(sessionFile, sessions);
+    }
     return session;
   };
 

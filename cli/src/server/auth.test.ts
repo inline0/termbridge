@@ -1,5 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import type { IncomingMessage } from "node:http";
+import { mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createAuth, SESSION_COOKIE_NAME } from "./auth";
 import { createRateLimiter } from "./rate-limit";
 
@@ -193,5 +196,86 @@ describe("createAuth", () => {
 
     expect(auth.getSessionByCsrfToken?.(session!.csrfToken)?.id).toBe(session!.id);
     expect(auth.getSessionByCsrfToken?.("missing")).toBeNull();
+  });
+
+  describe("session persistence", () => {
+    let tempDir: string;
+    let sessionFile: string;
+
+    beforeEach(() => {
+      tempDir = mkdtempSync(join(tmpdir(), "termbridge-test-"));
+      sessionFile = join(tempDir, "sessions.json");
+    });
+
+    afterEach(() => {
+      rmSync(tempDir, { recursive: true, force: true });
+    });
+
+    it("saves sessions to file when sessionFile is provided", () => {
+      const auth = createAuth({
+        tokenTtlMs: 1000,
+        sessionIdleMs: 5000,
+        sessionMaxMs: 10_000,
+        sessionFile
+      });
+
+      const session = auth.redeemToken(auth.issueToken().token, "ip");
+      expect(session).not.toBeNull();
+
+      const saved = JSON.parse(readFileSync(sessionFile, "utf-8"));
+      expect(saved).toHaveLength(1);
+      expect(saved[0].id).toBe(session!.id);
+    });
+
+    it("loads sessions from file on startup", () => {
+      const existingSession = {
+        id: "existing-session-id",
+        csrfToken: "existing-csrf",
+        createdAt: Date.now(),
+        lastSeen: Date.now()
+      };
+      writeFileSync(sessionFile, JSON.stringify([existingSession]), "utf-8");
+
+      const auth = createAuth({
+        tokenTtlMs: 1000,
+        sessionIdleMs: Infinity,
+        sessionMaxMs: Infinity,
+        sessionFile
+      });
+
+      const loaded = auth.getSession("existing-session-id");
+      expect(loaded).not.toBeNull();
+      expect(loaded?.csrfToken).toBe("existing-csrf");
+    });
+
+    it("handles invalid session file gracefully", () => {
+      writeFileSync(sessionFile, "invalid json {{{", "utf-8");
+
+      const auth = createAuth({
+        tokenTtlMs: 1000,
+        sessionIdleMs: 5000,
+        sessionMaxMs: 10_000,
+        sessionFile
+      });
+
+      // Should not throw, starts with empty sessions
+      const session = auth.redeemToken(auth.issueToken().token, "ip");
+      expect(session).not.toBeNull();
+    });
+
+    it("handles missing session file gracefully", () => {
+      const missingFile = join(tempDir, "nonexistent", "sessions.json");
+
+      const auth = createAuth({
+        tokenTtlMs: 1000,
+        sessionIdleMs: 5000,
+        sessionMaxMs: 10_000,
+        sessionFile: missingFile
+      });
+
+      // Should not throw, starts with empty sessions
+      const session = auth.redeemToken(auth.issueToken().token, "ip");
+      expect(session).not.toBeNull();
+    });
   });
 });

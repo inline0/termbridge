@@ -45,6 +45,7 @@ const createServerFixture = async (
     devProxyUrl?: string;
     devProxyHeaders?: Record<string, string>;
     hideTerminalSwitcher?: boolean;
+    pingIntervalMs?: number;
   } = {}
 ) => {
   const uiDir = await mkdtemp(join(tmpdir(), "termbridge-ui-"));
@@ -86,7 +87,8 @@ const createServerFixture = async (
     proxyPort: options.proxyPort,
     devProxyUrl: options.devProxyUrl,
     devProxyHeaders: options.devProxyHeaders,
-    hideTerminalSwitcher: options.hideTerminalSwitcher
+    hideTerminalSwitcher: options.hideTerminalSwitcher,
+    pingIntervalMs: options.pingIntervalMs
   });
 
   const started = await server.listen(0);
@@ -789,6 +791,62 @@ describe("createAppServer", () => {
     await new Promise((resolve) => second.on("error", resolve));
 
     first.close();
+    await fixture.close();
+  });
+
+  it("sends pings and handles pongs to keep websocket alive", async () => {
+    const fixture = await createServerFixture({ pingIntervalMs: 100 });
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+    const csrfToken = await getCsrfToken(fixture.baseUrl, cookie);
+
+    const session = await fixture.backend.createSession("session-ping");
+    const record = fixture.terminalRegistry.add(session.name, session.name, "tmux");
+
+    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/__tb/ws/terminal/${record.id}?csrf=${csrfToken}`,
+      { headers: { cookie } }
+    );
+
+    let pingCount = 0;
+    ws.on("ping", () => {
+      pingCount++;
+    });
+
+    await new Promise((resolve) => ws.on("open", resolve));
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    expect(pingCount).toBeGreaterThanOrEqual(1);
+
+    ws.close();
+    await fixture.close();
+  });
+
+  it("terminates websocket when pong is not received", async () => {
+    const fixture = await createServerFixture({ pingIntervalMs: 100 });
+    const { token } = fixture.auth.issueToken();
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, { redirect: "manual" });
+    const cookie = getCookie(redeem.headers.get("set-cookie"));
+    const csrfToken = await getCsrfToken(fixture.baseUrl, cookie);
+
+    const session = await fixture.backend.createSession("session-terminate");
+    const record = fixture.terminalRegistry.add(session.name, session.name, "tmux");
+
+    const ws = new WebSocket(`ws://127.0.0.1:${new URL(fixture.baseUrl).port}/__tb/ws/terminal/${record.id}?csrf=${csrfToken}`,
+      { headers: { cookie } }
+    );
+
+    // Disable automatic pong response
+    ws.pong = () => {};
+
+    await new Promise((resolve) => ws.on("open", resolve));
+
+    const closed = new Promise<void>((resolve) => ws.on("close", () => resolve()));
+
+    await closed;
+
+    expect(ws.readyState).toBe(WebSocket.CLOSED);
+
     await fixture.close();
   });
 

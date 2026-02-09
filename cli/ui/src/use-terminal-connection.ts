@@ -162,8 +162,17 @@ export const useTerminalConnection = ({
     }
 
     setConnectionState("connecting");
+    const fetchWsToken = async () => {
+      const response = await fetch("/__tb/api/config");
+      if (!response.ok) {
+        return undefined;
+      }
+      const config = (await response.json()) as ConfigResponse;
+      return config.wsToken;
+    };
     const client = createTerminalClient(hostRef.current, activeTerminalId, csrfToken, {
-      wsToken: wsToken ?? undefined
+      wsToken: wsToken ?? undefined,
+      fetchWsToken
     });
     clientRef.current = client;
 
