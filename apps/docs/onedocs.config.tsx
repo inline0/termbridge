@@ -29,7 +29,7 @@ export default defineConfig({
   },
   homepage: {
     hero: {
-      title: "Beam your terminal anywhere",
+      title: "Beam your terminal",
       description:
         "Termbridge runs a local server, tunnels it through Cloudflare, and streams your tmux session to any browser.",
       cta: { label: "Get Started", href: "/docs/getting-started" },
