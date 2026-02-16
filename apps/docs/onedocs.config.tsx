@@ -27,6 +27,11 @@ export default defineConfig({
   nav: {
     github: "inline0/termbridge",
   },
+  footer: {
+    links: [
+      { label: "Inline0.com", href: "https://inline0.com" },
+    ],
+  },
   homepage: {
     hero: {
       title: "Beam your terminal",
