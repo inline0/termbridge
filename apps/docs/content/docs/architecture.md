@@ -1,6 +1,11 @@
 ---
-title: Architecture
-description: How the local server, tunnel, and terminal streaming fit together.
+title: "Architecture"
+description: "How the local server, tunnel, and terminal streaming fit together."
+path: "architecture"
+order: 12
+section: "Documentation"
+meta_title: "Architecture"
+meta_description: "How the local server, tunnel, and terminal streaming fit together."
 ---
 
 # Architecture

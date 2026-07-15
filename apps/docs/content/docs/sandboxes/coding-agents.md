@@ -1,6 +1,11 @@
 ---
-title: Coding agents
-description: Install and authenticate Claude, Codex, and OpenCode in Daytona sandboxes.
+title: "Coding agents"
+description: "Install and authenticate Claude, Codex, and OpenCode in Daytona sandboxes."
+path: "sandboxes/coding-agents"
+order: 10
+section: "Sandboxes"
+meta_title: "Coding agents"
+meta_description: "Install and authenticate Claude, Codex, and OpenCode in Daytona sandboxes."
 ---
 
 # Coding agents
@@ -75,9 +80,9 @@ To override the install packages entirely:
 export TERMBRIDGE_SANDBOX_AGENT_PACKAGES=claude-code,codex,opencode
 ```
 
-<Callout type="info">
-  Auth sync copies local credentials into the sandbox. Only use this with sandboxes you trust, and prefer ephemeral sandboxes with `TERMBRIDGE_SANDBOX_DELETE_ON_EXIT=true`.
-</Callout>
+> **Note**
+> Auth sync copies local credentials into the sandbox. Only use this with sandboxes you trust, and prefer ephemeral sandboxes with `TERMBRIDGE_SANDBOX_DELETE_ON_EXIT=true`.
+
 
 ## Related docs
 

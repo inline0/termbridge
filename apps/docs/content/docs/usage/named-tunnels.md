@@ -1,6 +1,11 @@
 ---
-title: Named Tunnels
-description: Use your own Cloudflare tunnel to avoid rate limits.
+title: "Named Tunnels"
+description: "Use your own Cloudflare tunnel to avoid rate limits."
+path: "usage/named-tunnels"
+order: 7
+section: "Usage"
+meta_title: "Named Tunnels"
+meta_description: "Use your own Cloudflare tunnel to avoid rate limits."
 ---
 
 # Named Tunnels
@@ -52,9 +57,9 @@ export TERMBRIDGE_TUNNEL_URL=https://term.example.com
 termbridge --port 8080
 ```
 
-<Callout type="info">
-  The `--port` flag is required with named tunnels because the hostname is configured to point to a specific port.
-</Callout>
+> **Note**
+> The `--port` flag is required with named tunnels because the hostname is configured to point to a specific port.
+
 
 ## Configuration options
 

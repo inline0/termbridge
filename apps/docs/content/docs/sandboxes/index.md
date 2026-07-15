@@ -1,6 +1,11 @@
 ---
-title: Overview
-description: Run Termbridge against cloud sandboxes for terminals and previews.
+title: "Overview"
+description: "Run Termbridge against cloud sandboxes for terminals and previews."
+path: "sandboxes"
+order: 9
+section: "Sandboxes"
+meta_title: "Overview"
+meta_description: "Run Termbridge against cloud sandboxes for terminals and previews."
 ---
 
 # Sandboxes

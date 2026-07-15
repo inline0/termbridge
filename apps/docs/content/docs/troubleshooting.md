@@ -1,6 +1,11 @@
 ---
-title: Troubleshooting
-description: Solutions for common issues.
+title: "Troubleshooting"
+description: "Solutions for common issues."
+path: "troubleshooting"
+order: 14
+section: "Documentation"
+meta_title: "Troubleshooting"
+meta_description: "Solutions for common issues."
 ---
 
 # Troubleshooting

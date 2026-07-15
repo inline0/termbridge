@@ -1,6 +1,11 @@
 ---
-title: Dev Server Preview
-description: Preview your local dev server alongside the terminal.
+title: "Dev Server Preview"
+description: "Preview your local dev server alongside the terminal."
+path: "usage/dev-server-preview"
+order: 6
+section: "Usage"
+meta_title: "Dev Server Preview"
+meta_description: "Preview your local dev server alongside the terminal."
 ---
 
 # Dev Server Preview

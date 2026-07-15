@@ -1,6 +1,11 @@
 ---
-title: Introduction
-description: Access your terminal from anywhere - phone, tablet, or another computer.
+title: "Introduction"
+description: "Access your terminal from anywhere - phone, tablet, or another computer."
+path: "."
+order: 0
+section: "Documentation"
+meta_title: "Introduction"
+meta_description: "Access your terminal from anywhere - phone, tablet, or another computer."
 ---
 
 # Your terminal, anywhere
@@ -57,17 +62,18 @@ npx termbridge
 
 Scan the QR code with your phone and you're in. For sandbox mode, see the Sandboxes guide.
 
-<Cards>
-  <Card title="Getting Started" href="/docs/getting-started">
-    Full setup guide with installation steps
-  </Card>
-  <Card title="Usage Guides" href="/docs/usage">
-    Mobile controls, multiple terminals, and more
-  </Card>
-  <Card title="Dev Server Preview" href="/docs/usage/dev-server-preview">
-    Preview your app alongside the terminal
-  </Card>
-  <Card title="Sandboxes" href="/docs/sandboxes">
-    Run terminals in Daytona cloud sandboxes
-  </Card>
-</Cards>
+### [Getting Started](/docs/getting-started)
+
+Full setup guide with installation steps
+
+### [Usage Guides](/docs/usage)
+
+Mobile controls, multiple terminals, and more
+
+### [Dev Server Preview](/docs/usage/dev-server-preview)
+
+Preview your app alongside the terminal
+
+### [Sandboxes](/docs/sandboxes)
+
+Run terminals in Daytona cloud sandboxes

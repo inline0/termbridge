@@ -1,6 +1,11 @@
 ---
-title: Multiple Terminals
-description: Run several terminal sessions and switch between them.
+title: "Multiple Terminals"
+description: "Run several terminal sessions and switch between them."
+path: "usage/multiple-terminals"
+order: 5
+section: "Usage"
+meta_title: "Multiple Terminals"
+meta_description: "Run several terminal sessions and switch between them."
 ---
 
 # Multiple Terminals

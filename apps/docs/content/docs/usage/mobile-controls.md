@@ -1,6 +1,11 @@
 ---
-title: Mobile Controls
-description: On-screen buttons and tips for using Termbridge on phones and tablets.
+title: "Mobile Controls"
+description: "On-screen buttons and tips for using Termbridge on phones and tablets."
+path: "usage/mobile-controls"
+order: 4
+section: "Usage"
+meta_title: "Mobile Controls"
+meta_description: "On-screen buttons and tips for using Termbridge on phones and tablets."
 ---
 
 # Mobile Controls
@@ -35,9 +40,9 @@ Rotate your phone to landscape for more screen space. This is especially useful 
 - Wide command output
 - Reading logs with long lines
 
-<Callout type="info">
-  Some phones have a rotation lock - make sure it's disabled if the screen won't rotate.
-</Callout>
+> **Note**
+> Some phones have a rotation lock - make sure it's disabled if the screen won't rotate.
+
 
 ## Keyboard tips
 

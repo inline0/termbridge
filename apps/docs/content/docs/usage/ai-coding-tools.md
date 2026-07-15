@@ -1,6 +1,11 @@
 ---
-title: AI Coding Tools
-description: Monitor Claude Code, Codex, and other AI coding agents remotely.
+title: "AI Coding Tools"
+description: "Monitor Claude Code, Codex, and other AI coding agents remotely."
+path: "usage/ai-coding-tools"
+order: 8
+section: "Usage"
+meta_title: "AI Coding Tools"
+meta_description: "Monitor Claude Code, Codex, and other AI coding agents remotely."
 ---
 
 # AI Coding Tools

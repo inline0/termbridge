@@ -1,6 +1,11 @@
 ---
-title: Getting Started
-description: Get Termbridge running in under 5 minutes.
+title: "Getting Started"
+description: "Get Termbridge running in under 5 minutes."
+path: "getting-started"
+order: 1
+section: "Documentation"
+meta_title: "Getting Started"
+meta_description: "Get Termbridge running in under 5 minutes."
 ---
 
 # Getting Started
@@ -9,45 +14,40 @@ description: Get Termbridge running in under 5 minutes.
 
 For the default local tunnel setup, install these tools on your computer:
 
-<Steps>
-  <Step>
-    ### Node.js 18+
+### Node.js 18+
 
-    Download from [nodejs.org](https://nodejs.org) or use your package manager.
+Download from [nodejs.org](https://nodejs.org) or use your package manager.
 
-    ```bash
-    # Check if installed
-    node --version
-    ```
-  </Step>
-  <Step>
-    ### tmux
+```bash
+# Check if installed
+node --version
+```
 
-    The terminal multiplexer that powers Termbridge sessions.
+### tmux
 
-    ```bash
-    # macOS
-    brew install tmux
+The terminal multiplexer that powers Termbridge sessions.
 
-    # Ubuntu/Debian
-    sudo apt install tmux
-    ```
-  </Step>
-  <Step>
-    ### cloudflared
+```bash
+# macOS
+brew install tmux
 
-    Creates the secure tunnel to your terminal (not needed for sandbox direct mode).
+# Ubuntu/Debian
+sudo apt install tmux
+```
 
-    ```bash
-    # macOS
-    brew install cloudflared
+### cloudflared
 
-    # Linux - see cloudflare.com/downloads
-    ```
+Creates the secure tunnel to your terminal (not needed for sandbox direct mode).
 
-    [Download cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
-  </Step>
-</Steps>
+```bash
+# macOS
+brew install cloudflared
+
+# Linux - see cloudflare.com/downloads
+```
+
+[Download cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
+
 
 ## Run Termbridge
 
@@ -71,10 +71,10 @@ You'll see output like this:
 └─────────────────────────────────────────┘
 ```
 
-<Callout type="info">
-  The `trycloudflare.com` URL is a quick, account-less tunnel. If you use Termbridge frequently,
-  set up a named Cloudflare tunnel token to avoid rate limits.
-</Callout>
+> **Note**
+> The `trycloudflare.com` URL is a quick, account-less tunnel. If you use Termbridge frequently,
+> set up a named Cloudflare tunnel token to avoid rate limits.
+
 
 ## Connect from your phone
 
@@ -129,17 +129,18 @@ If you pass `--session <name>` and that session already exists, Termbridge will 
 
 ## Next steps
 
-<Cards>
-  <Card title="Mobile Controls" href="/docs/usage/mobile-controls">
-    Tips for using Termbridge on phones and tablets
-  </Card>
-  <Card title="Multiple Terminals" href="/docs/usage/multiple-terminals">
-    Run several sessions and switch between them
-  </Card>
-  <Card title="Dev Server Preview" href="/docs/usage/dev-server-preview">
-    Preview your Vite app alongside the terminal
-  </Card>
-  <Card title="CLI Reference" href="/docs/cli">
-    See all available flags and options
-  </Card>
-</Cards>
+### [Mobile Controls](/docs/usage/mobile-controls)
+
+Tips for using Termbridge on phones and tablets
+
+### [Multiple Terminals](/docs/usage/multiple-terminals)
+
+Run several sessions and switch between them
+
+### [Dev Server Preview](/docs/usage/dev-server-preview)
+
+Preview your Vite app alongside the terminal
+
+### [CLI Reference](/docs/cli)
+
+See all available flags and options
