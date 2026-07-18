@@ -3,8 +3,7 @@
   "private": true,
   "workspaces": [
     "cli",
-    "packages/*",
-    "apps/*"
+    "packages/*"
   ],
   "scripts": {
     "dev": "bun run --cwd cli dev",
@@ -42,8 +41,5 @@
     "playwright": "^1.57.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.17"
-  },
-  "dependencies": {
-    "onedocs": "0.1.26"
   }
 }

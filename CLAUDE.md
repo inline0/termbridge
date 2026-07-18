@@ -55,8 +55,7 @@ termbridge/
 │   ├── terminal/                 # tmux backend (node-pty)
 │   ├── tunnel/                   # Cloudflare tunnel
 │   └── ui/                       # Reusable React components
-├── apps/
-│   └── docs/                     # Next.js + OneDocs site
+├── docs/                          # Portable Markdown documentation
 └── scripts/
     ├── dev-beam.mjs              # Dev workflow script
     └── daytona-debug.mjs         # Daytona debugging script
