@@ -3,7 +3,6 @@ title: "Introduction"
 description: "Access your terminal from anywhere - phone, tablet, or another computer."
 path: "."
 order: 10
-section: "Getting Started"
 meta_title: "Introduction"
 meta_description: "Access your terminal from anywhere - phone, tablet, or another computer."
 ---
