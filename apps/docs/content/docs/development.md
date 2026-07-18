@@ -2,8 +2,8 @@
 title: "Development"
 description: "Local development, test suites, and docs."
 path: "development"
-order: 13
-section: "Documentation"
+order: 140
+section: "Project"
 meta_title: "Development"
 meta_description: "Local development, test suites, and docs."
 ---

@@ -2,8 +2,8 @@
 title: "Architecture"
 description: "How the local server, tunnel, and terminal streaming fit together."
 path: "architecture"
-order: 12
-section: "Documentation"
+order: 130
+section: "Project"
 meta_title: "Architecture"
 meta_description: "How the local server, tunnel, and terminal streaming fit together."
 ---

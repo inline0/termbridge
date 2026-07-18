@@ -2,8 +2,8 @@
 title: "CLI Reference"
 description: "All the flags and options you might need."
 path: "cli"
-order: 2
-section: "Documentation"
+order: 120
+section: "Reference"
 meta_title: "CLI Reference"
 meta_description: "All the flags and options you might need."
 ---

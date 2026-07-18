@@ -2,7 +2,7 @@
 title: "Daytona"
 description: "Run Termbridge against Daytona sandboxes for cloud terminals and previews."
 path: "sandboxes/daytona"
-order: 11
+order: 110
 section: "Sandboxes"
 meta_title: "Daytona"
 meta_description: "Run Termbridge against Daytona sandboxes for cloud terminals and previews."

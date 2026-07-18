@@ -2,8 +2,8 @@
 title: "Getting Started"
 description: "Get Termbridge running in under 5 minutes."
 path: "getting-started"
-order: 1
-section: "Documentation"
+order: 20
+section: "Getting Started"
 meta_title: "Getting Started"
 meta_description: "Get Termbridge running in under 5 minutes."
 ---

@@ -2,7 +2,7 @@
 title: "Overview"
 description: "Learn how to get the most out of Termbridge."
 path: "usage"
-order: 3
+order: 30
 section: "Usage"
 meta_title: "Overview"
 meta_description: "Learn how to get the most out of Termbridge."

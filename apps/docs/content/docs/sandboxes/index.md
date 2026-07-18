@@ -2,7 +2,7 @@
 title: "Overview"
 description: "Run Termbridge against cloud sandboxes for terminals and previews."
 path: "sandboxes"
-order: 9
+order: 90
 section: "Sandboxes"
 meta_title: "Overview"
 meta_description: "Run Termbridge against cloud sandboxes for terminals and previews."

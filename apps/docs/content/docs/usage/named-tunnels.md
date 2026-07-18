@@ -2,7 +2,7 @@
 title: "Named Tunnels"
 description: "Use your own Cloudflare tunnel to avoid rate limits."
 path: "usage/named-tunnels"
-order: 7
+order: 70
 section: "Usage"
 meta_title: "Named Tunnels"
 meta_description: "Use your own Cloudflare tunnel to avoid rate limits."

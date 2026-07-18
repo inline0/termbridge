@@ -2,7 +2,7 @@
 title: "Mobile Controls"
 description: "On-screen buttons and tips for using Termbridge on phones and tablets."
 path: "usage/mobile-controls"
-order: 4
+order: 40
 section: "Usage"
 meta_title: "Mobile Controls"
 meta_description: "On-screen buttons and tips for using Termbridge on phones and tablets."

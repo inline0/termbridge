@@ -2,7 +2,7 @@
 title: "Coding agents"
 description: "Install and authenticate Claude, Codex, and OpenCode in Daytona sandboxes."
 path: "sandboxes/coding-agents"
-order: 10
+order: 100
 section: "Sandboxes"
 meta_title: "Coding agents"
 meta_description: "Install and authenticate Claude, Codex, and OpenCode in Daytona sandboxes."

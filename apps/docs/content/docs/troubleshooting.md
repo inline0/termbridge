@@ -2,8 +2,8 @@
 title: "Troubleshooting"
 description: "Solutions for common issues."
 path: "troubleshooting"
-order: 14
-section: "Documentation"
+order: 150
+section: "Help"
 meta_title: "Troubleshooting"
 meta_description: "Solutions for common issues."
 ---

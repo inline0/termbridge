@@ -2,8 +2,8 @@
 title: "FAQ"
 description: "Quick answers to common questions."
 path: "faq"
-order: 15
-section: "Documentation"
+order: 160
+section: "Help"
 meta_title: "FAQ"
 meta_description: "Quick answers to common questions."
 ---

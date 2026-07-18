@@ -343,3 +343,7 @@ The `source` field in terminal metadata indicates the backend:
 **Development:**
 - Bun 1.2.22+
 - Playwright (`bunx playwright install chromium`)
+
+## Dependency Rule
+
+- Never edit vendor-prefixed, vendored, or generated dependency copies directly. Fix the upstream source first, then rebuild or update the embedded artifact.
