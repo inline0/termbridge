@@ -14,10 +14,14 @@ Termbridge is designed for phones and tablets. The control bar gives you quick a
 
 ## Control bar
 
-| Button | What it sends |
+Tap the **+** button next to the message field to show or hide the control bar.
+
+| Button | What it does |
 |--------|---------------|
 | `Enter` | Submit commands |
-| `↑` `↓` `←` `→` | Arrow keys (history, navigation) |
+| `Page Up` `Page Down` | Scroll the terminal by a page |
+| `Line Up` `Line Down` | Scroll the terminal by a line |
+| `Up` `Down` `Left` `Right` | Arrow keys (history, navigation) |
 | `Tab` | Autocomplete |
 | `Esc` | Exit modes, cancel |
 | `Ctrl+C` | Interrupt/kill process |
@@ -26,9 +30,9 @@ The bar scrolls horizontally - swipe to see more options.
 
 ## Sending input
 
-1. Type in the input field at the bottom
+1. Type in the message field at the bottom
 2. Press **Enter** or tap the send button
-3. Your command runs in the terminal
+3. Termbridge sends the text followed by Enter, so your command runs in the terminal
 
 The input field supports pasting from your clipboard, so you can copy commands from notes or messages.
 

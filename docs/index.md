@@ -53,7 +53,7 @@ By default, everything runs locally on your machine. Optional sandbox mode runs 
 
 ## Quick start
 
-For the default local tunnel flow, install [Node.js](https://nodejs.org), [tmux](https://github.com/tmux/tmux), and [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/), then:
+For the default local tunnel flow, install [Node.js](https://nodejs.org) 20 or newer, [tmux](https://github.com/tmux/tmux), and [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/), then:
 
 ```bash
 npx termbridge

@@ -1,10 +1,10 @@
 ---
 title: "Getting Started"
-description: "Get Termbridge running in under 5 minutes."
+description: "Install the prerequisites, run Termbridge and connect from your phone."
 path: "getting-started"
 order: 20
 meta_title: "Getting Started"
-meta_description: "Get Termbridge running in under 5 minutes."
+meta_description: "Install the prerequisites, run Termbridge and connect from your phone."
 ---
 
 # Getting Started
@@ -13,7 +13,7 @@ meta_description: "Get Termbridge running in under 5 minutes."
 
 For the default local tunnel setup, install these tools on your computer:
 
-### Node.js 18+
+### Node.js 20+
 
 Download from [nodejs.org](https://nodejs.org) or use your package manager.
 
@@ -89,7 +89,7 @@ That's it - you're connected!
 1. Termbridge started a local server on your machine
 2. It created a tmux session for your terminal
 3. Cloudflare created a secure tunnel (the `trycloudflare.com` URL)
-4. The QR code contains a one-time token for secure access
+4. The QR code contains a one-time token for secure access. It works once and expires 90 seconds after startup, so scan it promptly; if it has expired, restart Termbridge for a new one
 5. When you scanned it, you got a session cookie and connected
 
 ## Try it out
@@ -120,7 +120,7 @@ Termbridge needs to stay running for the connection to work. When you're done:
 
 - Termbridge creates a tmux session (default name is derived from the port)
 - The first terminal in the list is loaded automatically
-- You can create multiple sessions in dev by setting `TERMBRIDGE_SESSIONS=2`
+- You can create multiple sessions on startup by setting `TERMBRIDGE_SESSIONS=2`
 
 ## Using an existing tmux session
 

@@ -42,6 +42,7 @@ Monitor Claude Code, Codex, and other agents remotely
 
 ## Limitations
 
-- **Single PTY**: Multiple viewers see the same terminal and can all type
+- **One link per run**: Each start issues a single-use share link, so one browser connects per link
+- **Shared terminals**: Everyone connected to the same terminal sees the same output and can type
 - **Tunnel required**: Without a tunnel (or sandbox direct mode), you need your own public URL
 - **Cloudflare only**: Currently the only tunnel provider (or use `--no-tunnel` / sandbox direct mode)

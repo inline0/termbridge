@@ -12,20 +12,21 @@ meta_description: "Quick answers to common questions."
 
 ## Is my data going through someone else's server?
 
-By default, everything runs on your machine. Cloudflare creates a tunnel, but your terminal data goes directly from your browser to your computer - nothing is stored anywhere else. If you use Daytona sandbox mode, the server runs in your sandbox and data stays inside your Daytona account.
+The Termbridge server and your terminal run on your machine, and there is no Termbridge-operated backend. In the default setup your terminal traffic does pass through Cloudflare: the browser connects over HTTPS to a Cloudflare Quick Tunnel, which forwards it to the `cloudflared` process on your computer (see [Architecture](/docs/architecture)). With a named tunnel it goes through your own Cloudflare account, and with `--no-tunnel` it goes through whatever serves your public URL.
+
+In Daytona sandbox mode the terminal runs in a sandbox in your Daytona account. In direct mode the browser connects through the Daytona preview link instead of Cloudflare.
 
 ## How secure is the connection?
 
-Pretty secure:
-- The URL includes a one-time token that expires after use
+- The URL includes a one-time token that works once and expires 90 seconds after startup
 - Sessions are protected by HttpOnly cookies
-- All traffic is encrypted via HTTPS
+- Tunnel URLs (Cloudflare or a Daytona preview link) use HTTPS; with `--no-tunnel`, encryption depends on the public URL you provide
 
-Just don't share the QR code or URL with people you don't trust.
+Sessions don't expire on their own. They are stored in `termbridge/sessions.json` in your system's temp directory, so a browser that redeemed a link keeps access for as long as it can reach the same URL. Delete that file and restart Termbridge to sign every browser out. Don't share the QR code or URL with people you don't trust.
 
 ## Can I run multiple terminals at once?
 
-Yes. Termbridge can run several tmux sessions simultaneously. Use the terminal switcher in the UI to jump between them.
+Yes. Start Termbridge with `TERMBRIDGE_SESSIONS=3` (or attach to existing sessions with `--session`) and use the terminal switcher in the UI to jump between them. See [Multiple Terminals](/docs/usage/multiple-terminals).
 
 ## Will it work with Claude Code, Codex, or other AI tools?
 
@@ -45,4 +46,6 @@ In local mode, the tunnel stays active as long as Termbridge is running. If your
 
 ## Can multiple people connect at once?
 
-Yes, but they all see the same terminal. It's a single PTY, so multiple viewers see the same output and can all type. Think of it like screen sharing for your terminal.
+Not from a single link. Each run issues one share link, and it works once: whoever opens it first gets the session, and anyone else gets `invalid token`. There is no way to issue a second link without restarting Termbridge.
+
+If you restart and keep the same public URL (a named tunnel or `--public-url`), browsers that connected earlier keep their sessions, so a second person can scan the new code. Everyone connected to the same terminal sees the same output and can type. A Quick Tunnel gets a new URL on every start, so earlier browsers have to scan again.

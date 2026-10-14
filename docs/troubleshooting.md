@@ -10,9 +10,9 @@ meta_description: "Solutions for common issues."
 
 # Troubleshooting
 
-## "tmux not found"
+## "spawn tmux ENOENT"
 
-tmux isn't installed or isn't in your PATH.
+tmux isn't installed or isn't in your PATH. Termbridge prints this error but currently keeps running without serving a terminal ([#4](https://github.com/inline0/termbridge/issues/4)); press `Ctrl+C`, install tmux, and start it again.
 
 ```bash
 # macOS
@@ -22,9 +22,9 @@ brew install tmux
 sudo apt install tmux
 ```
 
-## "cloudflared not found"
+## "spawn cloudflared ENOENT"
 
-Cloudflare's tunnel client isn't installed. This is only required for tunnel mode; `--no-tunnel` and Daytona direct mode do not need cloudflared.
+Cloudflare's tunnel client isn't installed or isn't in your PATH. This is only required for tunnel mode; `--no-tunnel` and Daytona direct mode do not need cloudflared.
 
 ```bash
 # macOS
@@ -41,7 +41,9 @@ A few things to check (skip this if you're using direct sandbox mode):
 2. Make sure you can reach `https://trycloudflare.com`
 3. Check if a firewall is blocking outbound connections
 
-Even if the tunnel fails, Termbridge will still work locally - you'll see a local URL you can use on the same network.
+If the tunnel fails to start, Termbridge prints the error, stops its server and exits with status 1. It does not fall back to a local-only mode, and the server only listens on `127.0.0.1` by default, so other devices on your network can't reach it either. The tmux sessions created for that run are left running ([#4](https://github.com/inline0/termbridge/issues/4)).
+
+To use Termbridge without the Cloudflare tunnel, run it with `--no-tunnel --public-url <url>` behind your own reverse proxy or tunnel.
 
 ## "429 Too Many Requests" from trycloudflare
 
@@ -53,7 +55,7 @@ Cloudflare rate limits account-less tunnels. If you see errors like `429 Too Man
 
 ## Blank screen or "Unable to load terminals"
 
-This usually means the session expired or something went wrong with auth:
+This usually means the browser has no valid session cookie, for example because it was opened without redeeming a share link, or the tunnel URL changed:
 
 1. Check if the local server is still running
 2. Look at the browser console for 401/403 errors
@@ -74,9 +76,9 @@ If sessions show up but the terminal is blank, try:
 
 ## QR code scans but page is blank
 
-The QR code contains a one-time token. If you've already scanned it once, it won't work again.
+The QR code contains a one-time token. It works once, and only within 90 seconds of Termbridge starting. A used or expired link returns `invalid token`.
 
-Solution: Restart Termbridge to generate a new QR code.
+Solution: Restart Termbridge to generate a new QR code, and scan it right away.
 
 ## node-pty errors about spawn-helper
 

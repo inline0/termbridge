@@ -29,13 +29,13 @@ It works by running a local server that connects to your terminal (via tmux), th
 **Use cases:**
 - Run long commands on your laptop while checking progress from your phone
 - Access your dev environment from your couch
-- Pair program by sharing your terminal with someone else
+- Hand the one-time link to a teammate so they can follow along in your terminal
 - Run coding agents (Claude Code, Codex, OpenCode) in cloud sandboxes
 
 ## Quick Start
 
 **Prerequisites:**
-- Node.js 18+
+- Node.js 20+
 - [tmux](https://github.com/tmux/tmux) installed
 - [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/) installed
 
@@ -70,7 +70,21 @@ termbridge [options]
 | `--no-qr` | Don't show the QR code |
 | `--no-tunnel` | Disable the tunnel (use with `--public-url`) |
 | `--public-url <url>` | Your own public URL (when tunnel disabled) |
+| `--tunnel <provider>` | `cloudflare` (default) or `none` |
+| `--tunnel-token <token>` | Named Cloudflare Tunnel token (requires `--port` and `--tunnel-url`) |
+| `--tunnel-url <url>` | Public URL of the named tunnel |
 | `--backend <mode>` | `tmux` (default) or `sandbox-daytona` |
+| `--sandbox-repo <url>` | Repo to clone into the Daytona sandbox |
+| `--sandbox-branch <branch>` | Branch to check out in the sandbox |
+| `--sandbox-path <path>` | Repo directory inside the sandbox |
+| `--sandbox-name <name>` | Daytona sandbox name |
+| `--sandbox-preview-port <port>` | Dev server port to preview from the sandbox |
+| `--sandbox-public` | Create a public sandbox |
+| `--sandbox-direct` | Run the server inside the Daytona sandbox (no tunnel) |
+| `--dev-proxy-url <url>` | Proxy preview traffic to this URL (used by the dev scripts) |
+| `-h`, `--help` | Show help |
+
+The built-in `--help` text still lists `--daytona-*` flags and `--backend daytona`; those are rejected, use the names above ([#1](https://github.com/inline0/termbridge/issues/1)). See the [CLI reference](https://termbridge.dev/docs/cli) for defaults and every environment variable.
 
 ### Proxy Mode
 
@@ -94,6 +108,8 @@ The UI shows Terminal and Preview tabs. Great for mobile testing!
 | `TERMBRIDGE_PUBLIC_URL=<url>` | Public URL when tunnel is disabled |
 | `TERMBRIDGE_TUNNEL=none` | Disable the Cloudflare tunnel |
 
+Termbridge also reads these from a `.env` file in the directory you run it from.
+
 ### Security (Development Only)
 
 | Variable | Description |
@@ -108,7 +124,7 @@ Instead of running terminals locally, you can run them in [Daytona](https://dayt
 
 - Running coding agents without cluttering your local machine
 - Isolated environments for experiments
-- Sharing terminals that persist even if your laptop sleeps
+- Terminals that keep running in the cloud (in direct mode you can reconnect while your laptop sleeps)
 
 ### Setup
 
@@ -119,7 +135,7 @@ Instead of running terminals locally, you can run them in [Daytona](https://dayt
 # Required
 export TERMBRIDGE_BACKEND=sandbox-daytona
 export TERMBRIDGE_DAYTONA_API_KEY=your_api_key
-export TERMBRIDGE_SANDBOX_REPO=https://github.com/you/your-repo.git
+export TERMBRIDGE_SANDBOX_REPO=https://github.com/you/your-repo.git  # always set; the built-in default is a private repo (#2)
 
 # Optional
 export TERMBRIDGE_DAYTONA_API_URL=https://app.daytona.io/api
@@ -142,6 +158,7 @@ termbridge
 | **Daytona API** | |
 | `TERMBRIDGE_DAYTONA_API_KEY` | Your Daytona API key (required) |
 | `TERMBRIDGE_DAYTONA_API_URL` | API endpoint (default: `https://app.daytona.io/api`) |
+| `TERMBRIDGE_DAYTONA_TARGET` | Daytona target region |
 | **Repository** | |
 | `TERMBRIDGE_SANDBOX_REPO` | Git repo URL to clone (required) |
 | `TERMBRIDGE_SANDBOX_BRANCH` | Branch to checkout |
@@ -153,7 +170,8 @@ termbridge
 | `TERMBRIDGE_SANDBOX_PREVIEW_PORT` | Port for preview proxy (e.g., `5173`) |
 | **Git Auth** (for private repos) | |
 | `TERMBRIDGE_SANDBOX_GIT_USERNAME` | Git username |
-| `TERMBRIDGE_SANDBOX_GIT_TOKEN` | Git token or password |
+| `TERMBRIDGE_SANDBOX_GIT_TOKEN` | Git token |
+| `TERMBRIDGE_SANDBOX_GIT_PASSWORD` | Git password (overrides the token) |
 
 ### Direct Mode (No Tunnel)
 
@@ -223,10 +241,10 @@ These are only used during development:
 
 | Variable | Description |
 |----------|-------------|
-| `TERMBRIDGE_E2E_DAYTONA=1` | Enable Daytona integration tests |
+| `TERMBRIDGE_E2E_DAYTONA=1` | Enable Daytona integration tests (set in the `.env` file below) |
 | `TERMBRIDGE_TEST_DEBUG=1` | Enable debug logging in tests |
 
-The Daytona E2E tests require a `.env` file in the [termbridge-test-app](https://github.com/inline0/termbridge-test-app) repo (sibling directory).
+The Daytona E2E test reads its settings only from `../termbridge-test-app/.env`, a directory next to this repository. That file needs `TERMBRIDGE_E2E_DAYTONA=1` and `TERMBRIDGE_DAYTONA_API_KEY`; set `TERMBRIDGE_SANDBOX_REPO` there to a repository you can clone, because the default test repository is private.
 
 ---
 

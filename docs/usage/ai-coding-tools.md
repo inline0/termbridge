@@ -21,14 +21,13 @@ Termbridge works great for monitoring AI coding assistants. Start an agent in yo
 
 ## Supported tools
 
-Any CLI-based AI coding tool works:
+Termbridge streams whatever runs in the tmux session, so it doesn't need to know about the tool. The examples on this page use:
 
-- **Claude Code** (`claude-code`)
+- **Claude Code** (`claude`)
 - **Codex** (`codex`)
 - **OpenCode** (`opencode`)
-- **Aider** (`aider`)
-- **Cursor** (terminal mode)
-- Any other terminal-based agent
+
+These three are also the agents that sandbox mode can install and sign in automatically. Other terminal-based agents run the same way but are not tested.
 
 ## Local workflow
 
@@ -128,7 +127,7 @@ Need to stop or redirect an agent?
 |---------|--------------|-------------------|
 | Setup | Just tmux | Daytona account + API key |
 | Environment | Your machine | Isolated container |
-| Persistence | Survives restarts | Survives laptop sleep |
+| Persistence | Survives restarts | Survives laptop sleep in direct mode |
 | Auth | Already configured | Auto-synced by Termbridge |
 | Best for | Quick monitoring | Isolated experiments |
 

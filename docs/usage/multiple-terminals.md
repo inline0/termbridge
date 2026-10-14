@@ -38,11 +38,9 @@ Use the shortcut script:
 bun run dev:beam:multi
 ```
 
-### From the UI
+### While Termbridge is running
 
-1. Tap the terminal icon in the bottom bar
-2. Tap "New Terminal" in the switcher
-3. A new session is created and selected
+The UI switches between terminals but has no control for creating one. To get more terminals, restart Termbridge with a higher `TERMBRIDGE_SESSIONS`, or open extra windows inside the tmux session itself (`Ctrl+B` then `c`).
 
 ## Switching terminals
 

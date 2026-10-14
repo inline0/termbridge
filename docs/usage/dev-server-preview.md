@@ -47,7 +47,7 @@ Both views stay connected - your terminal session continues while you're viewing
 
 ## Hot Module Replacement (HMR)
 
-Vite's HMR works through the proxy. WebSocket connections to `/_vite/ws` are forwarded to your dev server automatically.
+Vite's HMR works through the proxy. Every WebSocket connection outside `/__tb/` from a signed-in browser is forwarded to your dev server, whatever its path, so the HMR socket connects without extra configuration.
 
 Edit your code and see changes in the Preview view instantly - no refresh needed.
 

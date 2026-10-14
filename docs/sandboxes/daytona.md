@@ -25,10 +25,9 @@ Set the backend to Daytona and provide the repo configuration:
 ```bash
 export TERMBRIDGE_BACKEND=sandbox-daytona
 export TERMBRIDGE_DAYTONA_API_KEY=your_key
-export TERMBRIDGE_DAYTONA_API_URL=https://app.daytona.io/api
-export TERMBRIDGE_SANDBOX_REPO=https://github.com/inline0/termbridge-test-app.git
+export TERMBRIDGE_SANDBOX_REPO=https://github.com/you/your-repo.git
 export TERMBRIDGE_SANDBOX_BRANCH=main
-export TERMBRIDGE_SANDBOX_PATH=termbridge-test-app
+export TERMBRIDGE_SANDBOX_PATH=your-repo
 export TERMBRIDGE_SANDBOX_NAME=termbridge-sandbox
 export TERMBRIDGE_SANDBOX_PUBLIC=true
 export TERMBRIDGE_SANDBOX_PREVIEW_PORT=5173
@@ -41,6 +40,18 @@ Then run Termbridge as usual:
 npx termbridge
 ```
 
+Always set `TERMBRIDGE_SANDBOX_REPO` (or `--sandbox-repo`). When it is missing, Termbridge currently falls back to a built-in default repository that is not publicly accessible, so the sandbox is created and the clone fails ([#2](https://github.com/inline0/termbridge/issues/2)).
+
+## Daytona connection
+
+| Variable | Purpose |
+| --- | --- |
+| `TERMBRIDGE_DAYTONA_API_KEY` | Your Daytona API key |
+| `TERMBRIDGE_DAYTONA_API_URL` | API endpoint (default `https://app.daytona.io/api`) |
+| `TERMBRIDGE_DAYTONA_TARGET` | Daytona target region (optional) |
+
+These are passed to the Daytona SDK. When one of them is unset, the SDK falls back to its own `DAYTONA_API_KEY`, `DAYTONA_API_URL` or `DAYTONA_TARGET` variable.
+
 ## Direct sandbox mode (no tunnel)
 
 Direct mode runs the Termbridge server inside the sandbox and skips Cloudflare entirely. The share URL is the Daytona preview link to the sandboxed server.
@@ -50,6 +61,8 @@ export TERMBRIDGE_BACKEND=sandbox-daytona
 export TERMBRIDGE_SANDBOX_DIRECT=true
 export TERMBRIDGE_SANDBOX_SERVER_PORT=8080
 ```
+
+`TERMBRIDGE_SANDBOX_SERVER_PORT` (or `--port`) defaults to `8080`. Direct mode creates a public sandbox unless you set `TERMBRIDGE_SANDBOX_PUBLIC=false`, and the UI hides the terminal switcher.
 
 You can still enable preview by setting `TERMBRIDGE_SANDBOX_PREVIEW_PORT`; in direct mode it is forwarded as the server `--proxy` port.
 
@@ -61,10 +74,10 @@ Use these settings:
 
 | Variable | Purpose |
 | --- | --- |
-| `TERMBRIDGE_SANDBOX_REPO` | Repo URL to clone (required) |
+| `TERMBRIDGE_SANDBOX_REPO` | Repo URL to clone (always set it, see the quick start) |
 | `TERMBRIDGE_SANDBOX_BRANCH` | Branch to check out (optional) |
 | `TERMBRIDGE_SANDBOX_PATH` | Path for the repo in the sandbox (optional) |
-| `TERMBRIDGE_SANDBOX_NAME` | Sandbox name (optional) |
+| `TERMBRIDGE_SANDBOX_NAME` | Sandbox name (optional, defaults to `termbridge-<random hex>`) |
 
 If `TERMBRIDGE_SANDBOX_PATH` is not set, Termbridge derives it from the repo name.
 
@@ -104,6 +117,8 @@ Termbridge fetches the Daytona preview link and proxies it through the Termbridg
 | `TERMBRIDGE_SANDBOX_PUBLIC=true` | Creates a public sandbox |
 | `TERMBRIDGE_SANDBOX_PUBLIC=false` | Creates a private sandbox |
 
+When the variable is unset, sandboxes are private, except in direct mode, where they are public.
+
 For private sandboxes, Termbridge forwards the preview token automatically when proxying the preview.
 
 ## Cleanup and lifecycle
@@ -125,18 +140,20 @@ This keeps sandbox usage under control and avoids disk quota issues.
 
 ## CLI flags
 
-You can also configure Daytona via flags:
+You can also configure Daytona via flags. A flag takes precedence over the matching environment variable.
 
-| Flag | Purpose |
-| --- | --- |
-| `--backend sandbox-daytona` | Use the Daytona backend |
-| `--sandbox-daytona-repo <url>` | Repo URL |
-| `--sandbox-daytona-branch <branch>` | Branch |
-| `--sandbox-daytona-path <path>` | Repo path in sandbox |
-| `--sandbox-daytona-name <name>` | Sandbox name |
-| `--sandbox-daytona-preview-port <port>` | Preview port |
-| `--sandbox-daytona-public` | Create a public sandbox |
-| `--sandbox-daytona-direct` | Run the server inside the sandbox (no tunnel) |
+| Flag | Environment variable | Purpose |
+| --- | --- | --- |
+| `--backend sandbox-daytona` | `TERMBRIDGE_BACKEND` | Use the Daytona backend |
+| `--sandbox-repo <url>` | `TERMBRIDGE_SANDBOX_REPO` | Repo URL |
+| `--sandbox-branch <branch>` | `TERMBRIDGE_SANDBOX_BRANCH` | Branch |
+| `--sandbox-path <path>` | `TERMBRIDGE_SANDBOX_PATH` | Repo path in sandbox |
+| `--sandbox-name <name>` | `TERMBRIDGE_SANDBOX_NAME` | Sandbox name |
+| `--sandbox-preview-port <port>` | `TERMBRIDGE_SANDBOX_PREVIEW_PORT` | Preview port |
+| `--sandbox-public` | `TERMBRIDGE_SANDBOX_PUBLIC=true` | Create a public sandbox |
+| `--sandbox-direct` | `TERMBRIDGE_SANDBOX_DIRECT=true` | Run the server inside the sandbox (no tunnel) |
+
+There is no flag for a private sandbox; use `TERMBRIDGE_SANDBOX_PUBLIC=false`. The built-in `termbridge --help` output still shows `--daytona-*` names and `--backend daytona`, which are rejected ([#1](https://github.com/inline0/termbridge/issues/1)).
 
 ## Troubleshooting
 

@@ -13,7 +13,7 @@ meta_description: "Local development, test suites, and docs."
 ## Requirements
 
 - **Bun** for workspace installs and scripts
-- **Node.js 18+**
+- **Node.js 20+**
 - **tmux** and **cloudflared** for end-to-end tests
 - **Daytona API key + git credentials** for the sandbox integration test (optional)
 - **Playwright** for UI e2e tests
@@ -30,7 +30,7 @@ bun install
 bun run dev:beam
 ```
 
-This builds the CLI, starts the local server on a fixed port, and launches the Vite dev UI with proxies for `/api`, `/ws`, and `/s`.
+This builds the CLI, starts the local server on port `8787` (override with `TERMBRIDGE_DEV_PORT`) with the tmux session `codex` (override with `TERMBRIDGE_DEV_SESSION`), and launches the Vite dev UI, which proxies `/__tb` (including WebSockets) to that server. It prints a dev redeem URL to open in the browser. Set `TERMBRIDGE_SKIP_BUILD=1` to skip the CLI build.
 
 ### Multiple sessions
 
@@ -46,10 +46,10 @@ bun run dev:beam:multi
 
 ### Local cookie mode
 
-When developing without HTTPS:
+`dev:beam` sets `TERMBRIDGE_INSECURE_COOKIE=1` unless you set it yourself, so session cookies work over plain HTTP. When running the CLI directly without HTTPS, set it explicitly:
 
 ```bash
-TERMBRIDGE_INSECURE_COOKIE=1 bun run dev:beam
+TERMBRIDGE_INSECURE_COOKIE=1 node cli/dist/bin.js --no-tunnel --public-url http://127.0.0.1:8080 --port 8080
 ```
 
 ## Tests
@@ -59,18 +59,15 @@ bun run test
 ```
 
 - `test:mocked` runs unit/integration tests with 100% coverage.
-- `test:cli` runs real CLI + UI e2e tests (tmux + cloudflared + Playwright). It also runs the Daytona sandbox test when `TERMBRIDGE_E2E_DAYTONA=1` and the Daytona env vars are set in `termbridge-test-app/.env`.
+- `test:cli` runs real CLI + UI e2e tests (tmux + cloudflared + Playwright).
+- The Daytona sandbox test in `test:cli` reads its settings only from a `.env` file in a `termbridge-test-app` directory next to this repository (`../termbridge-test-app/.env`). It runs when that file sets `TERMBRIDGE_E2E_DAYTONA=1` and `TERMBRIDGE_DAYTONA_API_KEY`. Set `TERMBRIDGE_SANDBOX_REPO` there to a repository you can clone; the default test repository is private and also needs `TERMBRIDGE_SANDBOX_GIT_USERNAME` and `TERMBRIDGE_SANDBOX_GIT_TOKEN`.
 
-## Docs site
+## Docs
 
-The docs live in `apps/docs` and use Onedocs + Fumadocs.
-
-```bash
-bun run --cwd apps/docs dev
-```
-
-Build:
+The docs are plain Markdown files in `docs/`, with frontmatter on every page and `meta.json` files for navigation order. They are published at [termbridge.dev](https://termbridge.dev). Validate them with:
 
 ```bash
-bun run --cwd apps/docs build
+node scripts/check-docs-content.mjs --root docs --expected-docs 16 --expected-nav 3
 ```
+
+The Docs content workflow runs the same check on pull requests that touch `docs/`.
