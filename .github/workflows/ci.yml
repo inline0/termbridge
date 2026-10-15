@@ -57,6 +57,8 @@ jobs:
         with:
           bun-version: latest
       - run: sudo apt-get update && sudo apt-get install -y tmux
+      # Bun otherwise downloads node-gyp latest, which no longer supports Node 20.
+      - run: npm install --global node-gyp@11
       - run: bun install --frozen-lockfile
       - run: bun run build
       - run: bun run test:startup
