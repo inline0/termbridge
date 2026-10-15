@@ -76,13 +76,13 @@ termbridge/
 | `--public-url <url>` | Public URL (when tunnel disabled) | - |
 | `--tunnel cloudflare` | Tunnel provider | cloudflare |
 | `--backend <mode>` | `tmux` or `sandbox-daytona` | tmux |
-| `--sandbox-daytona-direct` | Run server inside sandbox | false |
-| `--sandbox-daytona-repo <url>` | Git repo URL | - |
-| `--sandbox-daytona-branch <branch>` | Git branch | - |
-| `--sandbox-daytona-path <path>` | Path inside sandbox | - |
-| `--sandbox-daytona-name <name>` | Sandbox name | - |
-| `--sandbox-daytona-preview-port <port>` | Preview port | - |
-| `--sandbox-daytona-public` | Make sandbox public | false |
+| `--sandbox-direct` | Run server inside sandbox | false |
+| `--sandbox-repo <url>` | Git repo URL | - |
+| `--sandbox-branch <branch>` | Git branch | - |
+| `--sandbox-path <path>` | Path inside sandbox | - |
+| `--sandbox-name <name>` | Sandbox name | - |
+| `--sandbox-preview-port <port>` | Preview port | - |
+| `--sandbox-public` | Make sandbox public | false |
 
 ---
 
@@ -323,7 +323,7 @@ The `source` field in terminal metadata indicates the backend:
 ### CLI (tsup)
 - Entry: `src/bin.ts`
 - Output: `dist/bin.js` (ESM)
-- Target: Node 18+
+- Target: Node 20+
 
 ### UI (Vite)
 - Entry: `ui/src/main.tsx`
@@ -335,7 +335,7 @@ The `source` field in terminal metadata indicates the backend:
 ## Prerequisites
 
 **Runtime:**
-- Node.js 18+
+- Node.js 20+
 - tmux in PATH
 - cloudflared in PATH
 

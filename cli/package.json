@@ -44,7 +44,7 @@
     "access": "public"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "dependencies": {
     "@daytonaio/sdk": "^0.134.0",

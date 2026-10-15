@@ -7,7 +7,7 @@ export type CliOptions = {
   session?: string;
   killOnExit: boolean;
   noQr: boolean;
-  tunnel: "cloudflare" | "none";
+  tunnel?: "cloudflare" | "none";
   tunnelToken?: string;
   tunnelUrl?: string;
   publicUrl?: string;
@@ -36,8 +36,7 @@ export const parseArgs = (argv: string[]): ParsedArgs => {
 
   const options: CliOptions = {
     killOnExit: false,
-    noQr: false,
-    tunnel: "cloudflare"
+    noQr: false
   };
 
   while (args.length > 0) {

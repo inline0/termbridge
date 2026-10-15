@@ -4,7 +4,7 @@ Access your terminal from anywhere — beam it to your phone with one command.
 
 ## Quick Start
 
-**Prerequisites:** Node.js 18+, [tmux](https://github.com/tmux/tmux), [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
+**Prerequisites:** Node.js 20+, [tmux](https://github.com/tmux/tmux), [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
 
 ```bash
 npx termbridge

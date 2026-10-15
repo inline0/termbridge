@@ -246,7 +246,8 @@ describe("startCommand", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDirect: true
+        sandboxDirect: true,
+        sandboxRepo: "https://example.com/project.git"
       },
       {
         createSandboxDaytonaProvider,
@@ -280,7 +281,8 @@ describe("startCommand", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDirect: true
+        sandboxDirect: true,
+        sandboxRepo: "https://example.com/project.git"
       },
       {
         process: { on: vi.fn() } as unknown as NodeJS.Process,
@@ -317,7 +319,8 @@ describe("startCommand", () => {
         noQr: false,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDirect: true
+        sandboxDirect: true,
+        sandboxRepo: "https://example.com/project.git"
       },
       {
         createSandboxDaytonaProvider,
@@ -351,7 +354,8 @@ describe("startCommand", () => {
         noQr: false,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDirect: true
+        sandboxDirect: true,
+        sandboxRepo: "https://example.com/project.git"
       },
       {
         createSandboxDaytonaProvider,
@@ -379,7 +383,8 @@ describe("startCommand", () => {
           noQr: true,
           tunnel: "cloudflare",
           backend: "sandbox-daytona",
-          sandboxDirect: true
+          sandboxDirect: true,
+        sandboxRepo: "https://example.com/project.git"
         },
         {
           createSandboxDaytonaProvider,
@@ -824,7 +829,7 @@ describe("startCommand", () => {
 
     await expect(
       startCommand(
-        { killOnExit: false, noQr: true, tunnel: "cloudflare" },
+        { killOnExit: false, noQr: true },
         {
           createServer: () => ({ listen }),
           createTerminalBackend: () => ({
@@ -1475,7 +1480,8 @@ describe("startCommand", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDirect: true
+        sandboxDirect: true,
+        sandboxRepo: "https://example.com/project.git"
       },
       {
         process: {

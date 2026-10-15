@@ -55,10 +55,10 @@ termbridge start --port 8080 --proxy 5173 --session dev --kill-on-exit --no-qr -
 
 Any other option fails with `unknown option: <flag>`. There is no `--version` flag.
 
-A flag wins over its environment variable, with one exception: `TERMBRIDGE_TUNNEL` currently overrides `--tunnel` and `--no-tunnel` ([#5](https://github.com/inline0/termbridge/issues/5)).
+A flag wins over its environment variable, including `--tunnel` and `--no-tunnel`. Without either flag, `TERMBRIDGE_TUNNEL` selects the provider; the default is `cloudflare`.
 
 > **Note**
-> The built-in `termbridge --help` output still lists `--daytona-*` flags and `--backend tmux | daytona`. Those names are rejected; use the `--sandbox-*` flags and `--backend sandbox-daytona` from the table above ([#1](https://github.com/inline0/termbridge/issues/1)).
+`termbridge --help` lists the same `--sandbox-*` flags and `--backend sandbox-daytona` values as the table above.
 
 ## Examples
 

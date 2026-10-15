@@ -205,6 +205,21 @@ describe("runInkCli", () => {
     ).toBeTruthy();
   });
 
+  it.each([undefined, "none"])("displays the resolved tunnel mode for env %s", async (tunnel) => {
+    const rerender = vi.fn();
+    renderMock.mockReturnValue({ rerender, unmount: vi.fn() } as never);
+    vi.mocked(startCommand).mockResolvedValue(baseResult);
+    const options = { killOnExit: false, noQr: true };
+    const stderr = createStream();
+    expect(await runInkCli(options, {
+      process: { stderr, env: { TERMBRIDGE_TUNNEL: tunnel } } as unknown as NodeJS.Process
+    })).toBe(0);
+    const view = rerender.mock.calls[0][0];
+    expect(view.props.tunnelMode).toBe(tunnel ?? "cloudflare");
+    expect(InkCliView(view.props)).toBeTruthy();
+    expect(InkCliView({ state: "running", options })).toBeTruthy();
+  });
+
   it("uses default deps when none are provided", async () => {
     const rerender = vi.fn();
     renderMock.mockReturnValue({ rerender, unmount: vi.fn() } as never);

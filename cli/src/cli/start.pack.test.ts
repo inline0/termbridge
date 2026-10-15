@@ -51,7 +51,8 @@ describe("packLocalCli", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDirect: true
+        sandboxDirect: true,
+        sandboxRepo: "https://example.com/project.git"
       },
       {
         createSandboxDaytonaProvider: () => ({ start }),
@@ -79,7 +80,8 @@ describe("packLocalCli", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDirect: true
+        sandboxDirect: true,
+        sandboxRepo: "https://example.com/project.git"
       },
       {
         createSandboxDaytonaProvider: () => ({ start }),
@@ -107,7 +109,8 @@ describe("packLocalCli", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDirect: true
+        sandboxDirect: true,
+        sandboxRepo: "https://example.com/project.git"
       },
       {
         createSandboxDaytonaProvider: () => ({ start }),
@@ -135,7 +138,8 @@ describe("packLocalCli", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDirect: true
+        sandboxDirect: true,
+        sandboxRepo: "https://example.com/project.git"
       },
       {
         createSandboxDaytonaProvider: () => ({ start }),
@@ -162,7 +166,8 @@ describe("packLocalCli", () => {
         noQr: true,
         tunnel: "cloudflare",
         backend: "sandbox-daytona",
-        sandboxDirect: true
+        sandboxDirect: true,
+        sandboxRepo: "https://example.com/project.git"
       },
       {
         createSandboxDaytonaProvider: () => ({ start }),

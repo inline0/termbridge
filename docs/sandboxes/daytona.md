@@ -40,7 +40,7 @@ Then run Termbridge as usual:
 npx termbridge
 ```
 
-Always set `TERMBRIDGE_SANDBOX_REPO` (or `--sandbox-repo`). When it is missing, Termbridge currently falls back to a built-in default repository that is not publicly accessible, so the sandbox is created and the clone fails ([#2](https://github.com/inline0/termbridge/issues/2)).
+Set `TERMBRIDGE_SANDBOX_REPO` (or `--sandbox-repo`). If it is missing or blank, Termbridge exits with an error before creating a sandbox.
 
 ## Daytona connection
 
@@ -153,7 +153,7 @@ You can also configure Daytona via flags. A flag takes precedence over the match
 | `--sandbox-public` | `TERMBRIDGE_SANDBOX_PUBLIC=true` | Create a public sandbox |
 | `--sandbox-direct` | `TERMBRIDGE_SANDBOX_DIRECT=true` | Run the server inside the sandbox (no tunnel) |
 
-There is no flag for a private sandbox; use `TERMBRIDGE_SANDBOX_PUBLIC=false`. The built-in `termbridge --help` output still shows `--daytona-*` names and `--backend daytona`, which are rejected ([#1](https://github.com/inline0/termbridge/issues/1)).
+There is no flag for a private sandbox; use `TERMBRIDGE_SANDBOX_PUBLIC=false`.
 
 ## Troubleshooting
 

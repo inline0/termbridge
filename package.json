@@ -29,7 +29,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "typecheck:all": "bun run --cwd cli typecheck && bun run --cwd packages/shared typecheck && bun run --cwd packages/terminal typecheck && bun run --cwd packages/tunnel typecheck && bun run --cwd packages/ui typecheck",
     "format": "biome format --write .",
-    "check": "biome check ."
+    "check": "biome check .",
+    "test:startup": "vitest run --config vitest.cli.config.ts cli/integration/startup.test.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.11",

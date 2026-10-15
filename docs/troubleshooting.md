@@ -12,7 +12,7 @@ meta_description: "Solutions for common issues."
 
 ## "spawn tmux ENOENT"
 
-tmux isn't installed or isn't in your PATH. Termbridge prints this error but currently keeps running without serving a terminal ([#4](https://github.com/inline0/termbridge/issues/4)); press `Ctrl+C`, install tmux, and start it again.
+tmux isn't installed or isn't in your PATH. Termbridge closes its server and exits with status 1. Install tmux and start it again.
 
 ```bash
 # macOS
@@ -41,7 +41,7 @@ A few things to check (skip this if you're using direct sandbox mode):
 2. Make sure you can reach `https://trycloudflare.com`
 3. Check if a firewall is blocking outbound connections
 
-If the tunnel fails to start, Termbridge prints the error, stops its server and exits with status 1. It does not fall back to a local-only mode, and the server only listens on `127.0.0.1` by default, so other devices on your network can't reach it either. The tmux sessions created for that run are left running ([#4](https://github.com/inline0/termbridge/issues/4)).
+If the tunnel fails to start, Termbridge prints the error, stops its server and exits with status 1. It does not fall back to a local-only mode, and the server only listens on `127.0.0.1` by default, so other devices on your network can't reach it either. With `--kill-on-exit`, sessions started during the failed run are closed. Without that flag, tmux sessions remain available for reconnection.
 
 To use Termbridge without the Cloudflare tunnel, run it with `--no-tunnel --public-url <url>` behind your own reverse proxy or tunnel.
 

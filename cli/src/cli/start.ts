@@ -45,7 +45,7 @@ export type StartOptions = {
   session?: string;
   killOnExit: boolean;
   noQr: boolean;
-  tunnel: "cloudflare" | "none";
+  tunnel?: "cloudflare" | "none";
   tunnelToken?: string;
   tunnelUrl?: string;
   publicUrl?: string;
@@ -217,10 +217,10 @@ export const startCommand = async (
   const autoAgents = resolveAutoAgents(autoAgentNames, logger);
   const agentInstall = resolveAgentInstall(env, agentEnv, autoAgents.packages, autoAgents.installScripts, autoAgents.agents.length > 0);
   const agentAuth = resolveAgentAuth(env, logger, autoAgents.authSpecs);
-  const sandboxRepo =
-    options.sandboxRepo ??
-    env.TERMBRIDGE_SANDBOX_REPO ??
-    "https://github.com/inline0/termbridge-test-app.git";
+  const sandboxRepo = (options.sandboxRepo ?? env.TERMBRIDGE_SANDBOX_REPO ?? "").trim();
+  if (backendMode === "sandbox-daytona" && !sandboxRepo) {
+    throw new Error("missing sandbox repo: use --sandbox-repo or TERMBRIDGE_SANDBOX_REPO");
+  }
   const sandboxPreviewPort =
     options.sandboxPreviewPort ?? parseOptionalNumber(env.TERMBRIDGE_SANDBOX_PREVIEW_PORT);
   const sandboxPublicEnv = env.TERMBRIDGE_SANDBOX_PUBLIC;
@@ -283,26 +283,31 @@ export const startCommand = async (
       logger
     });
 
-    const redeemUrl = buildShareUrl(result.publicUrl, result.token);
-    logger.info(`Public URL: ${result.publicUrl}`);
-    logger.info(`Share URL: ${redeemUrl}`);
+    try {
+      const redeemUrl = buildShareUrl(result.publicUrl, result.token);
+      logger.info(`Public URL: ${result.publicUrl}`);
+      logger.info(`Share URL: ${redeemUrl}`);
 
-    if (!options.noQr && deps.qr) {
-      deps.qr.generate(redeemUrl, { small: true });
-    } else if (!options.noQr) {
-      logger.warn("QR output unavailable");
+      if (!options.noQr && deps.qr) {
+        deps.qr.generate(redeemUrl, { small: true });
+      } else if (!options.noQr) {
+        logger.warn("QR output unavailable");
+      }
+
+      const shutdown = () => {
+        void result.stop();
+      };
+      processRef.on("SIGINT", shutdown);
+      processRef.on("SIGTERM", shutdown);
+
+      return result;
+    } catch (error) {
+      await result.stop().catch(() => undefined);
+      throw error;
     }
-
-    const shutdown = () => {
-      void result.stop();
-    };
-    processRef.on("SIGINT", shutdown);
-    processRef.on("SIGTERM", shutdown);
-
-    return result;
   }
 
-  const tunnelMode = resolveTunnelMode(env.TERMBRIDGE_TUNNEL ?? options.tunnel);
+  const tunnelMode = resolveTunnelMode(options.tunnel ?? env.TERMBRIDGE_TUNNEL);
   const tmuxPathPrefix = env.TERMBRIDGE_TMUX_PATH_PREFIX ?? undefined;
   const terminalBackend =
     backendMode === "sandbox-daytona"
@@ -333,125 +338,139 @@ export const startCommand = async (
     publicUrl = normalizePublicUrl(publicUrlOverride);
   }
 
-  if (!devProxyUrl && backendMode === "sandbox-daytona" && sandboxPreviewPort) {
-    const previewInfo = await terminalBackend.getPreviewUrl?.(sandboxPreviewPort);
-    if (previewInfo) {
-      if (typeof previewInfo === "string") {
-        devProxyUrl = previewInfo;
-      } else {
-        devProxyUrl = previewInfo.url;
-        devProxyHeaders = previewInfo.headers;
-      }
-    } else {
-      logger.warn("Sandbox (Daytona): preview URL unavailable");
-    }
-  }
-
-  if (tunnelMode === "cloudflare" && tunnelToken && !options.port) {
-    throw new Error("port required when using tunnel token");
-  }
-
-  if (tunnelMode === "cloudflare" && tunnelToken && !tunnelUrl) {
-    throw new Error("tunnel url required when using tunnel token");
-  }
-
-  const wsLimiter = createRateLimiter({ limit: 30, windowMs: 60_000 });
-  const serverFactory = deps.createServer ?? ((serverDeps) =>
-    createAppServer({
-      ...serverDeps,
-      redemptionLimiter: createRateLimiter({ limit: 5, windowMs: 60_000 }),
-      wsLimiter,
-      logger
-    }));
-
-  const server = serverFactory({
-    uiDistPath: resolveUiDistPath(),
-    auth,
-    terminalRegistry,
-    terminalBackend,
-    proxyPort: options.proxy,
-    devProxyUrl,
-    devProxyHeaders,
-    hideTerminalSwitcher,
-    listenHost
-  });
-
-  const started = await server.listen(options.port ?? 0);
-  const localUrl = `http://127.0.0.1:${started.port}`;
-  const sessionName = options.session ?? `termbridge-${started.port}`;
-  const sessionCount = parseSessionCount(env.TERMBRIDGE_SESSIONS);
+  let started: StartedServer | undefined;
   const createdSessions: string[] = [];
-  const terminalSource: TerminalListItem["source"] =
-    backendMode === "sandbox-daytona" ? "sandbox" : "tmux";
-
-  for (let index = 0; index < sessionCount; index += 1) {
-    const suffix = index === 0 ? "" : `-${index + 1}`;
-    const nextName = `${sessionName}${suffix}`;
-    const session = await terminalBackend.createSession(nextName);
-    terminalRegistry.add(session.name, session.name, terminalSource);
-    createdSessions.push(session.name);
-  }
-
-  const { token } = auth.issueToken();
-
-  if (tunnelMode === "cloudflare") {
-    if (!tunnelProvider) {
-      throw new Error("tunnel provider unavailable");
-    }
+  let stopPromise: Promise<void> | undefined;
+  const cleanup = async () => {
     try {
-      const result = await tunnelProvider.start(localUrl, {
-        token: tunnelToken,
-        publicUrl: tunnelUrl
-      });
-      publicUrl = result.publicUrl;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "unknown error";
-      logger.error(`Tunnel failed: ${message}`);
-      await started.close();
-      throw error;
+      await tunnelProvider?.stop();
+    } finally {
+      try {
+        await started?.close();
+      } finally {
+        try {
+          if (options.killOnExit) {
+            await Promise.all(createdSessions.map((name) => terminalBackend.closeSession(name)));
+          }
+        } finally {
+          await terminalBackend.shutdown?.();
+        }
+      }
     }
-  }
-
-  const redeemUrl = buildShareUrl(publicUrl, token);
-  await maybeWriteShareFile(env.TERMBRIDGE_SHARE_FILE, redeemUrl, logger);
-
-  logger.info(`Local server: ${localUrl}`);
-  if (tunnelMode === "cloudflare") {
-    logger.info(`Tunnel URL: ${redeemUrl}`);
-  } else {
-    logger.info(`Public URL: ${publicUrl}`);
-    logger.info(`Share URL: ${redeemUrl}`);
-  }
-
-  if (!options.noQr && deps.qr) {
-    deps.qr.generate(redeemUrl, { small: true });
-  } else if (!options.noQr) {
-    logger.warn("QR output unavailable");
-  }
-
-  const stop = async () => {
-    if (tunnelProvider) {
-      await tunnelProvider.stop();
+  };
+  const stop = () => {
+    if (!stopPromise) {
+      stopPromise = cleanup();
     }
-    await started.close();
+    return stopPromise;
+  };
 
-    if (options.killOnExit) {
-      for (const name of createdSessions) {
-        await terminalBackend.closeSession(name);
+  try {
+    if (!devProxyUrl && backendMode === "sandbox-daytona" && sandboxPreviewPort) {
+      const previewInfo = await terminalBackend.getPreviewUrl?.(sandboxPreviewPort);
+      if (previewInfo) {
+        if (typeof previewInfo === "string") {
+          devProxyUrl = previewInfo;
+        } else {
+          devProxyUrl = previewInfo.url;
+          devProxyHeaders = previewInfo.headers;
+        }
+      } else {
+        logger.warn("Sandbox (Daytona): preview URL unavailable");
       }
     }
 
-    if (terminalBackend.shutdown) {
-      await terminalBackend.shutdown();
+    if (tunnelMode === "cloudflare" && tunnelToken && !options.port) {
+      throw new Error("port required when using tunnel token");
     }
-  };
 
-  const shutdown = () => {
-    void stop();
-  };
+    if (tunnelMode === "cloudflare" && tunnelToken && !tunnelUrl) {
+      throw new Error("tunnel url required when using tunnel token");
+    }
 
-  processRef.on("SIGINT", shutdown);
-  processRef.on("SIGTERM", shutdown);
+    const wsLimiter = createRateLimiter({ limit: 30, windowMs: 60_000 });
+    const serverFactory = deps.createServer ?? ((serverDeps) =>
+      createAppServer({
+        ...serverDeps,
+        redemptionLimiter: createRateLimiter({ limit: 5, windowMs: 60_000 }),
+        wsLimiter,
+        logger
+      }));
 
-  return { localUrl, publicUrl, token, stop };
+    const server = serverFactory({
+      uiDistPath: resolveUiDistPath(),
+      auth,
+      terminalRegistry,
+      terminalBackend,
+      proxyPort: options.proxy,
+      devProxyUrl,
+      devProxyHeaders,
+      hideTerminalSwitcher,
+      listenHost
+    });
+
+    started = await server.listen(options.port ?? 0);
+    const localUrl = `http://127.0.0.1:${started.port}`;
+    const sessionName = options.session ?? `termbridge-${started.port}`;
+    const sessionCount = parseSessionCount(env.TERMBRIDGE_SESSIONS);
+    const terminalSource: TerminalListItem["source"] =
+      backendMode === "sandbox-daytona" ? "sandbox" : "tmux";
+
+    for (let index = 0; index < sessionCount; index += 1) {
+      const suffix = index === 0 ? "" : `-${index + 1}`;
+      const nextName = `${sessionName}${suffix}`;
+      const session = await terminalBackend.createSession(nextName);
+      createdSessions.push(session.name);
+      terminalRegistry.add(session.name, session.name, terminalSource);
+    }
+
+    const { token } = auth.issueToken();
+
+    if (tunnelMode === "cloudflare") {
+      if (!tunnelProvider) {
+        throw new Error("tunnel provider unavailable");
+      }
+      try {
+        const result = await tunnelProvider.start(localUrl, {
+          token: tunnelToken,
+          publicUrl: tunnelUrl
+        });
+        publicUrl = result.publicUrl;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "unknown error";
+        logger.error(`Tunnel failed: ${message}`);
+        throw error;
+      }
+    }
+
+    const redeemUrl = buildShareUrl(publicUrl, token);
+    await maybeWriteShareFile(env.TERMBRIDGE_SHARE_FILE, redeemUrl, logger);
+
+    logger.info(`Local server: ${localUrl}`);
+    if (tunnelMode === "cloudflare") {
+      logger.info(`Tunnel URL: ${redeemUrl}`);
+    } else {
+      logger.info(`Public URL: ${publicUrl}`);
+      logger.info(`Share URL: ${redeemUrl}`);
+    }
+
+    if (!options.noQr && deps.qr) {
+      deps.qr.generate(redeemUrl, { small: true });
+    } else if (!options.noQr) {
+      logger.warn("QR output unavailable");
+    }
+
+    const shutdown = () => {
+      void stop();
+    };
+
+    processRef.on("SIGINT", shutdown);
+    processRef.on("SIGTERM", shutdown);
+
+    return { localUrl, publicUrl, token, stop };
+  } catch (error) {
+    // Preserve the startup error even if releasing another resource fails.
+    await stop().catch(() => undefined);
+    throw error;
+  }
 };

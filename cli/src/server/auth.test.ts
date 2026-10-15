@@ -149,7 +149,7 @@ describe("createAuth", () => {
   });
 
   it("issues and redeems websocket tokens", () => {
-    let now = 0;
+    const now = 0;
     const auth = createAuth({
       tokenTtlMs: 1000,
       sessionIdleMs: 5000,

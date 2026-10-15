@@ -84,7 +84,7 @@ termbridge [options]
 | `--dev-proxy-url <url>` | Proxy preview traffic to this URL (used by the dev scripts) |
 | `-h`, `--help` | Show help |
 
-The built-in `--help` text still lists `--daytona-*` flags and `--backend daytona`; those are rejected, use the names above ([#1](https://github.com/inline0/termbridge/issues/1)). See the [CLI reference](https://termbridge.dev/docs/cli) for defaults and every environment variable.
+See the [CLI reference](https://termbridge.dev/docs/cli) for defaults and every environment variable.
 
 ### Proxy Mode
 
@@ -135,7 +135,7 @@ Instead of running terminals locally, you can run them in [Daytona](https://dayt
 # Required
 export TERMBRIDGE_BACKEND=sandbox-daytona
 export TERMBRIDGE_DAYTONA_API_KEY=your_api_key
-export TERMBRIDGE_SANDBOX_REPO=https://github.com/you/your-repo.git  # always set; the built-in default is a private repo (#2)
+export TERMBRIDGE_SANDBOX_REPO=https://github.com/you/your-repo.git  # required for the Daytona backend
 
 # Optional
 export TERMBRIDGE_DAYTONA_API_URL=https://app.daytona.io/api

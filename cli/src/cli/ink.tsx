@@ -12,6 +12,7 @@ type InkCliViewProps = {
   redeemUrl?: string;
   sessionName?: string;
   qr?: string | null;
+  tunnelMode?: string;
 };
 
 const InfoRow = ({ label, value }: { label: string; value: string }) => (
@@ -30,7 +31,8 @@ export const InkCliView = ({
   publicUrl,
   redeemUrl,
   sessionName,
-  qr
+  qr,
+  tunnelMode
 }: InkCliViewProps) => {
   const statusText = state === "starting" ? "Starting…" : "Running";
   const statusColor = state === "starting" ? "yellow" : "green";
@@ -55,7 +57,7 @@ export const InkCliView = ({
             {publicUrl ? InfoRow({ label: "Public:", value: publicUrl }) : null}
             {redeemUrl ? InfoRow({ label: "Share:", value: redeemUrl }) : null}
             {sessionName ? InfoRow({ label: "Session:", value: sessionName }) : null}
-            {InfoRow({ label: "Tunnel:", value: options.tunnel })}
+            {InfoRow({ label: "Tunnel:", value: tunnelMode ?? options.tunnel ?? "cloudflare" })}
           </Box>
         ) : null}
       </Box>
@@ -144,6 +146,7 @@ export const runInkCli = async (options: StartOptions, deps: InkCliDeps = {}) =>
         redeemUrl={redeemUrl}
         sessionName={sessionName}
         qr={qr}
+        tunnelMode={options.tunnel ?? processRef.env?.TERMBRIDGE_TUNNEL ?? "cloudflare"}
       />
     );
 
