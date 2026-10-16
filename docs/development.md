@@ -64,7 +64,7 @@ bun run test
 
 ## Docs
 
-The docs are plain Markdown files in `docs/`, with frontmatter on every page and `meta.json` files for navigation order. They are published at [termbridge.dev](https://termbridge.dev). Validate them with:
+The docs are plain Markdown files in `docs/`, with frontmatter on every page and `meta.json` files for navigation order. They are published at [termbridge.inline0.dev](https://termbridge.inline0.dev). Validate them with:
 
 ```bash
 node scripts/check-docs-content.mjs --root docs --expected-docs 16 --expected-nav 3

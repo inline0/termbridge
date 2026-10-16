@@ -40,7 +40,7 @@ termbridge [options]
 
 ## Documentation
 
-Full documentation, environment variables, and Daytona sandbox setup at [termbridge.dev](https://termbridge.dev) or see the [GitHub README](https://github.com/inline0/termbridge).
+Full documentation, environment variables, and Daytona sandbox setup at [termbridge.inline0.dev](https://termbridge.inline0.dev) or see the [GitHub README](https://github.com/inline0/termbridge).
 
 ## License
 

@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://termbridge.dev">
+  <a href="https://termbridge.inline0.dev">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="./.github/logo-dark.svg">
       <source media="(prefers-color-scheme: light)" srcset="./.github/logo-light.svg">
@@ -84,7 +84,7 @@ termbridge [options]
 | `--dev-proxy-url <url>` | Proxy preview traffic to this URL (used by the dev scripts) |
 | `-h`, `--help` | Show help |
 
-See the [CLI reference](https://termbridge.dev/docs/cli) for defaults and every environment variable.
+See the [CLI reference](https://termbridge.inline0.dev/docs/cli) for defaults and every environment variable.
 
 ### Proxy Mode
 
@@ -250,7 +250,7 @@ The Daytona E2E test reads its settings only from `../termbridge-test-app/.env`,
 
 ## Documentation
 
-Full documentation at [termbridge.dev](https://termbridge.dev).
+Full documentation at [termbridge.inline0.dev](https://termbridge.inline0.dev).
 
 ## License
 
