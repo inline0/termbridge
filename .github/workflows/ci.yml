@@ -19,9 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .node-version
           cache: pnpm
@@ -44,15 +44,15 @@ jobs:
       matrix:
         node: [20, 22, 24, 26]
     steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter termbridge pack --out "$RUNNER_TEMP/termbridge.tgz"
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: ${{ matrix.node }}
       - run: sudo apt-get update && sudo apt-get install -y tmux
