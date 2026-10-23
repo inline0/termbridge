@@ -14,6 +14,10 @@
 - Close active browser WebSockets before HTTP shutdown and remove all sessions
   owned by a share when `--kill-on-exit` is enabled, including browser-created
   terminals.
+- Validate local browser regressions and production dependency audits in CI
+  without requiring Cloudflare or sandbox credentials.
+- Package direct sandbox deployments with resolved workspace catalogs, preserve
+  npm-only packing for installed CLIs, and remove temporary upload archives.
 - Apply the shared inline0 GitHub release title and changelog-link format.
 
 ## 0.3.13

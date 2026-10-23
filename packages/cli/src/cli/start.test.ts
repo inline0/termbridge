@@ -3039,3 +3039,5 @@ describe("startCommand", () => {
     consoleError.mockRestore()
   })
 })
+
+vi.mock("./local-package.ts", () => ({ packLocalCli: () => undefined }))

@@ -1,201 +1,63 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-
-const childProcessMocks = vi.hoisted(() => ({
-  spawnSync: vi.fn(),
-}))
-
-const fsMocks = vi.hoisted(() => ({
-  existsSync: vi.fn(),
-}))
-
-vi.mock("node:child_process", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("node:child_process")>()
-  return {
-    ...actual,
-    spawnSync: (...args: Parameters<typeof childProcessMocks.spawnSync>) =>
-      childProcessMocks.spawnSync(...args),
-  }
-})
-
-vi.mock("node:fs", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("node:fs")>()
-  return {
-    ...actual,
-    existsSync: (...args: Parameters<typeof fsMocks.existsSync>) =>
-      fsMocks.existsSync(...args),
-  }
-})
-
 import { startCommand } from "./start.ts"
 
-describe("packLocalCli", () => {
+const packing = vi.hoisted(() => ({
+  cleanup: vi.fn(),
+  packLocalCli: vi.fn(),
+}))
+vi.mock("./local-package.ts", () => ({ packLocalCli: packing.packLocalCli }))
+
+describe("sandbox CLI archive lifecycle", () => {
   beforeEach(() => {
-    childProcessMocks.spawnSync.mockReset()
-    fsMocks.existsSync.mockReset()
-    childProcessMocks.spawnSync.mockReturnValue({
-      status: 0,
-      stdout: "termbridge-0.0.0.tgz\n",
+    vi.clearAllMocks()
+    packing.packLocalCli.mockReturnValue({
+      path: "/tmp/local-cli.tgz",
+      cleanup: packing.cleanup,
     })
-    fsMocks.existsSync.mockReturnValue(true)
   })
 
-  it("warns when npm pack fails", async () => {
-    childProcessMocks.spawnSync.mockReturnValue({ status: 1, stderr: "boom" })
+  const options = {
+    killOnExit: false,
+    noQr: true,
+    backend: "sandbox-daytona" as const,
+    sandboxDirect: true,
+    sandboxRepo: "https://example.com/project.git",
+  }
+  const makeDeps = () => {
     const start = vi.fn(async () => ({
       localUrl: "https://sandbox.example",
       publicUrl: "https://sandbox.example",
       token: "token",
       stop: vi.fn(async () => undefined),
     }))
-    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
-
-    await startCommand(
-      {
-        killOnExit: false,
-        noQr: true,
-        tunnel: "cloudflare",
-        backend: "sandbox-daytona",
-        sandboxDirect: true,
-        sandboxRepo: "https://example.com/project.git",
-      },
-      {
-        createSandboxDaytonaProvider: () => ({ start }),
-        process: { on: vi.fn() } as unknown as NodeJS.Process,
-        logger,
-      }
-    )
-
-    expect(logger.warn).toHaveBeenCalledWith(
-      expect.stringContaining("Local CLI pack failed")
-    )
-  })
-
-  it("warns when npm pack fails without stderr output", async () => {
-    childProcessMocks.spawnSync.mockReturnValue({ status: 1, stderr: "" })
-    const start = vi.fn(async () => ({
-      localUrl: "https://sandbox.example",
-      publicUrl: "https://sandbox.example",
-      token: "token",
-      stop: vi.fn(async () => undefined),
-    }))
-    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
-
-    await startCommand(
-      {
-        killOnExit: false,
-        noQr: true,
-        tunnel: "cloudflare",
-        backend: "sandbox-daytona",
-        sandboxDirect: true,
-        sandboxRepo: "https://example.com/project.git",
-      },
-      {
-        createSandboxDaytonaProvider: () => ({ start }),
-        process: { on: vi.fn() } as unknown as NodeJS.Process,
-        logger,
-      }
-    )
-
-    expect(logger.warn).toHaveBeenCalledWith("Local CLI pack failed")
-  })
-
-  it("warns when npm pack produces no output", async () => {
-    childProcessMocks.spawnSync.mockReturnValue({ status: 0, stdout: "" })
-    const start = vi.fn(async () => ({
-      localUrl: "https://sandbox.example",
-      publicUrl: "https://sandbox.example",
-      token: "token",
-      stop: vi.fn(async () => undefined),
-    }))
-    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
-
-    await startCommand(
-      {
-        killOnExit: false,
-        noQr: true,
-        tunnel: "cloudflare",
-        backend: "sandbox-daytona",
-        sandboxDirect: true,
-        sandboxRepo: "https://example.com/project.git",
-      },
-      {
-        createSandboxDaytonaProvider: () => ({ start }),
-        process: { on: vi.fn() } as unknown as NodeJS.Process,
-        logger,
-      }
-    )
-
-    expect(logger.warn).toHaveBeenCalledWith(
-      "Local CLI pack failed (no output)"
-    )
-  })
-
-  it("warns when npm pack returns undefined output", async () => {
-    childProcessMocks.spawnSync.mockReturnValue({
-      status: 0,
-      stdout: undefined,
-    })
-    const start = vi.fn(async () => ({
-      localUrl: "https://sandbox.example",
-      publicUrl: "https://sandbox.example",
-      token: "token",
-      stop: vi.fn(async () => undefined),
-    }))
-    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
-
-    await startCommand(
-      {
-        killOnExit: false,
-        noQr: true,
-        tunnel: "cloudflare",
-        backend: "sandbox-daytona",
-        sandboxDirect: true,
-        sandboxRepo: "https://example.com/project.git",
-      },
-      {
-        createSandboxDaytonaProvider: () => ({ start }),
-        process: { on: vi.fn() } as unknown as NodeJS.Process,
-        logger,
-      }
-    )
-
-    expect(logger.warn).toHaveBeenCalledWith(
-      "Local CLI pack failed (no output)"
-    )
-  })
-
-  it("passes the packed CLI path to the sandbox provider", async () => {
-    childProcessMocks.spawnSync.mockReturnValue({
-      status: 0,
-      stdout: "termbridge-0.0.0.tgz\n",
-    })
-    const start = vi.fn(async () => ({
-      localUrl: "https://sandbox.example",
-      publicUrl: "https://sandbox.example",
-      token: "token",
-      stop: vi.fn(async () => undefined),
-    }))
-
-    await startCommand(
-      {
-        killOnExit: false,
-        noQr: true,
-        tunnel: "cloudflare",
-        backend: "sandbox-daytona",
-        sandboxDirect: true,
-        sandboxRepo: "https://example.com/project.git",
-      },
-      {
+    return {
+      start,
+      deps: {
         createSandboxDaytonaProvider: () => ({ start }),
         process: { on: vi.fn() } as unknown as NodeJS.Process,
         logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-      }
-    )
+      },
+    }
+  }
 
+  it("uploads the packed archive before removing it", async () => {
+    const { start, deps } = makeDeps()
+    await startCommand(options, deps)
     expect(start).toHaveBeenCalledWith(
-      expect.objectContaining({
-        localCliPackPath: expect.stringContaining("termbridge-0.0.0.tgz"),
-      })
+      expect.objectContaining({ localCliPackPath: "/tmp/local-cli.tgz" })
     )
+    expect(packing.cleanup).toHaveBeenCalledOnce()
+    expect(start.mock.invocationCallOrder[0]).toBeLessThan(
+      packing.cleanup.mock.invocationCallOrder[0]
+    )
+  })
+
+  it("removes the archive when sandbox startup rejects", async () => {
+    const { start, deps } = makeDeps()
+    start.mockRejectedValueOnce(new Error("sandbox unavailable"))
+    await expect(startCommand(options, deps)).rejects.toThrow(
+      "sandbox unavailable"
+    )
+    expect(packing.cleanup).toHaveBeenCalledOnce()
   })
 })

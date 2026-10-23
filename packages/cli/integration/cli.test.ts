@@ -30,6 +30,18 @@ const distBin = resolve(cliDir, "dist/bin.js")
 const buildCli = () => buildCliUtil(rootDir)
 const logStep = (label: string) => logStepUtil("cli integration", label)
 const waitForMatch = waitForMatchUtil
+const withTunnel = process.env.TERMBRIDGE_TEST_TUNNEL === "1"
+const connectionArgs = async () => {
+  if (withTunnel) return []
+  const port = await getAvailablePort()
+  return [
+    "--no-tunnel",
+    "--public-url",
+    `http://127.0.0.1:${port}`,
+    "--port",
+    String(port),
+  ]
+}
 
 describe("cli integration", () => {
   let child: ChildProcessWithoutNullStreams | null = null
@@ -44,10 +56,15 @@ describe("cli integration", () => {
 
     const output = { stdout: "", stderr: "" }
     sessionName = `termbridge-test-${Date.now()}`
-    const env = { ...process.env, NODE_ENV: "production" }
+    const env = {
+      ...process.env,
+      NODE_ENV: "production",
+      ...(!withTunnel ? { TERMBRIDGE_INSECURE_COOKIE: "1" } : {}),
+    }
     const nodePath = resolveNodePath()
 
     const { command, args } = resolveCliCommand(nodePath, distBin, [
+      ...(await connectionArgs()),
       "--no-qr",
       "--kill-on-exit",
       "--session",
@@ -80,7 +97,7 @@ describe("cli integration", () => {
     const tunnelMatch = await waitForMatch(
       started,
       output,
-      /Tunnel URL:\s*(https:\/\/[^\s]+)/,
+      /(?:Tunnel|Share) URL:\s*(https?:\/\/[^\s]+)/,
       45_000
     )
     redeemUrl = tunnelMatch[1] ?? ""
@@ -97,9 +114,10 @@ describe("cli integration", () => {
   }, 90_000)
 
   afterAll(async () => {
-    await stopCli(child)
-    if (browser) {
-      await browser.close()
+    try {
+      await stopCli(child)
+    } finally {
+      await browser?.close()
     }
   })
 
@@ -320,10 +338,15 @@ describe("cli integration (proxy mode)", () => {
 
     const output = { stdout: "", stderr: "" }
     const sessionName = `termbridge-proxy-test-${Date.now()}`
-    const env = { ...process.env, NODE_ENV: "production" }
+    const env = {
+      ...process.env,
+      NODE_ENV: "production",
+      ...(!withTunnel ? { TERMBRIDGE_INSECURE_COOKIE: "1" } : {}),
+    }
     const nodePath = resolveNodePath()
 
     const { command, args } = resolveCliCommand(nodePath, distBin, [
+      ...(await connectionArgs()),
       "--no-qr",
       "--kill-on-exit",
       "--session",
@@ -358,7 +381,7 @@ describe("cli integration (proxy mode)", () => {
     const tunnelMatch = await waitForMatch(
       started,
       output,
-      /Tunnel URL:\s*(https:\/\/[^\s]+)/,
+      /(?:Tunnel|Share) URL:\s*(https?:\/\/[^\s]+)/,
       45_000
     )
     redeemUrl = tunnelMatch[1] ?? ""
@@ -375,15 +398,19 @@ describe("cli integration (proxy mode)", () => {
   }, 90_000)
 
   afterAll(async () => {
-    await stopCli(child)
-    if (browser) {
-      await browser.close()
-    }
-    const activeServer = testServer
-    if (activeServer) {
-      await new Promise<void>((resolvePromise) =>
-        activeServer.close(() => resolvePromise())
-      )
+    try {
+      await stopCli(child)
+    } finally {
+      try {
+        await browser?.close()
+      } finally {
+        const activeServer = testServer
+        if (activeServer) {
+          await new Promise<void>((resolvePromise) =>
+            activeServer.close(() => resolvePromise())
+          )
+        }
+      }
     }
   })
 

@@ -233,3 +233,5 @@ describe("startup regressions", () => {
     expect(helpText).toContain("tmux | sandbox-daytona")
   })
 })
+
+vi.mock("./local-package.ts", () => ({ packLocalCli: () => undefined }))

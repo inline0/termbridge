@@ -26,9 +26,13 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --prod
       - run: pnpm check
       - run: sudo apt-get update && sudo apt-get install -y tmux
+      - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:startup
+      - run: pnpm test:browser
+      - run: pnpm test:local-package
       - uses: actions/upload-artifact@v4
         if: always()
         with:

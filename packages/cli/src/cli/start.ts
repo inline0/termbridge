@@ -1,4 +1,3 @@
-import { spawnSync } from "node:child_process"
 import { existsSync } from "node:fs"
 import { writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
@@ -40,6 +39,7 @@ import {
   resolveAgentAuth,
   resolveAutoAgentNames,
 } from "./agent-config.ts"
+import { packLocalCli } from "./local-package.ts"
 
 /**
  * Server, terminal, tunnel, and sandbox startup options.
@@ -124,31 +124,6 @@ const resolveUiDistPath = () => {
   }
 
   return candidates[0]
-}
-
-const packLocalCli = (logger: Logger) => {
-  const cliDir = resolve(dirname(fileURLToPath(import.meta.url)), "..")
-  const packageJson = resolve(cliDir, "package.json")
-  if (!existsSync(packageJson)) {
-    return undefined
-  }
-
-  const result = spawnSync("npm", ["pack"], { cwd: cliDir, encoding: "utf8" })
-  if (result.status !== 0) {
-    const stderr = result.stderr?.toString().trim()
-    logger.warn(`Local CLI pack failed${stderr ? ` (${stderr})` : ""}`)
-    return undefined
-  }
-
-  const lines =
-    result.stdout?.toString().trim().split(/\r?\n/).filter(Boolean) ?? []
-  const filename = lines[lines.length - 1]
-  if (!filename) {
-    logger.warn("Local CLI pack failed (no output)")
-    return undefined
-  }
-
-  return resolve(cliDir, filename)
 }
 
 const createDefaultLogger = (): Logger => ({
@@ -315,7 +290,6 @@ export const startCommand = async (
       parseOptionalNumber(env.TERMBRIDGE_SANDBOX_SERVER_PORT) ??
       8080
     const proxyPort = options.proxy ?? sandboxPreviewPort
-    const localCliPackPath = packLocalCli(logger)
     const sandboxProvider = (
       deps.createSandboxDaytonaProvider ?? createSandboxDaytonaServerProvider
     )({
@@ -325,27 +299,30 @@ export const startCommand = async (
       logger,
     })
 
-    const result = await sandboxProvider.start({
-      repoUrl: sandboxConfig.repoUrl,
-      repoBranch: sandboxConfig.repoBranch,
-      repoPath: sandboxConfig.repoPath,
-      sandboxName: sandboxConfig.sandboxName,
-      public: sandboxConfig.public,
-      deleteOnExit: sandboxConfig.deleteOnExit,
-      gitUsername: sandboxConfig.gitUsername,
-      gitPassword: sandboxConfig.gitPassword,
-      agentEnv: sandboxConfig.agentEnv,
-      agentInstall: sandboxConfig.agentInstall,
-      agentAuth: sandboxConfig.agentAuth,
-      localCliPackPath,
-      serverPort,
-      previewPort: sandboxPreviewPort,
-      proxyPort,
-      sessionName: options.session,
-      killOnExit: options.killOnExit,
-      hideTerminalSwitcher: true,
-      logger,
-    })
+    const localCliPack = packLocalCli(logger)
+    const result = await sandboxProvider
+      .start({
+        repoUrl: sandboxConfig.repoUrl,
+        repoBranch: sandboxConfig.repoBranch,
+        repoPath: sandboxConfig.repoPath,
+        sandboxName: sandboxConfig.sandboxName,
+        public: sandboxConfig.public,
+        deleteOnExit: sandboxConfig.deleteOnExit,
+        gitUsername: sandboxConfig.gitUsername,
+        gitPassword: sandboxConfig.gitPassword,
+        agentEnv: sandboxConfig.agentEnv,
+        agentInstall: sandboxConfig.agentInstall,
+        agentAuth: sandboxConfig.agentAuth,
+        localCliPackPath: localCliPack?.path,
+        serverPort,
+        previewPort: sandboxPreviewPort,
+        proxyPort,
+        sessionName: options.session,
+        killOnExit: options.killOnExit,
+        hideTerminalSwitcher: true,
+        logger,
+      })
+      .finally(() => localCliPack?.cleanup())
 
     try {
       const redeemUrl = buildShareUrl(result.publicUrl, result.token)

@@ -14,7 +14,8 @@ meta_description: "Local development, test suites, and docs."
 
 - **Node.js 26.12.0** for development
 - **pnpm 12.14.0** for workspace installs and scripts
-- **tmux** and **cloudflared** for end-to-end tests
+- **tmux** for local browser and CLI tests
+- **cloudflared** for optional public-tunnel tests
 - **Daytona API key + git credentials** for the sandbox integration test (optional)
 - **Playwright** for UI e2e tests
 
@@ -80,7 +81,13 @@ pnpm test
 - `test:startup` exercises CLI startup and cleanup without a public tunnel.
 - `test:package` installs the packed CLI in a temporary project and checks native
   tmux startup, authentication, and the bundled UI.
-- `test:cli` runs real CLI + UI e2e tests (tmux + cloudflared + Playwright).
+- `test:browser` runs real CLI + UI tests locally (tmux + Playwright), including
+  terminal input and the proxied application preview. CI runs these without
+  Cloudflare or sandbox credentials.
+- `test:tunnel` explicitly runs those browser tests through Cloudflare.
+- `test:cli` runs browser, startup, and configured Daytona integration tests.
+- `test:local-package` validates sandbox archives from the source workspace and
+  from an installed CLI without pnpm or lifecycle scripts.
 - The Daytona sandbox test in `test:cli` reads its settings only from a `.env` file in a `termbridge-test-app` directory next to this repository (`../termbridge-test-app/.env`). It runs when that file sets `TERMBRIDGE_E2E_DAYTONA=1` and `TERMBRIDGE_DAYTONA_API_KEY`. Set `TERMBRIDGE_SANDBOX_REPO` there to a repository you can clone; the default test repository is private and also needs `TERMBRIDGE_SANDBOX_GIT_USERNAME` and `TERMBRIDGE_SANDBOX_GIT_TOKEN`.
 
 ## Quality checks

@@ -135,3 +135,5 @@ describe("startCommand cookie sameSite", () => {
     )
   })
 })
+
+vi.mock("./local-package.ts", () => ({ packLocalCli: () => undefined }))

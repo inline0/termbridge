@@ -370,7 +370,6 @@
         "**/tests/**",
         "**/*.d.ts",
         "**/*.generated.ts",
-        "packages/ui-chat/src/components/ai-elements/**",
         "**/integration/**"
       ],
       "plugins": ["jsdoc"],

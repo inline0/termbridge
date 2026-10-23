@@ -32,11 +32,14 @@
     "typecheck": "tsc-rs --noEmit -p tsconfig.json && pnpm -r typecheck",
     "docs:check": "pnpm audit:docs",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
-    "verify": "pnpm check && pnpm test:cli && pnpm test:package",
+    "verify": "pnpm check && pnpm test:cli && pnpm test:local-package && pnpm test:package",
     "test:tooling": "node --test scripts/*.test.ts scripts/oxlint-plugins/*.test.ts",
     "test:package": "node scripts/check-package.mjs",
     "audit:workspace": "node scripts/check-workspace.ts",
-    "audit:docs": "node scripts/check-docs-content.mjs --root docs --expected-docs 16 --expected-nav 3"
+    "audit:docs": "node scripts/check-docs-content.mjs --root docs --expected-docs 16 --expected-nav 3",
+    "test:browser": "vitest run --config vitest.cli.config.ts packages/cli/integration/cli.test.ts",
+    "test:tunnel": "TERMBRIDGE_TEST_TUNNEL=1 pnpm test:browser",
+    "test:local-package": "node scripts/check-local-package.ts"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "catalog:",

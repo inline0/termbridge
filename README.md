@@ -266,6 +266,13 @@ These are only used during development:
 | `TERMBRIDGE_E2E_DAYTONA=1` | Enable Daytona integration tests (set in the `.env` file below) |
 | `TERMBRIDGE_TEST_DEBUG=1`  | Enable debug logging in tests                                   |
 
+`pnpm test:browser` runs Chromium against the loopback server with tmux; it
+does not use Cloudflare or sandbox credentials. `pnpm test:tunnel` explicitly
+repeats those browser tests through a real Cloudflare tunnel.
+
+`pnpm test:local-package` verifies source-workspace and installed-CLI packaging
+for direct sandbox mode. Only workspace archives require pnpm.
+
 The Daytona E2E test reads its settings only from `../termbridge-test-app/.env`, a directory next to this repository. That file needs `TERMBRIDGE_E2E_DAYTONA=1` and `TERMBRIDGE_DAYTONA_API_KEY`; set `TERMBRIDGE_SANDBOX_REPO` there to a repository you can clone, because the default test repository is private.
 
 ---

@@ -147,7 +147,7 @@ scripts/        # Development, package, docs, and workspace checks
 ```
 pnpm test          # Tooling and mocked tests
 pnpm test:mocked   # Unit tests with 100% coverage
-pnpm test:cli      # E2E tests (tmux + Playwright + Daytona)
+pnpm test:cli      # Local browser/startup and configured Daytona tests
 ```
 
 ### Unit Tests (`test:mocked`)
@@ -158,7 +158,8 @@ pnpm test:cli      # E2E tests (tmux + Playwright + Daytona)
 
 ### E2E Tests (`test:cli`)
 
-- `packages/cli/integration/cli.test.ts` - Local tmux tests
+- `packages/cli/integration/cli.test.ts` - Local tmux/browser tests; set
+  `TERMBRIDGE_TEST_TUNNEL=1` to use a real Cloudflare tunnel
 - `packages/cli/integration/sandbox-daytona.test.ts` - Daytona sandbox tests
 
 ### Test App Repository
@@ -353,7 +354,12 @@ The documentation lint plugin is adapted from inline0/sleekos; retain its NOTICE
 100% coverage, and all package builds. `pnpm verify` additionally runs real CLI
 and browser integration tests and the packed consumer smoke test. The CLI still
 supports Node.js 20+; CI installs and exercises its tarball on Node 20, 22, 24,
-and 26. Do not leave dev servers, browser processes, tmux sessions, or temporary
+and 26. CI runs local browser regressions using tmux and Chromium without
+Cloudflare or sandbox credentials, plus `pnpm audit --prod` and
+`pnpm test:local-package` to check direct sandbox archives. Installed CLI
+archives use npm with lifecycle scripts disabled; only source workspace
+archives require pnpm to resolve catalogs. Temporary archives are removed after
+sandbox startup succeeds or rejects. Do not leave dev servers, browser processes, tmux sessions, or temporary
 consumer installs running after verification. Never read or log test credentials.
 
 ## Releases
