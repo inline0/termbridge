@@ -1,0 +1,7 @@
+{
+  "extends": "@termbridge/tsconfig/base.json",
+  "compilerOptions": {
+    "types": ["node", "vitest/globals", "@testing-library/jest-dom/vitest"]
+  },
+  "include": ["src/**/*", "ui/src/**/*", "ui/vite-env.d.ts", "integration/**/*"]
+}

@@ -123,13 +123,13 @@ Need to stop or redirect an agent?
 
 ## Sandbox vs local
 
-| Feature | Local (tmux) | Sandbox (Daytona) |
-|---------|--------------|-------------------|
-| Setup | Just tmux | Daytona account + API key |
-| Environment | Your machine | Isolated container |
-| Persistence | Survives restarts | Survives laptop sleep in direct mode |
-| Auth | Already configured | Auto-synced by Termbridge |
-| Best for | Quick monitoring | Isolated experiments |
+| Feature     | Local (tmux)       | Sandbox (Daytona)                    |
+| ----------- | ------------------ | ------------------------------------ |
+| Setup       | Just tmux          | Daytona account + API key            |
+| Environment | Your machine       | Isolated container                   |
+| Persistence | Survives restarts  | Survives laptop sleep in direct mode |
+| Auth        | Already configured | Auto-synced by Termbridge            |
+| Best for    | Quick monitoring   | Isolated experiments                 |
 
 For most users, local mode is simpler. Use sandbox mode when you want:
 

@@ -83,7 +83,6 @@ export TERMBRIDGE_SANDBOX_AGENT_PACKAGES=claude-code,codex,opencode
 > **Note**
 > Auth sync copies local credentials into the sandbox. Only use this with sandboxes you trust, and prefer ephemeral sandboxes with `TERMBRIDGE_SANDBOX_DELETE_ON_EXIT=true`.
 
-
 ## Related docs
 
 - [Sandboxes](/docs/sandboxes)

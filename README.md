@@ -27,6 +27,7 @@ Termbridge lets you access your local terminal from your phone or any device wit
 It works by running a local server that connects to your terminal (via tmux), then creates a secure tunnel so you can access it from anywhere. The mobile-friendly UI makes it easy to type commands and navigate on a small screen.
 
 **Use cases:**
+
 - Run long commands on your laptop while checking progress from your phone
 - Access your dev environment from your couch
 - Hand the one-time link to a teammate so they can follow along in your terminal
@@ -35,6 +36,7 @@ It works by running a local server that connects to your terminal (via tmux), th
 ## Quick Start
 
 **Prerequisites:**
+
 - Node.js 20+
 - [tmux](https://github.com/tmux/tmux) installed
 - [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/) installed
@@ -61,28 +63,28 @@ That's it! A QR code appears in your terminal. Scan it with your phone and you'r
 termbridge [options]
 ```
 
-| Option | Description |
-|--------|-------------|
-| `--port <port>` | Use a specific local port (default: random) |
-| `--proxy <port>` | Proxy a local dev server (shows Terminal/Preview tabs) |
-| `--session <name>` | Name for the tmux session |
-| `--kill-on-exit` | Kill tmux sessions when termbridge exits |
-| `--no-qr` | Don't show the QR code |
-| `--no-tunnel` | Disable the tunnel (use with `--public-url`) |
-| `--public-url <url>` | Your own public URL (when tunnel disabled) |
-| `--tunnel <provider>` | `cloudflare` (default) or `none` |
-| `--tunnel-token <token>` | Named Cloudflare Tunnel token (requires `--port` and `--tunnel-url`) |
-| `--tunnel-url <url>` | Public URL of the named tunnel |
-| `--backend <mode>` | `tmux` (default) or `sandbox-daytona` |
-| `--sandbox-repo <url>` | Repo to clone into the Daytona sandbox |
-| `--sandbox-branch <branch>` | Branch to check out in the sandbox |
-| `--sandbox-path <path>` | Repo directory inside the sandbox |
-| `--sandbox-name <name>` | Daytona sandbox name |
-| `--sandbox-preview-port <port>` | Dev server port to preview from the sandbox |
-| `--sandbox-public` | Create a public sandbox |
-| `--sandbox-direct` | Run the server inside the Daytona sandbox (no tunnel) |
-| `--dev-proxy-url <url>` | Proxy preview traffic to this URL (used by the dev scripts) |
-| `-h`, `--help` | Show help |
+| Option                          | Description                                                          |
+| ------------------------------- | -------------------------------------------------------------------- |
+| `--port <port>`                 | Use a specific local port (default: random)                          |
+| `--proxy <port>`                | Proxy a local dev server (shows Terminal/Preview tabs)               |
+| `--session <name>`              | Name for the tmux session                                            |
+| `--kill-on-exit`                | Kill tmux sessions when termbridge exits                             |
+| `--no-qr`                       | Don't show the QR code                                               |
+| `--no-tunnel`                   | Disable the tunnel (use with `--public-url`)                         |
+| `--public-url <url>`            | Your own public URL (when tunnel disabled)                           |
+| `--tunnel <provider>`           | `cloudflare` (default) or `none`                                     |
+| `--tunnel-token <token>`        | Named Cloudflare Tunnel token (requires `--port` and `--tunnel-url`) |
+| `--tunnel-url <url>`            | Public URL of the named tunnel                                       |
+| `--backend <mode>`              | `tmux` (default) or `sandbox-daytona`                                |
+| `--sandbox-repo <url>`          | Repo to clone into the Daytona sandbox                               |
+| `--sandbox-branch <branch>`     | Branch to check out in the sandbox                                   |
+| `--sandbox-path <path>`         | Repo directory inside the sandbox                                    |
+| `--sandbox-name <name>`         | Daytona sandbox name                                                 |
+| `--sandbox-preview-port <port>` | Dev server port to preview from the sandbox                          |
+| `--sandbox-public`              | Create a public sandbox                                              |
+| `--sandbox-direct`              | Run the server inside the Daytona sandbox (no tunnel)                |
+| `--dev-proxy-url <url>`         | Proxy preview traffic to this URL (used by the dev scripts)          |
+| `-h`, `--help`                  | Show help                                                            |
 
 See the [CLI reference](https://termbridge.inline0.dev/docs/cli) for defaults and every environment variable.
 
@@ -101,19 +103,19 @@ The UI shows Terminal and Preview tabs. Great for mobile testing!
 
 ### Basic Configuration
 
-| Variable | Description |
-|----------|-------------|
-| `TERMBRIDGE_SESSIONS=2` | Create multiple tmux sessions on start |
-| `TERMBRIDGE_TMUX_CWD=/path` | Working directory for tmux sessions |
-| `TERMBRIDGE_PUBLIC_URL=<url>` | Public URL when tunnel is disabled |
-| `TERMBRIDGE_TUNNEL=none` | Disable the Cloudflare tunnel |
+| Variable                      | Description                            |
+| ----------------------------- | -------------------------------------- |
+| `TERMBRIDGE_SESSIONS=2`       | Create multiple tmux sessions on start |
+| `TERMBRIDGE_TMUX_CWD=/path`   | Working directory for tmux sessions    |
+| `TERMBRIDGE_PUBLIC_URL=<url>` | Public URL when tunnel is disabled     |
+| `TERMBRIDGE_TUNNEL=none`      | Disable the Cloudflare tunnel          |
 
 Termbridge also reads these from a `.env` file in the directory you run it from.
 
 ### Security (Development Only)
 
-| Variable | Description |
-|----------|-------------|
+| Variable                       | Description                                      |
+| ------------------------------ | ------------------------------------------------ |
 | `TERMBRIDGE_INSECURE_COOKIE=1` | Allow HTTP cookies (for local dev without HTTPS) |
 
 ---
@@ -153,25 +155,25 @@ termbridge
 
 ### Sandbox Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| **Daytona API** | |
-| `TERMBRIDGE_DAYTONA_API_KEY` | Your Daytona API key (required) |
-| `TERMBRIDGE_DAYTONA_API_URL` | API endpoint (default: `https://app.daytona.io/api`) |
-| `TERMBRIDGE_DAYTONA_TARGET` | Daytona target region |
-| **Repository** | |
-| `TERMBRIDGE_SANDBOX_REPO` | Git repo URL to clone (required) |
-| `TERMBRIDGE_SANDBOX_BRANCH` | Branch to checkout |
-| `TERMBRIDGE_SANDBOX_PATH` | Path inside sandbox (default: derived from repo name) |
-| **Sandbox Settings** | |
-| `TERMBRIDGE_SANDBOX_NAME` | Name for the sandbox |
-| `TERMBRIDGE_SANDBOX_PUBLIC` | Make sandbox publicly accessible (`true`/`false`) |
-| `TERMBRIDGE_SANDBOX_DELETE_ON_EXIT` | Delete sandbox when termbridge exits |
-| `TERMBRIDGE_SANDBOX_PREVIEW_PORT` | Port for preview proxy (e.g., `5173`) |
-| **Git Auth** (for private repos) | |
-| `TERMBRIDGE_SANDBOX_GIT_USERNAME` | Git username |
-| `TERMBRIDGE_SANDBOX_GIT_TOKEN` | Git token |
-| `TERMBRIDGE_SANDBOX_GIT_PASSWORD` | Git password (overrides the token) |
+| Variable                            | Description                                           |
+| ----------------------------------- | ----------------------------------------------------- |
+| **Daytona API**                     |                                                       |
+| `TERMBRIDGE_DAYTONA_API_KEY`        | Your Daytona API key (required)                       |
+| `TERMBRIDGE_DAYTONA_API_URL`        | API endpoint (default: `https://app.daytona.io/api`)  |
+| `TERMBRIDGE_DAYTONA_TARGET`         | Daytona target region                                 |
+| **Repository**                      |                                                       |
+| `TERMBRIDGE_SANDBOX_REPO`           | Git repo URL to clone (required)                      |
+| `TERMBRIDGE_SANDBOX_BRANCH`         | Branch to checkout                                    |
+| `TERMBRIDGE_SANDBOX_PATH`           | Path inside sandbox (default: derived from repo name) |
+| **Sandbox Settings**                |                                                       |
+| `TERMBRIDGE_SANDBOX_NAME`           | Name for the sandbox                                  |
+| `TERMBRIDGE_SANDBOX_PUBLIC`         | Make sandbox publicly accessible (`true`/`false`)     |
+| `TERMBRIDGE_SANDBOX_DELETE_ON_EXIT` | Delete sandbox when termbridge exits                  |
+| `TERMBRIDGE_SANDBOX_PREVIEW_PORT`   | Port for preview proxy (e.g., `5173`)                 |
+| **Git Auth** (for private repos)    |                                                       |
+| `TERMBRIDGE_SANDBOX_GIT_USERNAME`   | Git username                                          |
+| `TERMBRIDGE_SANDBOX_GIT_TOKEN`      | Git token                                             |
+| `TERMBRIDGE_SANDBOX_GIT_PASSWORD`   | Git password (overrides the token)                    |
 
 ### Direct Mode (No Tunnel)
 
@@ -199,50 +201,70 @@ export TERMBRIDGE_SANDBOX_AGENTS=claude-code,codex,opencode
 ```
 
 This will:
+
 1. Install the agent CLIs in the sandbox
 2. Sync your local auth files to the sandbox (so agents are already logged in)
 
 ### Agent Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `TERMBRIDGE_SANDBOX_AGENTS` | Agents to install: `claude-code`, `codex`, `opencode`, or `all` |
-| `TERMBRIDGE_SANDBOX_AGENT_ENV` | Extra env vars to pass to agents (comma-separated keys) |
-| `TERMBRIDGE_SANDBOX_AGENT_AUTH_PATHS` | Additional auth files to sync |
-| `TERMBRIDGE_SANDBOX_AGENT_AUTH_MAPS` | Auth file mappings (`local=remote`) |
+| Variable                              | Description                                                     |
+| ------------------------------------- | --------------------------------------------------------------- |
+| `TERMBRIDGE_SANDBOX_AGENTS`           | Agents to install: `claude-code`, `codex`, `opencode`, or `all` |
+| `TERMBRIDGE_SANDBOX_AGENT_ENV`        | Extra env vars to pass to agents (comma-separated keys)         |
+| `TERMBRIDGE_SANDBOX_AGENT_AUTH_PATHS` | Additional auth files to sync                                   |
+| `TERMBRIDGE_SANDBOX_AGENT_AUTH_MAPS`  | Auth file mappings (`local=remote`)                             |
 
 ---
 
 ## Development
 
 ```bash
-# Install dependencies
-bun install
+# Node.js 26.12.0 and pnpm 12.14.0
+pnpm run setup
 
 # Run in dev mode (with hot reload)
-bun run dev:beam
+pnpm dev:beam
 
-# Run tests
-bun run test
+# Format, lint, typecheck, test, and build
+pnpm check
+
+# Also run CLI/browser and packed consumer checks
+pnpm verify
 ```
+
+The repository is a pnpm workspace. Only `termbridge` is published; its internal
+packages are bundled into the CLI and browser application.
+
+| Directory           | Package                | Purpose                                       |
+| ------------------- | ---------------------- | --------------------------------------------- |
+| `packages/cli`      | `termbridge`           | CLI, server, sandbox adapters, and browser UI |
+| `packages/shared`   | `@termbridge/shared`   | Terminal protocol types                       |
+| `packages/terminal` | `@termbridge/terminal` | Local tmux and memory backends                |
+| `packages/tunnel`   | `@termbridge/tunnel`   | Cloudflare tunnel lifecycle                   |
+| `packages/ui`       | `@termbridge/ui`       | Reusable React components and themes          |
+| `packages/tsconfig` | `@termbridge/tsconfig` | Shared compiler configuration                 |
+
+Oxfmt, Oxlint, TypeScript, and the dependency catalog are configured at the root.
+See [development documentation](docs/development.md) for package and test details.
+The published CLI continues to support Node.js 20+.
 
 ### Development Environment Variables
 
 These are only used during development:
 
-| Variable | Description |
-|----------|-------------|
-| `TERMBRIDGE_DEV_PORT` | Override server port |
-| `TERMBRIDGE_DEV_UI` | Override Vite dev UI URL |
-| `TERMBRIDGE_DEV_SESSION` | Session name for dev |
-| `TERMBRIDGE_SKIP_BUILD` | Skip build step |
+| Variable                 | Description              |
+| ------------------------ | ------------------------ |
+| `TERMBRIDGE_DEV_PORT`    | Override server port     |
+| `TERMBRIDGE_DEV_UI`      | Override Vite dev UI URL |
+| `TERMBRIDGE_DEV_SESSION` | Session name for dev     |
+| `TERMBRIDGE_SKIP_BUILD`  | Skip build step          |
 
 ### Testing
 
-| Variable | Description |
-|----------|-------------|
+| Variable                   | Description                                                     |
+| -------------------------- | --------------------------------------------------------------- |
 | `TERMBRIDGE_E2E_DAYTONA=1` | Enable Daytona integration tests (set in the `.env` file below) |
-| `TERMBRIDGE_TEST_DEBUG=1` | Enable debug logging in tests |
+| `TERMBRIDGE_TEST_DEBUG=1`  | Enable debug logging in tests                                   |
 
 The Daytona E2E test reads its settings only from `../termbridge-test-app/.env`, a directory next to this repository. That file needs `TERMBRIDGE_E2E_DAYTONA=1` and `TERMBRIDGE_DAYTONA_API_KEY`; set `TERMBRIDGE_SANDBOX_REPO` there to a repository you can clone, because the default test repository is private.
 

@@ -44,11 +44,11 @@ Set `TERMBRIDGE_SANDBOX_REPO` (or `--sandbox-repo`). If it is missing or blank, 
 
 ## Daytona connection
 
-| Variable | Purpose |
-| --- | --- |
-| `TERMBRIDGE_DAYTONA_API_KEY` | Your Daytona API key |
+| Variable                     | Purpose                                             |
+| ---------------------------- | --------------------------------------------------- |
+| `TERMBRIDGE_DAYTONA_API_KEY` | Your Daytona API key                                |
 | `TERMBRIDGE_DAYTONA_API_URL` | API endpoint (default `https://app.daytona.io/api`) |
-| `TERMBRIDGE_DAYTONA_TARGET` | Daytona target region (optional) |
+| `TERMBRIDGE_DAYTONA_TARGET`  | Daytona target region (optional)                    |
 
 These are passed to the Daytona SDK. When one of them is unset, the SDK falls back to its own `DAYTONA_API_KEY`, `DAYTONA_API_URL` or `DAYTONA_TARGET` variable.
 
@@ -72,12 +72,12 @@ Termbridge will create a sandbox and clone your repo into the sandbox working di
 
 Use these settings:
 
-| Variable | Purpose |
-| --- | --- |
-| `TERMBRIDGE_SANDBOX_REPO` | Repo URL to clone (always set it, see the quick start) |
-| `TERMBRIDGE_SANDBOX_BRANCH` | Branch to check out (optional) |
-| `TERMBRIDGE_SANDBOX_PATH` | Path for the repo in the sandbox (optional) |
-| `TERMBRIDGE_SANDBOX_NAME` | Sandbox name (optional, defaults to `termbridge-<random hex>`) |
+| Variable                    | Purpose                                                        |
+| --------------------------- | -------------------------------------------------------------- |
+| `TERMBRIDGE_SANDBOX_REPO`   | Repo URL to clone (always set it, see the quick start)         |
+| `TERMBRIDGE_SANDBOX_BRANCH` | Branch to check out (optional)                                 |
+| `TERMBRIDGE_SANDBOX_PATH`   | Path for the repo in the sandbox (optional)                    |
+| `TERMBRIDGE_SANDBOX_NAME`   | Sandbox name (optional, defaults to `termbridge-<random hex>`) |
 
 If `TERMBRIDGE_SANDBOX_PATH` is not set, Termbridge derives it from the repo name.
 
@@ -112,9 +112,9 @@ Termbridge fetches the Daytona preview link and proxies it through the Termbridg
 
 ## Public vs private sandboxes
 
-| Variable | What it does |
-| --- | --- |
-| `TERMBRIDGE_SANDBOX_PUBLIC=true` | Creates a public sandbox |
+| Variable                          | What it does              |
+| --------------------------------- | ------------------------- |
+| `TERMBRIDGE_SANDBOX_PUBLIC=true`  | Creates a public sandbox  |
 | `TERMBRIDGE_SANDBOX_PUBLIC=false` | Creates a private sandbox |
 
 When the variable is unset, sandboxes are private, except in direct mode, where they are public.
@@ -142,30 +142,33 @@ This keeps sandbox usage under control and avoids disk quota issues.
 
 You can also configure Daytona via flags. A flag takes precedence over the matching environment variable.
 
-| Flag | Environment variable | Purpose |
-| --- | --- | --- |
-| `--backend sandbox-daytona` | `TERMBRIDGE_BACKEND` | Use the Daytona backend |
-| `--sandbox-repo <url>` | `TERMBRIDGE_SANDBOX_REPO` | Repo URL |
-| `--sandbox-branch <branch>` | `TERMBRIDGE_SANDBOX_BRANCH` | Branch |
-| `--sandbox-path <path>` | `TERMBRIDGE_SANDBOX_PATH` | Repo path in sandbox |
-| `--sandbox-name <name>` | `TERMBRIDGE_SANDBOX_NAME` | Sandbox name |
-| `--sandbox-preview-port <port>` | `TERMBRIDGE_SANDBOX_PREVIEW_PORT` | Preview port |
-| `--sandbox-public` | `TERMBRIDGE_SANDBOX_PUBLIC=true` | Create a public sandbox |
-| `--sandbox-direct` | `TERMBRIDGE_SANDBOX_DIRECT=true` | Run the server inside the sandbox (no tunnel) |
+| Flag                            | Environment variable              | Purpose                                       |
+| ------------------------------- | --------------------------------- | --------------------------------------------- |
+| `--backend sandbox-daytona`     | `TERMBRIDGE_BACKEND`              | Use the Daytona backend                       |
+| `--sandbox-repo <url>`          | `TERMBRIDGE_SANDBOX_REPO`         | Repo URL                                      |
+| `--sandbox-branch <branch>`     | `TERMBRIDGE_SANDBOX_BRANCH`       | Branch                                        |
+| `--sandbox-path <path>`         | `TERMBRIDGE_SANDBOX_PATH`         | Repo path in sandbox                          |
+| `--sandbox-name <name>`         | `TERMBRIDGE_SANDBOX_NAME`         | Sandbox name                                  |
+| `--sandbox-preview-port <port>` | `TERMBRIDGE_SANDBOX_PREVIEW_PORT` | Preview port                                  |
+| `--sandbox-public`              | `TERMBRIDGE_SANDBOX_PUBLIC=true`  | Create a public sandbox                       |
+| `--sandbox-direct`              | `TERMBRIDGE_SANDBOX_DIRECT=true`  | Run the server inside the sandbox (no tunnel) |
 
 There is no flag for a private sandbox; use `TERMBRIDGE_SANDBOX_PUBLIC=false`.
 
 ## Troubleshooting
 
 **Preview view is blank**
+
 - Ensure the dev server is running inside the sandbox.
 - Use `--host 0.0.0.0` so the preview port is reachable.
 - Confirm `TERMBRIDGE_SANDBOX_PREVIEW_PORT` matches the dev server port.
 
 **Sandbox creation fails with quota errors**
+
 - Delete old sandboxes in the Daytona dashboard.
 - Use `TERMBRIDGE_SANDBOX_DELETE_ON_EXIT=true` for short-lived sessions.
 
 **Repo clone fails**
+
 - Double-check repo URL, branch, and credentials.
 - Ensure the Git token has repo read access.

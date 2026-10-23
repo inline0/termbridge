@@ -60,14 +60,13 @@ termbridge --port 8080
 > **Note**
 > The `--port` flag is required with named tunnels because the hostname is configured to point to a specific port.
 
-
 ## Configuration options
 
-| Flag | Environment Variable | Description |
-|------|---------------------|-------------|
-| `--port <port>` | - | Local port (required with named tunnels) |
-| `--tunnel-token <token>` | `TERMBRIDGE_TUNNEL_TOKEN` | Your tunnel token |
-| `--tunnel-url <url>` | `TERMBRIDGE_TUNNEL_URL` | Your public hostname URL |
+| Flag                     | Environment Variable      | Description                              |
+| ------------------------ | ------------------------- | ---------------------------------------- |
+| `--port <port>`          | -                         | Local port (required with named tunnels) |
+| `--tunnel-token <token>` | `TERMBRIDGE_TUNNEL_TOKEN` | Your tunnel token                        |
+| `--tunnel-url <url>`     | `TERMBRIDGE_TUNNEL_URL`   | Your public hostname URL                 |
 
 ## Disabling the tunnel entirely
 

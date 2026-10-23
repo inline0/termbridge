@@ -1,0 +1,27 @@
+export const helpText = `termbridge
+
+Usage:
+  termbridge [start]
+
+Options:
+  --port <port>       Bind the local server to a fixed port
+  --proxy <port>      Proxy a local dev server (e.g., Vite) through termbridge
+  --dev-proxy-url <url> Direct URL to a dev server (supports HMR)
+  --tunnel-token <t>  Use a named Cloudflare Tunnel token (requires --port)
+  --tunnel-url <url>  Public URL for a named tunnel (required with --tunnel-token)
+  --public-url <url>  Public URL when tunnel is disabled
+  --session <name>    Use a specific tmux session name
+  --kill-on-exit      Kill the tmux session when the CLI exits
+  --no-qr             Disable QR code output
+  --no-tunnel         Disable tunnel (requires --public-url or TERMBRIDGE_PUBLIC_URL)
+  --backend <name>    Terminal backend (tmux | sandbox-daytona)
+  --sandbox-repo <u>  Git repo to clone into Daytona
+  --sandbox-branch <b> Git branch to checkout in Daytona
+  --sandbox-path <p>  Repo directory inside the sandbox
+  --sandbox-name <n>  Daytona sandbox name
+  --sandbox-preview-port <p> Preview port to expose from Daytona
+  --sandbox-public    Make the Daytona sandbox preview public
+  --sandbox-direct    Run the server inside the Daytona sandbox (no tunnel)
+  --tunnel <provider> Tunnel provider (cloudflare | none)
+  -h, --help          Show this help message
+`

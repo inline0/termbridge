@@ -71,6 +71,7 @@ tmux ls
 ```
 
 If sessions show up but the terminal is blank, try:
+
 - Reloading the page
 - Checking that your shell supports `TERM=xterm-256color`
 
@@ -91,6 +92,7 @@ chmod +x node_modules/node-pty/prebuilds/**/spawn-helper
 ## Still stuck?
 
 Open an issue at [github.com/inline0/termbridge](https://github.com/inline0/termbridge/issues) with:
+
 - Your OS and Node.js version
 - The error message
 - Steps to reproduce

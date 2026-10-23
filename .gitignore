@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-.bun/
 
 # Build output
 dist/
@@ -12,11 +11,6 @@ dist/
 .env
 .env.local
 .env.*.local
-
-# Data directories (runtime generated)
-apps/platform/data/agents/
-apps/platform/data/snapshots/
-apps/platform/data/wordpress-core/
 
 # Logs
 *.log
@@ -44,7 +38,3 @@ coverage/
 *.sqlite
 *.sqlite3
 *.db
-
-# Seed data files (~1GB) - only track db.json
-apps/platform/scripts/seed-data/*
-!apps/platform/scripts/seed-data/db.json

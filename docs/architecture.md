@@ -83,6 +83,7 @@ When `--no-tunnel` is set, Termbridge skips Cloudflare and uses your provided pu
 ### Proxy mode
 
 When `--proxy <port>` is passed:
+
 - All termbridge routes live under `/__tb/` prefix
 - Non-`/__tb/` requests are proxied to the target app
 - UI exposes Terminal/Preview views via the Views switcher
@@ -109,6 +110,7 @@ All routes live under the `/__tb/` prefix to avoid conflicts with proxied apps:
 - `WS /__tb/ws/terminal/:terminalId?csrf=<token>` - stream terminal I/O
 
 When proxy mode is enabled:
+
 - `GET /` - redirects to proxied app (or `/__tb/app` if disabled)
 - `* /*` - proxied to target app
 

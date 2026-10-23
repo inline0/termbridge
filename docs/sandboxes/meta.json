@@ -1,9 +1,5 @@
 {
   "title": "Sandboxes",
   "defaultOpen": true,
-  "pages": [
-    "index",
-    "coding-agents",
-    "daytona"
-  ]
+  "pages": ["index", "coding-agents", "daytona"]
 }

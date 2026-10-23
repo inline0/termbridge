@@ -35,7 +35,7 @@ This creates three sessions: `<base>`, `<base>-2`, and `<base>-3`.
 Use the shortcut script:
 
 ```bash
-bun run dev:beam:multi
+pnpm dev:beam:multi
 ```
 
 ### While Termbridge is running

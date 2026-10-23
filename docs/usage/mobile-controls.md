@@ -16,15 +16,15 @@ Termbridge is designed for phones and tablets. The control bar gives you quick a
 
 Tap the **+** button next to the message field to show or hide the control bar.
 
-| Button | What it does |
-|--------|---------------|
-| `Enter` | Submit commands |
-| `Page Up` `Page Down` | Scroll the terminal by a page |
-| `Line Up` `Line Down` | Scroll the terminal by a line |
+| Button                     | What it does                     |
+| -------------------------- | -------------------------------- |
+| `Enter`                    | Submit commands                  |
+| `Page Up` `Page Down`      | Scroll the terminal by a page    |
+| `Line Up` `Line Down`      | Scroll the terminal by a line    |
 | `Up` `Down` `Left` `Right` | Arrow keys (history, navigation) |
-| `Tab` | Autocomplete |
-| `Esc` | Exit modes, cancel |
-| `Ctrl+C` | Interrupt/kill process |
+| `Tab`                      | Autocomplete                     |
+| `Esc`                      | Exit modes, cancel               |
+| `Ctrl+C`                   | Interrupt/kill process           |
 
 The bar scrolls horizontally - swipe to see more options.
 
@@ -46,7 +46,6 @@ Rotate your phone to landscape for more screen space. This is especially useful 
 
 > **Note**
 > Some phones have a rotation lock - make sure it's disabled if the screen won't rotate.
-
 
 ## Keyboard tips
 

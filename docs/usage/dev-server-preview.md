@@ -55,13 +55,13 @@ Edit your code and see changes in the Preview view instantly - no refresh needed
 
 Any dev server that runs on a local port works:
 
-| Framework | Command | Default Port |
-|-----------|---------|--------------|
-| Vite | `npm run dev` | 5173 |
-| Next.js | `npm run dev` | 3000 |
-| Create React App | `npm start` | 3000 |
-| Nuxt | `npm run dev` | 3000 |
-| SvelteKit | `npm run dev` | 5173 |
+| Framework        | Command       | Default Port |
+| ---------------- | ------------- | ------------ |
+| Vite             | `npm run dev` | 5173         |
+| Next.js          | `npm run dev` | 3000         |
+| Create React App | `npm start`   | 3000         |
+| Nuxt             | `npm run dev` | 3000         |
+| SvelteKit        | `npm run dev` | 5173         |
 
 Just match the `--proxy` port to your dev server's port.
 

@@ -5,11 +5,17 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
-    "lint": "biome lint .",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc-rs --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@termbridge/shared": "workspace:*",
-    "node-pty": "^1.1.0"
+    "node-pty": "catalog:"
+  },
+  "private": true,
+  "devDependencies": {
+    "@termbridge/tsconfig": "workspace:*"
+  },
+  "exports": {
+    ".": "./src/index.ts"
   }
 }

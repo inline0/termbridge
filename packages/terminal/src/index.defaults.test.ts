@@ -1,29 +1,33 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest"
 
 vi.mock("node:child_process", () => ({
-  execFile: (_file: string, _args: string[], callback: (error: Error | null, stdout: string, stderr: string) => void) => {
-    callback(null, "", "");
-  }
-}));
+  execFile: (
+    _file: string,
+    _args: string[],
+    callback: (error: Error | null, stdout: string, stderr: string) => void
+  ) => {
+    callback(null, "", "")
+  },
+}))
 
 describe("createTmuxBackend defaults", () => {
   it("uses the default execFile wrapper", async () => {
-    const { createTmuxBackend } = await import("./index");
-    const backend = createTmuxBackend();
+    const { createTmuxBackend } = await import("./index.ts")
+    const backend = createTmuxBackend()
 
-    await backend.createSession("session-default");
-    await backend.closeSession("session-default");
+    await backend.createSession("session-default")
+    await backend.closeSession("session-default")
 
-    expect(true).toBe(true);
-  });
+    expect(true).toBe(true)
+  })
 
   it("falls back to process.platform when _platform is undefined", async () => {
-    const { createTmuxBackend } = await import("./index");
-    const backend = createTmuxBackend({ _platform: undefined });
+    const { createTmuxBackend } = await import("./index.ts")
+    const backend = createTmuxBackend({ _platform: undefined })
 
-    await backend.createSession("session-platform");
-    await backend.closeSession("session-platform");
+    await backend.createSession("session-platform")
+    await backend.closeSession("session-platform")
 
-    expect(true).toBe(true);
-  });
-});
+    expect(true).toBe(true)
+  })
+})

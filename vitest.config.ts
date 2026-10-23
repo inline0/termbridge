@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig } from "vitest/config"
 
 export default defineConfig({
   test: {
@@ -6,10 +6,10 @@ export default defineConfig({
       {
         test: {
           name: "ui",
-          include: ["cli/ui/src/**/*.test.tsx"],
+          include: ["packages/cli/ui/src/**/*.test.tsx"],
           environment: "jsdom",
-          setupFiles: ["./vitest.setup.ts"]
-        }
+          setupFiles: ["./vitest.setup.ts"],
+        },
       },
       {
         test: {
@@ -18,13 +18,14 @@ export default defineConfig({
           exclude: [
             "**/node_modules/**",
             "**/dist/**",
+            "scripts/**",
             "**/cli/integration/**",
-            "cli/ui/src/**/*.test.tsx"
+            "packages/cli/ui/src/**/*.test.tsx",
           ],
           environment: "node",
-          setupFiles: ["./vitest.setup.ts"]
-        }
-      }
+          setupFiles: ["./vitest.setup.ts"],
+        },
+      },
     ],
     coverage: {
       provider: "v8",
@@ -33,17 +34,17 @@ export default defineConfig({
         lines: 100,
         functions: 100,
         branches: 100,
-        statements: 100
+        statements: 100,
       },
       exclude: [
         "**/node_modules/**",
         "**/dist/**",
         "**/*.css",
         "**/*.config.*",
-        "**/cli/ui/vite-env.d.ts",
+        "packages/cli/ui/vite-env.d.ts",
         "**/cli/integration/**",
-        "**/scripts/**"
-      ]
-    }
-  }
-});
+        "**/scripts/**",
+      ],
+    },
+  },
+})

@@ -32,7 +32,6 @@ Use your own Cloudflare tunnel to avoid rate limits
 
 Monitor Claude Code, Codex, and other agents remotely
 
-
 ## Quick tips
 
 - **Landscape mode**: Rotate your phone for more screen space with TUIs

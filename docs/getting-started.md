@@ -47,7 +47,6 @@ brew install cloudflared
 
 [Download cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
 
-
 ## Run Termbridge
 
 ```bash
@@ -73,7 +72,6 @@ You'll see output like this:
 > **Note**
 > The `trycloudflare.com` URL is a quick, account-less tunnel. If you use Termbridge frequently,
 > set up a named Cloudflare tunnel token to avoid rate limits.
-
 
 ## Connect from your phone
 

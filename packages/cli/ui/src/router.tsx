@@ -1,0 +1,79 @@
+import {
+  Outlet,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  useNavigate,
+  useParams,
+} from "@tanstack/react-router"
+import { useCallback } from "react"
+import { TerminalPage } from "./terminal-page.tsx"
+
+const TerminalIndexRoute = () => {
+  const navigate = useNavigate()
+  const handleSelectTerminal = useCallback(
+    (terminalId: string) => {
+      void navigate({
+        to: "/terminal/$terminalId",
+        params: { terminalId },
+        search: (prev) => prev,
+      })
+    },
+    [navigate]
+  )
+
+  return (
+    <TerminalPage terminalId={null} onSelectTerminal={handleSelectTerminal} />
+  )
+}
+
+const TerminalRoute = () => {
+  const navigate = useNavigate()
+  const { terminalId } = useParams({ from: "/terminal/$terminalId" })
+  const handleSelectTerminal = useCallback(
+    (nextTerminalId: string) => {
+      void navigate({
+        to: "/terminal/$terminalId",
+        params: { terminalId: nextTerminalId },
+        search: (prev) => prev,
+      })
+    },
+    [navigate]
+  )
+
+  return (
+    <TerminalPage
+      terminalId={terminalId}
+      onSelectTerminal={handleSelectTerminal}
+    />
+  )
+}
+
+const rootRoute = createRootRoute({
+  component: () => <Outlet />,
+})
+
+const indexRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/",
+  component: TerminalIndexRoute,
+})
+
+const terminalRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/terminal/$terminalId",
+  component: TerminalRoute,
+})
+
+const routeTree = rootRoute.addChildren([indexRoute, terminalRoute])
+
+export const router = createRouter({
+  routeTree,
+  basepath: "/__tb/app",
+})
+
+declare module "@tanstack/react-router" {
+  interface Register {
+    router: typeof router
+  }
+}
