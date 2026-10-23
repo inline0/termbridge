@@ -19,7 +19,7 @@ vi.mock("@silk-hq/components", () => {
       children,
       ...rest
     }: { children?: React.ReactNode } & Record<string, unknown>) =>
-      React.createElement(tag as string, sanitizeProps(rest), children)
+      React.createElement(tag, sanitizeProps(rest), children)
 
   const SheetRoot = createComponent("div")
   const SheetView = createComponent("div")

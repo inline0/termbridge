@@ -62,7 +62,9 @@
     "dotenv": "catalog:",
     "@silk-hq/components": "catalog:",
     "@xterm/xterm": "catalog:",
-    "@xterm/addon-fit": "catalog:"
+    "@xterm/addon-fit": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:"
   },
   "type": "module",
   "license": "MIT",

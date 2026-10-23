@@ -18,6 +18,9 @@
   without requiring Cloudflare or sandbox credentials.
 - Package direct sandbox deployments with resolved workspace catalogs, preserve
   npm-only packing for installed CLIs, and remove temporary upload archives.
+- Declare React type dependencies explicitly so fresh installations pass the
+  same strict checks as existing development workspaces.
+- Consolidate contributor and agent guidance in `AGENTS.md`.
 - Apply the shared inline0 GitHub release title and changelog-link format.
 
 ## 0.3.13

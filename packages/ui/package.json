@@ -26,6 +26,8 @@
   },
   "private": true,
   "devDependencies": {
-    "@termbridge/tsconfig": "workspace:*"
+    "@termbridge/tsconfig": "workspace:*",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:"
   }
 }

@@ -316,6 +316,12 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.5
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.3.0(@types/react@19.3.0)
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.5(vitest@5.0.5)
@@ -501,6 +507,12 @@ importers:
       '@termbridge/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.3.0(@types/react@19.3.0)
 
 packages:
 
