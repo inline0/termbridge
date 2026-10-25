@@ -23,7 +23,7 @@ test("validates angle-bracket links without rejecting formatted engine URLs", as
     spawnSync(
       process.execPath,
       [
-        fileURLToPath(new URL("./check-docs-content.mjs", import.meta.url)),
+        fileURLToPath(new URL("./check-docs-content.ts", import.meta.url)),
         "--root",
         root,
         "--expected-docs",

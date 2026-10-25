@@ -59,5 +59,10 @@ jobs:
       - uses: actions/setup-node@v7.1.0
         with:
           node-version: ${{ matrix.node }}
+      - id: consumer-node
+        run: echo "binary=$(node -p process.execPath)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: .node-version
       - run: sudo apt-get update && sudo apt-get install -y tmux
-      - run: node scripts/check-package.mjs "$RUNNER_TEMP/termbridge.tgz"
+      - run: node scripts/check-package.ts --node "${{ steps.consumer-node.outputs.binary }}" "$RUNNER_TEMP/termbridge.tgz"

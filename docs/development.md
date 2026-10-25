@@ -108,7 +108,7 @@ smoke test cleans its temporary install and isolated tmux server automatically.
 The docs are plain Markdown files in `docs/`, with frontmatter on every page and `meta.json` files for navigation order. They are published at [termbridge.inline0.dev](https://termbridge.inline0.dev). Validate them with:
 
 ```bash
-node scripts/check-docs-content.mjs --root docs --expected-docs 16 --expected-nav 3
+node scripts/check-docs-content.ts --root docs --expected-docs 16 --expected-nav 3
 ```
 
 The Docs content workflow runs the same check on pull requests that touch `docs/`.

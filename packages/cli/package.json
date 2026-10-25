@@ -27,7 +27,7 @@
   },
   "scripts": {
     "build": "pnpm ui:build && tsup",
-    "dev": "node ../../scripts/clear-dev-cache.mjs && pnpm ui:dev",
+    "dev": "node ../../scripts/clear-dev-cache.ts && pnpm ui:dev",
     "start": "node dist/bin.js",
     "typecheck": "tsc-rs --noEmit -p tsconfig.json",
     "ui:dev": "vite --config vite.config.ts",

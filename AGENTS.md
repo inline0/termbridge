@@ -376,3 +376,14 @@ See [CHANGELOG.md](https://github.com/inline0/termbridge/blob/main/CHANGELOG.md)
 `.github/workflows/release-format.yml` enforces this shared inline0 format.
 Use `pnpm --filter termbridge pack` and `pnpm --filter termbridge publish` so
 catalog references are resolved. Never publish the private workspace packages.
+
+## Effect tooling
+
+Authored repository tools live in `scripts/*.ts` and run directly on Node 26.
+Use the CLI factory and scoped Command service in `scripts/lib`, with
+`--help`, `--json`, `--dry-run`, and `--log-level` on every command. Keep JSON
+results on stdout and child output on stderr in JSON mode. Never log sandbox
+authentication values. Dry-run must avoid credentials, sandbox API calls,
+consumer installs, cache deletion and development processes. Keep consumer
+checks on the Node 20+ runtime selected with `check-package.ts --node PATH`;
+source tooling itself still runs on Node 26.

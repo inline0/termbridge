@@ -284,3 +284,11 @@ Full documentation at [termbridge.inline0.dev](https://termbridge.inline0.dev).
 ## License
 
 MIT
+
+Repository tooling runs TypeScript directly on Node 26.12+ using Effect 4.
+Commands in `scripts/` support `--help`, `--json`, `--dry-run`, and
+`--log-level`; JSON mode sends child logs to stderr. Development pairs and
+consumer smoke tests own their child processes and temporary files in scopes,
+so interruption closes them. `scripts/check-package.ts --node PATH` tests the
+packed CLI using a separate Node 20+ executable while the checker runs on
+Node 26. Sandbox command previews do not load credentials or call Daytona.
