@@ -20,11 +20,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: pnpm/action-setup@v6.1.0
       - uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .node-version
-          cache: pnpm
+      - uses: pnpm/action-setup@v6.1.0
       - run: pnpm install --frozen-lockfile
       - run: pnpm audit --prod
       - run: pnpm check
@@ -49,11 +48,10 @@ jobs:
         node: [20, 22, 24, 26]
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: pnpm/action-setup@v6.1.0
       - uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .node-version
-          cache: pnpm
+      - uses: pnpm/action-setup@v6.1.0
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter termbridge pack --out "$RUNNER_TEMP/termbridge.tgz"
       - uses: actions/setup-node@v7.1.0
