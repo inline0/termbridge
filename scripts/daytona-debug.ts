@@ -23,6 +23,8 @@ export const parseEnvFile = (text: string) =>
         : []
     })
   )
+/** Repository cloned into test sandboxes when the test app sets none. */
+export const testAppRepo = "https://github.com/inline0/termbridge-test-app.git"
 /** Flags shared by sandbox debug modes. */
 export interface DebugInput extends ScriptInput {
   readonly direct: boolean
@@ -58,6 +60,7 @@ export const debug = (input: DebugInput, directory = root) =>
       ...loaded,
       NODE_ENV: "production",
       TERMBRIDGE_BACKEND: "sandbox-daytona",
+      TERMBRIDGE_SANDBOX_REPO: loaded.TERMBRIDGE_SANDBOX_REPO || testAppRepo,
       TERMBRIDGE_SANDBOX_PREVIEW_PORT:
         input.previewPort || loaded.TERMBRIDGE_SANDBOX_PREVIEW_PORT || "5173",
       TERMBRIDGE_SANDBOX_DELETE_ON_EXIT: "true",

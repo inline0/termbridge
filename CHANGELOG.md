@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.16
+
+- Pass the test app repository to the CLI in the Daytona integration tests,
+  `test:direct` and the sandbox debug scripts, which stopped with
+  `missing sandbox repo` since the Daytona repository became an explicit
+  setting. A repository in the test app's `.env` still takes precedence.
+
 ## 0.3.15
 
 - Point CLI reference links in the README and docs at `/docs/packages/cli`,

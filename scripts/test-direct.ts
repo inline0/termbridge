@@ -2,6 +2,7 @@ import { resolve } from "node:path"
 import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
+import { parseEnvFile, testAppRepo } from "./daytona-debug.ts"
 import { fail, main, script, type ScriptInput } from "./lib/cli.ts"
 import * as Command from "./lib/command.ts"
 import { root } from "./lib/paths.ts"
@@ -24,6 +25,11 @@ export const direct = (input: ScriptInput, directory = root) =>
       if (!(yield* fs.exists(bin)))
         return yield* fail(`Missing CLI build at ${bin}. Run: pnpm build`)
     }
+    const envPath = resolve(app, ".env")
+    const loaded =
+      !input.dryRun && (yield* fs.exists(envPath))
+        ? parseEnvFile(yield* fs.readFileString(envPath, "utf-8"))
+        : {}
     const sandbox = `test-direct-${Date.now()}`
     yield* Console.log(
       input.json
@@ -37,6 +43,7 @@ export const direct = (input: ScriptInput, directory = root) =>
       inherit: true,
       env: {
         TERMBRIDGE_SANDBOX_DIRECT: "true",
+        TERMBRIDGE_SANDBOX_REPO: loaded.TERMBRIDGE_SANDBOX_REPO || testAppRepo,
         TERMBRIDGE_SANDBOX_NAME: sandbox,
         TERMBRIDGE_SANDBOX_DELETE_ON_EXIT: "true",
         TERMBRIDGE_SANDBOX_AGENTS: "claude-code,codex",

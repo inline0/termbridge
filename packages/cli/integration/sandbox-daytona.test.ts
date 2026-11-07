@@ -231,6 +231,7 @@ describe.runIf(hasDaytonaConfig)("daytona integration (tunnel)", () => {
       ...process.env,
       NODE_ENV: "production",
       TERMBRIDGE_BACKEND: "sandbox-daytona",
+      TERMBRIDGE_SANDBOX_REPO: daytonaRepo,
       TERMBRIDGE_SANDBOX_DELETE_ON_EXIT: "true",
       TERMBRIDGE_SANDBOX_NAME: sandboxName,
       ...(shouldTestAgents
@@ -602,6 +603,7 @@ describe.runIf(hasDaytonaConfig)("daytona integration (direct)", () => {
       ...process.env,
       NODE_ENV: "production",
       TERMBRIDGE_BACKEND: "sandbox-daytona",
+      TERMBRIDGE_SANDBOX_REPO: daytonaRepo,
       TERMBRIDGE_SANDBOX_DELETE_ON_EXIT: "true",
       TERMBRIDGE_SANDBOX_NAME: sandboxName,
       TERMBRIDGE_SANDBOX_DIRECT: "true",
