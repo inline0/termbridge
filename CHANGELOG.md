@@ -8,6 +8,8 @@
   TypeScript 7 while preserving Node.js 20+ support for the published CLI.
 - Upgrade the Daytona SDK, remove vulnerable legacy tar dependencies, and adapt
   sandbox cleanup to its asynchronous listing API.
+- Lock follow-redirects 1.16.2 for the Daytona SDK's HTTP client to resolve
+  GHSA-mrwp-f3q8-3g9p.
 - Add strict source documentation and workspace checks, consumer tarball tests,
   and CI coverage across supported Node runtime versions.
 - Handle asynchronous HTTP failures without unhandled request rejections.
