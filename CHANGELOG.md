@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.15
+
+- Point CLI reference links in the README and docs at `/docs/packages/cli`,
+  the route the CLI reference page is served from.
+
 ## 0.3.14
 
 - Organize the CLI and its bundled browser UI under `packages/cli` in a pnpm

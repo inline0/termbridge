@@ -138,6 +138,6 @@ Run several sessions and switch between them
 
 Preview your Vite app alongside the terminal
 
-### [CLI Reference](/docs/cli)
+### [CLI Reference](/docs/packages/cli)
 
 See all available flags and options

@@ -12,7 +12,7 @@ meta_description: "Preview your local dev server alongside the terminal."
 
 Termbridge can proxy your local dev server and show it in a Preview view next to the terminal. You run commands in one view and watch the result in the other, on the same public URL, from your phone or any other browser.
 
-This page covers how the proxy routes requests, what the Preview view can and cannot do, how to keep the preview on a stable address, and how preview works with Daytona sandboxes. Every flag mentioned here is listed in the [CLI reference](/docs/cli).
+This page covers how the proxy routes requests, what the Preview view can and cannot do, how to keep the preview on a stable address, and how preview works with Daytona sandboxes. Every flag mentioned here is listed in the [CLI reference](/docs/packages/cli).
 
 ## Quick start
 

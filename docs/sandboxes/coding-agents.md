@@ -86,4 +86,4 @@ export TERMBRIDGE_SANDBOX_AGENT_PACKAGES=claude-code,codex,opencode
 ## Related docs
 
 - [Sandboxes](/docs/sandboxes)
-- [CLI](/docs/cli)
+- [CLI](/docs/packages/cli)

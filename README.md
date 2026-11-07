@@ -86,7 +86,7 @@ termbridge [options]
 | `--dev-proxy-url <url>`         | Proxy preview traffic to this URL (used by the dev scripts)          |
 | `-h`, `--help`                  | Show help                                                            |
 
-See the [CLI reference](https://termbridge.inline0.dev/docs/cli) for defaults and every environment variable.
+See the [CLI reference](https://termbridge.inline0.dev/docs/packages/cli) for defaults and every environment variable.
 
 ### Proxy Mode
 
