@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.14
 
 - Organize the CLI and its bundled browser UI under `packages/cli` in a pnpm
   workspace with shared dependency catalogs and explicit package boundaries.
@@ -22,6 +22,10 @@
   same strict checks as existing development workspaces.
 - Consolidate contributor and agent guidance in `AGENTS.md`.
 - Apply the shared inline0 GitHub release title and changelog-link format.
+- Expand the dev server preview guide with how the proxy routes requests and
+  rewrites headers, the preview iframe's restrictions, `--dev-proxy-url`,
+  stable URLs through named tunnels, Daytona tunnel and direct modes, and
+  troubleshooting for 404, 502, framing and cookie issues.
 
 ## 0.3.13
 
