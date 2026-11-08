@@ -15,6 +15,14 @@ const contentTypes: Record<string, string> = {
 const getContentType = (filePath: string) =>
   contentTypes[extname(filePath)] ?? "text/plain"
 
+const hasDotDotSegment = (rawPath: string) => {
+  const queryStart = rawPath.indexOf("?")
+  const pathname = queryStart === -1 ? rawPath : rawPath.slice(0, queryStart)
+  return pathname
+    .split(/[\\/]/)
+    .some((segment) => segment.replace(/%2e/gi, ".") === "..")
+}
+
 /**
  * Asynchronous HTTP handler that reports whether it served a request.
  */
@@ -44,7 +52,7 @@ export const createStaticHandler = (
       `http://${request.headers.host ?? "localhost"}`
     )
 
-    if (rawPath.includes("..")) {
+    if (hasDotDotSegment(rawPath)) {
       response.statusCode = 403
       response.end("forbidden")
       return true

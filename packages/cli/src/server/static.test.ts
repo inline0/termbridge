@@ -97,6 +97,35 @@ describe("createStaticHandler", () => {
     expect(res.getStatus()).toBe(403)
   })
 
+  it("blocks encoded and backslash traversal segments", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "termbridge-"))
+    await writeFile(join(dir, "index.html"), "index")
+
+    const handler = createStaticHandler(dir, "/app")
+    for (const path of [
+      "/app/.%2e/secret",
+      "/app/%2E%2e/secret",
+      "/app\\..\\x",
+    ]) {
+      const res = createResponse()
+      await handler(createRequest(path), res.response)
+      expect(res.getStatus()).toBe(403)
+    }
+  })
+
+  it("leaves dots in queries and file names to the next handler", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "termbridge-"))
+    await writeFile(join(dir, "index.html"), "index")
+
+    const handler = createStaticHandler(dir, "/app")
+    for (const path of ["/other?range=1..5", "/files/a..b.txt"]) {
+      const res = createResponse()
+      const handled = await handler(createRequest(path), res.response)
+      expect(handled).toBe(false)
+      expect(res.getStatus()).toBe(0)
+    }
+  })
+
   it("returns false when base path does not match", async () => {
     const dir = await mkdtemp(join(tmpdir(), "termbridge-"))
     await writeFile(join(dir, "index.html"), "index")

@@ -64,6 +64,9 @@ export type StartedServer = {
 
 const createSessionName = () => `termbridge-${randomBytes(4).toString("hex")}`
 
+const isReservedPath = (pathname: string) =>
+  pathname === "/__tb" || pathname.startsWith("/__tb/")
+
 export { isAllowedOrigin, resolveForwardedHost } from "./http-utils.ts"
 export { parseClientMessage, type ParseResult } from "./ws-utils.ts"
 
@@ -222,7 +225,11 @@ export const createAppServer = (deps: ServerDeps) => {
     const handled = await staticHandler(request, response)
 
     if (!handled) {
-      if (hasProxy && deps.auth.getSessionFromRequest(request)) {
+      if (
+        hasProxy &&
+        !isReservedPath(url.pathname) &&
+        deps.auth.getSessionFromRequest(request)
+      ) {
         proxyRequest(proxyConfig, request, response, url.pathname, url.search)
         return
       }
@@ -251,7 +258,11 @@ export const createAppServer = (deps: ServerDeps) => {
     )
 
     if (!url.pathname.startsWith("/__tb/ws/terminal/")) {
-      if (hasProxy && deps.auth.getSessionFromRequest(request)) {
+      if (
+        hasProxy &&
+        !isReservedPath(url.pathname) &&
+        deps.auth.getSessionFromRequest(request)
+      ) {
         const baseUrl = getProxyWebSocketUrl(proxyConfig)
         if (!baseUrl) {
           socket.destroy()

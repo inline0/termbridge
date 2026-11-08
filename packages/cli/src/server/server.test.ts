@@ -1510,6 +1510,82 @@ describe("createAppServer", () => {
     await new Promise<void>((resolve) => targetServer.close(() => resolve()))
   })
 
+  it("never forwards reserved /__tb/ paths and forwards dots in queries", async () => {
+    const received: Array<string | undefined> = []
+    const targetServer = createHttpServer((req, res) => {
+      received.push(req.url)
+      res.writeHead(200, { "Content-Type": "text/plain" })
+      res.end(`path: ${req.url}`)
+    })
+    await new Promise<void>((resolve) =>
+      targetServer.listen(0, "127.0.0.1", resolve)
+    )
+    const targetPort = (targetServer.address() as { port: number }).port
+
+    const fixture = await createServerFixture({ proxyPort: targetPort })
+    const { token } = fixture.auth.issueToken()
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, {
+      redirect: "manual",
+    })
+    const cookie = getCookie(redeem.headers.get("set-cookie"))
+
+    for (const [method, path] of [
+      ["GET", "/__tb/other"],
+      ["GET", "/__tb"],
+      ["POST", "/__tb/api/config"],
+      ["DELETE", "/__tb/api/terminals"],
+      ["POST", "/__tb/healthz"],
+    ] as const) {
+      const response = await fetch(`${fixture.baseUrl}${path}`, {
+        method,
+        headers: { cookie },
+      })
+      expect(response.status).toBe(404)
+      expect(await response.text()).toBe("not found")
+    }
+    expect(received).toEqual([])
+
+    const queryResponse = await fetch(`${fixture.baseUrl}/search?range=1..5`, {
+      headers: { cookie },
+    })
+    expect(queryResponse.status).toBe(200)
+    expect(await queryResponse.text()).toBe("path: /search?range=1..5")
+
+    await fixture.close()
+    await new Promise<void>((resolve) => targetServer.close(() => resolve()))
+  })
+
+  it("never forwards WebSocket connections under /__tb/", async () => {
+    const targetServer = createHttpServer()
+    const targetWss = new WebSocketServer({ server: targetServer })
+    let connections = 0
+    targetWss.on("connection", () => {
+      connections += 1
+    })
+    await new Promise<void>((resolve) =>
+      targetServer.listen(0, "127.0.0.1", resolve)
+    )
+    const targetPort = (targetServer.address() as { port: number }).port
+
+    const fixture = await createServerFixture({ proxyPort: targetPort })
+    const { token } = fixture.auth.issueToken()
+    const redeem = await fetch(`${fixture.baseUrl}/__tb/s/${token}`, {
+      redirect: "manual",
+    })
+    const cookie = getCookie(redeem.headers.get("set-cookie"))
+
+    const ws = new WebSocket(
+      `ws://127.0.0.1:${new URL(fixture.baseUrl).port}/__tb/hmr`,
+      { headers: { cookie } }
+    )
+    await new Promise((resolve) => ws.on("error", resolve))
+    expect(connections).toBe(0)
+
+    await fixture.close()
+    targetWss.close()
+    await new Promise<void>((resolve) => targetServer.close(() => resolve()))
+  })
+
   it("does not rewrite Location headers for external hosts", async () => {
     const targetServer = createHttpServer((_req, res) => {
       res.writeHead(302, { Location: "http://external.example.com/path" })

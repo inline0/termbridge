@@ -1,18 +1,36 @@
 # Changelog
 
+## 0.3.17
+
+- Reserve the whole `/__tb/` prefix in proxy mode. A request under `/__tb/`
+  that matches no Termbridge route, or uses a method a route does not answer,
+  gets `404 not found`, and a WebSocket connection under `/__tb/` outside the
+  terminal socket is closed, instead of reaching the dev server.
+- Refuse only paths with a `..` segment, literal or percent-encoded, with
+  `403 forbidden`. Dots in query strings and file names, such as
+  `?range=1..5` or `a..b.txt`, are forwarded to the dev server again.
+- The dev server preview guide describes both rules.
+
 ## 0.3.16
 
 - Pass the test app repository to the CLI in the Daytona integration tests,
   `test:direct` and the sandbox debug scripts, which stopped with
   `missing sandbox repo` since the Daytona repository became an explicit
   setting. A repository in the test app's `.env` still takes precedence.
+- This is the first npm release after 0.3.13 and contains the changes of
+  0.3.14 and 0.3.15.
 
 ## 0.3.15
 
+- Tagged and released on GitHub only, never published to npm. Its changes ship
+  in 0.3.16.
 - Point CLI reference links in the README and docs at `/docs/packages/cli`,
   the route the CLI reference page is served from.
 
 ## 0.3.14
+
+- Tagged and released on GitHub only, never published to npm. Its changes ship
+  in 0.3.16.
 
 - Organize the CLI and its bundled browser UI under `packages/cli` in a pnpm
   workspace with shared dependency catalogs and explicit package boundaries.

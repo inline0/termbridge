@@ -33,7 +33,7 @@ If the `--proxy` value is missing, zero, negative or not a number, Termbridge st
 When you pass `--proxy <port>`, one Termbridge server answers both the terminal UI and your app:
 
 1. Termbridge's own routes stay under `/__tb/`: the share link at `/__tb/s/`, the UI at `/__tb/app`, the API under `/__tb/api/`, the terminal WebSocket under `/__tb/ws/terminal/` and the health check at `/__tb/healthz`.
-2. Every other request from a signed-in browser is forwarded to `http://localhost:<port>`, with its method, path, query string and body.
+2. Every request outside `/__tb/` from a signed-in browser is forwarded to `http://localhost:<port>`, with its method, path, query string and body, unless its path contains a `..` segment (see below).
 3. The Preview view loads `/` in an iframe, so your app is served through the same public URL as the terminal.
 
 ```
@@ -44,15 +44,16 @@ Without `--proxy`, a request for `/` redirects to the terminal UI. With it, `/` 
 
 ### What the proxy changes
 
-The proxy passes requests and responses through almost untouched. Three things differ from talking to the dev server directly:
+The proxy passes requests and responses through almost untouched. Four things differ from talking to the dev server directly:
 
 - **Only signed-in browsers are proxied.** A request without a valid Termbridge session cookie gets `404 not found` instead of reaching your app. The public URL never exposes your dev server to someone who has not redeemed the share link.
 - **The `Cookie` header is removed.** Termbridge's session cookie and any cookies your app set share the public URL's origin, and the proxy strips the whole header before forwarding. Your app never sees the Termbridge session, and it also never receives its own cookies. `Set-Cookie` headers in responses still reach the browser.
+- **Paths with a `..` segment are refused.** A request whose path has a `..` segment, written literally or percent-encoded as `%2e%2e`, gets `403 forbidden` before the session check. Dots anywhere else are forwarded, so `/files/a..b.txt` and `/search?range=1..5` reach your app.
 - **The `Host` header is rewritten** to the target, for example `localhost:5173`. Dev servers that check the host name see a local request, not the tunnel's host name. Other request headers, such as `Origin` and `User-Agent`, are forwarded as the browser sent them.
 
 Response status codes and headers from your dev server are passed back unchanged. If Termbridge cannot reach the dev server, it answers `502 proxy error`.
 
-Because `/__tb/` is reserved, an app route that starts with `/__tb/` is never forwarded.
+Because `/__tb/` is reserved, nothing whose path starts with `/__tb/` is forwarded, even when it matches none of Termbridge's routes or uses a method a route does not answer: an HTTP request gets `404 not found` and a WebSocket connection is closed. Keep your app's own routes outside that prefix.
 
 ## Switching views
 
